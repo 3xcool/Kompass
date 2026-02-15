@@ -101,7 +101,7 @@ publishing {
         create<MavenPublication>("kompass") {
             from(components["kotlin"])
 
-            groupId = "com.3xcool"
+            groupId = "io.github.3xcool"
             artifactId = "kompass"
             version = project.version.toString()
 

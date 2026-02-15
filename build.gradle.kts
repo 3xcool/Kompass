@@ -14,8 +14,8 @@ plugins {
     id("signing")
 }
 
-group = "com.3xcool"
-version = "1.0.1"
+group = "io.github.3xcool"
+version = "1.0.2"
 
 allprojects {
     repositories {
