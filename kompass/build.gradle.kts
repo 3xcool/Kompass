@@ -2,19 +2,16 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.androidLint)
-
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
-
     alias(libs.plugins.kotlinSerialization)
+    id("maven-publish")
+    id("signing")
 }
 
 kotlin {
     jvm()
 
-    // Target declarations - add or remove as needed below. These define
-    // which platforms this KMP module supports.
-    // See: https://kotlinlang.org/docs/multiplatform-discover-project.html#targets
     androidLibrary {
         namespace = "com.tekmoon.kompass"
         compileSdk = 36
@@ -30,13 +27,6 @@ kotlin {
         }
     }
 
-    // For iOS targets, this is also where you should
-    // configure native binary output. For more information, see:
-    // https://kotlinlang.org/docs/multiplatform-build-native-binaries.html#build-xcframeworks
-
-    // A step-by-step guide on how to include this library in an XCode
-    // project can be found here:
-    // https://developer.android.com/kotlin/multiplatform/migrate
     val xcfName = "kompassKit"
 
     iosX64 {
@@ -57,16 +47,10 @@ kotlin {
         }
     }
 
-    // Source set declarations.
-    // Declaring a target automatically creates a source set with the same name. By default, the
-    // Kotlin Gradle Plugin creates additional source sets that depend on each other, since it is
-    // common to share sources between related targets.
-    // See: https://kotlinlang.org/docs/multiplatform-hierarchy.html
     sourceSets {
         commonMain {
             dependencies {
                 implementation(libs.kotlin.stdlib)
-                // Add KMP dependencies here
 
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.collections.immutable)
@@ -106,5 +90,67 @@ kotlin {
             }
         }
     }
+}
 
+/* ============================================
+   Publishing to Maven Central Configuration
+   ============================================ */
+
+publishing {
+    publications {
+        create<MavenPublication>("kompass") {
+            from(components["kotlin"])
+
+            groupId = "com.3xcool"
+            artifactId = "kompass"
+            version = project.version.toString()
+
+            pom {
+                name.set("Kompass")
+                description.set("A lightweight, type-safe navigation library for Kotlin Multiplatform")
+                url.set("https://github.com/3xcool/kompass")
+
+                licenses {
+                    license {
+                        name.set("Apache License 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                    }
+                }
+
+                developers {
+                    developer {
+                        id.set("3xcool")
+                        name.set("3xcool")
+                        email.set("alg.filgueiras@gmail.com")
+                    }
+                }
+
+                scm {
+                    connection.set("scm:git:https://github.com/3xcool/kompass.git")
+                    developerConnection.set("scm:git:https://github.com/3xcool/kompass.git")
+                    url.set("https://github.com/3xcool/kompass")
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = "MavenCentral"
+            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+
+            credentials {
+                username = findProperty("mavenCentralUsername")?.toString() ?: System.getenv("MAVEN_CENTRAL_USERNAME") ?: ""
+                password = findProperty("mavenCentralPassword")?.toString() ?: System.getenv("MAVEN_CENTRAL_PASSWORD") ?: ""
+            }
+        }
+    }
+}
+
+signing {
+    sign(publishing.publications["kompass"])
+}
+
+tasks.withType<Sign>().configureEach {
+    onlyIf { project.hasProperty("signing.keyId") || System.getenv("GPG_KEY_ID") != null }
 }

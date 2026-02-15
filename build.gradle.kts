@@ -9,4 +9,17 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform) apply false
     alias(libs.plugins.androidKotlinMultiplatformLibrary) apply false
     alias(libs.plugins.androidLint) apply false
+
+    id("maven-publish")
+    id("signing")
+}
+
+group = "com.3xcool"
+version = "1.0.0"
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
 }
