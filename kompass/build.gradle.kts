@@ -2,9 +2,15 @@ plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidKotlinMultiplatformLibrary)
     alias(libs.plugins.androidLint)
+
+    alias(libs.plugins.composeMultiplatform)
+    alias(libs.plugins.composeCompiler)
+
+    alias(libs.plugins.kotlinSerialization)
 }
 
 kotlin {
+    jvm()
 
     // Target declarations - add or remove as needed below. These define
     // which platforms this KMP module supports.
@@ -61,6 +67,12 @@ kotlin {
             dependencies {
                 implementation(libs.kotlin.stdlib)
                 // Add KMP dependencies here
+
+                implementation(libs.kotlinx.serialization.json)
+                implementation(libs.kotlinx.collections.immutable)
+
+                implementation(libs.compose.runtime)
+                implementation(libs.compose.foundation)
             }
         }
 
@@ -72,9 +84,7 @@ kotlin {
 
         androidMain {
             dependencies {
-                // Add Android-specific dependencies here. Note that this source set depends on
-                // commonMain by default and will correctly pull the Android artifacts of any KMP
-                // dependencies declared in commonMain.
+                implementation(libs.androidx.activity.compose)
             }
         }
 
@@ -88,11 +98,11 @@ kotlin {
 
         iosMain {
             dependencies {
-                // Add iOS-specific dependencies here. This a source set created by Kotlin Gradle
-                // Plugin (KGP) that each specific iOS target (e.g., iosX64) depends on as
-                // part of KMP’s default source set hierarchy. Note that this source set depends
-                // on common by default and will correctly pull the iOS artifacts of any
-                // KMP dependencies declared in commonMain.
+            }
+        }
+
+        jvmMain {
+            dependencies {
             }
         }
     }
