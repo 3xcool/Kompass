@@ -94,7 +94,7 @@ android {
 
 mavenPublishing {
     coordinates(
-        groupId = "io.github.3xcool",
+        groupId = "com.3xcool",
         artifactId = "kompass",
         version = "0.0.1"
     )
