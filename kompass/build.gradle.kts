@@ -102,7 +102,6 @@ signing {
 
     println("DEBUG: keyId = $keyId")
     println("DEBUG: password = $password")
-    println("DEBUG: keyEncoded = ${key?.take(50)}")
 
     if (keyId != null && key != null && password != null) {
         useInMemoryPgpKeys(keyId, key, password)

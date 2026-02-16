@@ -28,6 +28,7 @@ jobs:
 
       - name: Publish to Maven Central
         run: |
+          echo "Username: ${{ secrets.MAVEN_CENTRAL_USERNAME }}"
           ./gradlew publishAllPublicationsToMavenCentralRepository \
           -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
           -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }} \
