@@ -1,0 +1,71 @@
+name: Publish to Maven Central
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      customVersion:
+        description: 'Override version (leave empty for auto-snapshot)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Tag push: use tag name without 'v'
+            VERSION=${GITHUB_REF#refs/tags/v}
+          elif [[ -n "${{ github.event.inputs.customVersion }}" ]]; then
+            # Manual dispatch with custom version
+            VERSION=${{ github.event.inputs.customVersion }}
+          else
+            # Manual dispatch without custom version: read from gradle.properties and append -SNAPSHOT
+            VERSION=$(grep '^kompassVersion=' gradle.properties | cut -d'=' -f2)-SNAPSHOT
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
+
+      - name: Publish to Maven Central
+        run: |
+          ./gradlew publishAllPublicationsToMavenCentralRepository \
+            -Pversion=${{ steps.version.outputs.VERSION }} \
+            -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
+            -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        env:
+          GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.version.outputs.VERSION }}
+          name: Release ${{ steps.version.outputs.VERSION }}
+          body: |-
+            Available on Maven Central:
+            ```kotlin
+            dependencies {
+              implementation("com.3xcool:kompass:${{ steps.version.outputs.VERSION }}")
+            }
+            ```
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'SNAPSHOT') }}
+          token: ${{ secrets.GITHUB_TOKEN }}

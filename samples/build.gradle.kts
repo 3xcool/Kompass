@@ -8,7 +8,7 @@ plugins {
 
 
 android {
-    namespace = "com.tekmoon.kompass"
+    namespace = "com.tekmoon.kompass.samples"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
