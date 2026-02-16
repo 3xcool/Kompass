@@ -7,12 +7,14 @@
 [![API](https://img.shields.io/badge/API-21%2B-brightgreen)](https://www.android.com)
 
 <p align="center">
-  <a href="assets/KompassUsageOverviewScene.mp4">▶ Watch usage overview</a>
+  <strong>A state-first, testable navigation library for Compose / Compose Multiplatform.</strong><br/>
+  Pure reducer-driven navigation + pluggable layouts, deep links, results, and lifecycle-aware scopes.
 </p>
 
+
 <p align="center">
-  <a href="assets/KompassUsageOverviewScene.mp4">
-    <img src="assets/KompassOverview.png" alt="Kompass usage overview video" />
+  <a href="https://github.com/user-attachments/assets/180b7805-c2e5-4b3f-9d61-570d7d092ac5">
+    <img src="assets/KompassOverview.png" alt="Kompass Usage Overview (click to play)" />
   </a>
 </p>
 
