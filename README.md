@@ -13,10 +13,12 @@
 
 
 <p align="center">
-  <a href="https://github.com/user-attachments/assets/180b7805-c2e5-4b3f-9d61-570d7d092ac5">
-    <img src="assets/KompassOverview.png" alt="Kompass Usage Overview (click to play)" />
-  </a>
+  <img src="assets/KompassOverview.png" alt="Kompass Overview" />
 </p>
+
+
+[▶ Watch usage overview](https://github.com/user-attachments/assets/180b7805-c2e5-4b3f-9d61-570d7d092ac5)
+
 
 ## About
 
