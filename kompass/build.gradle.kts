@@ -93,14 +93,31 @@ android {
     }
 }
 
+//signing {
+//    val keyId = System.getenv("GPG_KEY_ID")
+//    val password = System.getenv("GPG_PASSPHRASE")
+//    val keyFile = System.getenv("HOME")?.let { "$it/.gnupg/secring.gpg" }
+//
+//    if (keyId != null && password != null && keyFile != null) {
+//        useInMemoryPgpKeys(keyId, keyFile, password)
+//        sign(publishing.publications)
+//    }
+//}
+
 signing {
     val keyId = System.getenv("GPG_KEY_ID")
     val password = System.getenv("GPG_PASSPHRASE")
     val keyFile = System.getenv("HOME")?.let { "$it/.gnupg/secring.gpg" }
 
+    println("DEBUG: keyId = $keyId")
+    println("DEBUG: password = $password")
+    println("DEBUG: keyFile = $keyFile")
+
     if (keyId != null && password != null && keyFile != null) {
         useInMemoryPgpKeys(keyId, keyFile, password)
         sign(publishing.publications)
+    } else {
+        println("DEBUG: Signing not configured - one or more env vars missing")
     }
 }
 
