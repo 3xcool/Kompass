@@ -1,51 +1,38 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
-    alias(libs.plugins.androidKotlinMultiplatformLibrary)
-    alias(libs.plugins.androidLint)
+    alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
-    id("maven-publish")
-    id("signing")
+    id("com.vanniktech.maven.publish") version "0.31.0"
 }
 
 kotlin {
+    androidTarget {
+        publishLibraryVariants("release")
+        @OptIn(ExperimentalKotlinGradlePluginApi::class)
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_17)
+        }
+    }
+
     jvm()
 
-    androidLibrary {
-        namespace = "com.tekmoon.kompass"
-        compileSdk = 36
-        minSdk = 24
-
-        withHostTestBuilder {
-        }
-
-        withDeviceTestBuilder {
-            sourceSetTreeName = "test"
-        }.configure {
-            instrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    listOf(
+        iosX64(),
+        iosArm64(),
+        iosSimulatorArm64()
+    ).forEach { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "Kompass"
+            isStatic = true
         }
     }
 
-    val xcfName = "kompassKit"
-
-    iosX64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
-
-    iosArm64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
-
-    iosSimulatorArm64 {
-        binaries.framework {
-            baseName = xcfName
-        }
-    }
+    applyDefaultHierarchyTemplate()
 
     sourceSets {
         commonMain {
@@ -72,14 +59,6 @@ kotlin {
             }
         }
 
-        getByName("androidDeviceTest") {
-            dependencies {
-                implementation(libs.androidx.runner)
-                implementation(libs.androidx.core)
-                implementation(libs.androidx.testExt.junit)
-            }
-        }
-
         iosMain {
             dependencies {
             }
@@ -92,65 +71,64 @@ kotlin {
     }
 }
 
-/* ============================================
-   Publishing to Maven Central Configuration
-   ============================================ */
+android {
+    namespace = "com.tekmoon.kompass"
+    compileSdk = 36
 
-publishing {
-    publications {
-        create<MavenPublication>("kompass") {
-            from(components["kotlin"])
-
-            groupId = "io.github.3xcool"
-            artifactId = "kompass"
-            version = project.version.toString()
-
-            pom {
-                name.set("Kompass")
-                description.set("A lightweight, type-safe navigation library for Kotlin Multiplatform")
-                url.set("https://github.com/3xcool/kompass")
-
-                licenses {
-                    license {
-                        name.set("Apache License 2.0")
-                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                    }
-                }
-
-                developers {
-                    developer {
-                        id.set("3xcool")
-                        name.set("3xcool")
-                        email.set("alg.filgueiras@gmail.com")
-                    }
-                }
-
-                scm {
-                    connection.set("scm:git:https://github.com/3xcool/kompass.git")
-                    developerConnection.set("scm:git:https://github.com/3xcool/kompass.git")
-                    url.set("https://github.com/3xcool/kompass")
-                }
-            }
-        }
+    defaultConfig {
+        minSdk = 24
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    repositories {
-        maven {
-            name = "MavenCentral"
-            url = uri("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/")
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
 
-            credentials {
-                username = findProperty("mavenCentralUsername")?.toString() ?: System.getenv("MAVEN_CENTRAL_USERNAME") ?: ""
-                password = findProperty("mavenCentralPassword")?.toString() ?: System.getenv("MAVEN_CENTRAL_PASSWORD") ?: ""
-            }
+    buildTypes {
+        release {
+            isMinifyEnabled = false
         }
     }
 }
 
-signing {
-    sign(publishing.publications["kompass"])
+mavenPublishing {
+    coordinates(
+        groupId = "io.github.3xcool",
+        artifactId = "kompass",
+        version = "0.0.1"
+    )
+
+    pom {
+        name.set("Kompass")
+        description.set("A lightweight, type-safe navigation library for Kotlin Multiplatform")
+        inceptionYear.set("2026")
+        url.set("https://github.com/3xcool/kompass")
+
+        licenses {
+            license {
+                name.set("Apache License 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+            }
+        }
+
+        developers {
+            developer {
+                id.set("3xcool")
+                name.set("3xcool")
+                email.set("alg.filgueiras@gmail.com")
+            }
+        }
+
+        scm {
+            url.set("https://github.com/3xcool/kompass")
+            connection.set("scm:git:https://github.com/3xcool/kompass.git")
+            developerConnection.set("scm:git:https://github.com/3xcool/kompass.git")
+        }
+    }
+
+    publishToMavenCentral(com.vanniktech.maven.publish.SonatypeHost.CENTRAL_PORTAL)
+    signAllPublications()
 }
 
-tasks.withType<Sign>().configureEach {
-    onlyIf { project.hasProperty("signing.keyId") || System.getenv("GPG_KEY_ID") != null }
-}
+task("testClasses") {}

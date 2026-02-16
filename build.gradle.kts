@@ -15,7 +15,7 @@ plugins {
 }
 
 group = "io.github.3xcool"
-version = "1.0.2"
+version = "0.0.1"
 
 allprojects {
     repositories {
