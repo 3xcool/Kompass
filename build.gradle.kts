@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     // this is necessary to avoid the plugins to be loaded multiple times
     // in each subproject's classloader
@@ -14,10 +16,21 @@ plugins {
     id("signing")
 }
 
+// Set version first
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+val kompassVersion = localProps.getProperty("kompassVersion") ?: "1.0.0"
+
 group = "com.3xcool"
-version = "0.0.2"
+version = kompassVersion
 
 allprojects {
+    version = rootProject.version
+    group = rootProject.group
+
     repositories {
         google()
         mavenCentral()

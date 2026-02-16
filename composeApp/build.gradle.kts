@@ -94,7 +94,7 @@ compose.desktop {
         nativeDistributions {
             targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
             packageName = "com.tekmoon.kompasskmp"
-            packageVersion = "1.0.0"
+            packageVersion ="1.0.0" // TODO rootProject.version.toString()
         }
     }
 }

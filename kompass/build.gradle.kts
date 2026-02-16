@@ -1,6 +1,8 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
+import java.util.Properties
+import kotlin.apply
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -109,11 +111,18 @@ signing {
     }
 }
 
+val localProps = Properties().apply {
+    val f = rootProject.file("local.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
+val kompassVersion = localProps.getProperty("kompassVersion") ?: "1.0.0"
+
 mavenPublishing {
     coordinates(
         groupId = "com.3xcool",
         artifactId = "kompass",
-        version = "0.0.2"
+        version = kompassVersion
     )
 
     pom {

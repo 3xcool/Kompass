@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*.*.*'
   workflow_dispatch:
+    inputs:
+      customVersion:
+        description: 'Override version (leave empty for auto-snapshot)'
+        required: false
+        type: string
 
 jobs:
   publish:
@@ -19,25 +24,29 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Create .gnupg directory and import GPG key
+      - name: Determine version
+        id: version
         run: |
-          mkdir -p ~/.gnupg
-          chmod 700 ~/.gnupg
-          echo "${{ secrets.GPG_SECRET_KEY }}" | base64 -d > ~/.gnupg/secring.gpg
-          chmod 600 ~/.gnupg/secring.gpg
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            # Tag push: use tag name without 'v'
+            VERSION=${GITHUB_REF#refs/tags/v}
+          elif [[ -n "${{ github.event.inputs.customVersion }}" ]]; then
+            # Manual dispatch with custom version
+            VERSION=${{ github.event.inputs.customVersion }}
+          else
+            # Manual dispatch without custom version: read from gradle.properties and append -SNAPSHOT
+            VERSION=$(grep '^version=' gradle.properties | cut -d'=' -f2)-SNAPSHOT
+          fi
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "Publishing version: $VERSION"
 
       - name: Publish to Maven Central
         run: |
-          echo "Username: ${{ secrets.MAVEN_CENTRAL_USERNAME }}"
           ./gradlew publishAllPublicationsToMavenCentralRepository \
-          -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
-          -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }} \
-          -PgpgKeyId=${{ secrets.GPG_KEY_ID }} \
-          -PgpgSecretKey=${{ secrets.GPG_SECRET_KEY }} \
-          -PgpgPassphrase=${{ secrets.GPG_PASSPHRASE }}
+            -Pversion=${{ steps.version.outputs.VERSION }} \
+            -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
+            -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }}
         env:
-          MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-          MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
@@ -47,14 +56,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
-          body: |
+          tag_name: v${{ steps.version.outputs.VERSION }}
+          release_name: Release ${{ steps.version.outputs.VERSION }}
+          body: |-
             Available on Maven Central:
             ```kotlin
-            dependencies {
-                implementation("com.3xcool:kompass:${{ github.ref_name }}")
-            }
+                dependencies {
+                  implementation("io.github.3xcool:kompass:${{ steps.version.outputs.VERSION }}")
+                }
             ```
           draft: false
-          prerelease: false
+          prerelease: ${{ contains(steps.version.outputs.VERSION, 'SNAPSHOT') }}
