@@ -96,15 +96,15 @@ android {
 
 signing {
     val keyId = System.getenv("GPG_KEY_ID") ?: findProperty("GPG_KEY_ID")?.toString()
-    val keyEncoded = System.getenv("GPG_SECRET_KEY") ?: findProperty("GPG_SECRET_KEY")?.toString()
+    val key = System.getenv("GPG_SECRET_KEY") ?: findProperty("GPG_SECRET_KEY")?.toString()
     val password = System.getenv("GPG_PASSPHRASE") ?: findProperty("GPG_PASSPHRASE")?.toString()
+
 
     println("DEBUG: keyId = $keyId")
     println("DEBUG: password = $password")
-    println("DEBUG: keyEncoded = ${keyEncoded?.take(50)}")
+    println("DEBUG: keyEncoded = ${key?.take(50)}")
 
-    if (keyId != null && keyEncoded != null && password != null) {
-        val key = String(Base64.getDecoder().decode(keyEncoded))
+    if (keyId != null && key != null && password != null) {
         useInMemoryPgpKeys(keyId, key, password)
         sign(publishing.publications)
     }
