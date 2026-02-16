@@ -131,4 +131,8 @@ mavenPublishing {
     signAllPublications()
 }
 
+tasks.withType<org.gradle.api.publish.maven.tasks.PublishToMavenRepository>().configureEach {
+    notCompatibleWithConfigurationCache("Maven publish is incompatible with configuration cache")
+}
+
 task("testClasses") {}
