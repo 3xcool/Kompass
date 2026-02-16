@@ -8,6 +8,7 @@ plugins {
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
     id("com.vanniktech.maven.publish") version "0.35.0"
+    signing
 }
 
 kotlin {
@@ -89,6 +90,17 @@ android {
         release {
             isMinifyEnabled = false
         }
+    }
+}
+
+signing {
+    val keyId = System.getenv("GPG_KEY_ID")
+    val password = System.getenv("GPG_PASSPHRASE")
+    val keyFile = System.getenv("HOME")?.let { "$it/.gnupg/secring.gpg" }
+
+    if (keyId != null && password != null && keyFile != null) {
+        useInMemoryPgpKeys(keyId, keyFile, password)
+        sign(publishing.publications)
     }
 }
 
