@@ -29,13 +29,17 @@ jobs:
       - name: Publish to Maven Central
         run: |
           ./gradlew publishAllPublicationsToMavenCentralRepository \
-            -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
-            -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+          -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
+          -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }} \
+          -PgpgKeyId=${{ secrets.GPG_KEY_ID }} \
+          -PgpgSecretKey=${{ secrets.GPG_SECRET_KEY }} \
+          -PgpgPassphrase=${{ secrets.GPG_PASSPHRASE }}
         env:
           MAVEN_CENTRAL_USERNAME: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
           MAVEN_CENTRAL_PASSWORD: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
           GPG_KEY_ID: ${{ secrets.GPG_KEY_ID }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_SECRET_KEY: ${{ secrets.GPG_SECRET_KEY }}
 
       - name: Create Release
         uses: actions/create-release@v1

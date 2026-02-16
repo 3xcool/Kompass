@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Base64
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -93,31 +94,19 @@ android {
     }
 }
 
-//signing {
-//    val keyId = System.getenv("GPG_KEY_ID")
-//    val password = System.getenv("GPG_PASSPHRASE")
-//    val keyFile = System.getenv("HOME")?.let { "$it/.gnupg/secring.gpg" }
-//
-//    if (keyId != null && password != null && keyFile != null) {
-//        useInMemoryPgpKeys(keyId, keyFile, password)
-//        sign(publishing.publications)
-//    }
-//}
-
 signing {
-    val keyId = System.getenv("GPG_KEY_ID")
-    val password = System.getenv("GPG_PASSPHRASE")
-    val keyFile = System.getenv("HOME")?.let { "$it/.gnupg/secring.gpg" }
+    val keyId = System.getenv("GPG_KEY_ID") ?: findProperty("GPG_KEY_ID")?.toString()
+    val keyEncoded = System.getenv("GPG_SECRET_KEY") ?: findProperty("GPG_SECRET_KEY")?.toString()
+    val password = System.getenv("GPG_PASSPHRASE") ?: findProperty("GPG_PASSPHRASE")?.toString()
 
     println("DEBUG: keyId = $keyId")
     println("DEBUG: password = $password")
-    println("DEBUG: keyFile = $keyFile")
+    println("DEBUG: keyEncoded = ${keyEncoded?.take(50)}")
 
-    if (keyId != null && password != null && keyFile != null) {
-        useInMemoryPgpKeys(keyId, keyFile, password)
+    if (keyId != null && keyEncoded != null && password != null) {
+        val key = String(Base64.getDecoder().decode(keyEncoded))
+        useInMemoryPgpKeys(keyId, key, password)
         sign(publishing.publications)
-    } else {
-        println("DEBUG: Signing not configured - one or more env vars missing")
     }
 }
 
@@ -125,7 +114,7 @@ mavenPublishing {
     coordinates(
         groupId = "com.3xcool",
         artifactId = "kompass",
-        version = "0.0.1"
+        version = "0.0.2"
     )
 
     pom {
