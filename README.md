@@ -1,10 +1,20 @@
-# Kompass Navigation
+# Kompass (KMP Navigation)
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.3xcool/kompass)](https://central.sonatype.com/artifact/com.3xcool/kompass)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-purple?logo=kotlin)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Latest-blue?logo=android)](https://developer.android.com/jetpack/compose)
 [![API](https://img.shields.io/badge/API-21%2B-brightgreen)](https://www.android.com)
+
+<p align="center">
+  <a href="assets/KompassUsageOverviewScene.mp4">▶ Watch usage overview</a>
+</p>
+
+<p align="center">
+  <a href="assets/KompassUsageOverviewScene.mp4">
+    <img src="assets/KompassOverview.png" alt="Kompass usage overview video" />
+  </a>
+</p>
 
 ## About
 
