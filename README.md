@@ -1,6 +1,6 @@
 # Kompass (KMP Navigation)
 
-[![Maven Central](https://img.shields.io/maven-central/v/com.3xcool/kompass)](https://central.sonatype.com/artifact/com.3xcool/kompass)
+[![Maven Central](https://img.shields.io/maven-central/v/com.tekmoon/kompass)](https://central.sonatype.com/artifact/com.tekmoon/kompass)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-purple?logo=kotlin)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Latest-blue?logo=android)](https://developer.android.com/jetpack/compose)
@@ -104,7 +104,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.tekmoon:kompass:1.0.1")
+    implementation("com.tekmoon:kompass:1.0.0")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 }

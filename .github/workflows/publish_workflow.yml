@@ -63,7 +63,7 @@ jobs:
             Available on Maven Central:
             ```kotlin
             dependencies {
-              implementation("com.3xcool:kompass:${{ steps.version.outputs.VERSION }}")
+              implementation("com.tekmoon:kompass:${{ steps.version.outputs.VERSION }}")
             }
             ```
           draft: false
