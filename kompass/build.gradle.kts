@@ -115,7 +115,7 @@ val kompassVersion = localProps.getProperty("kompassVersion") ?: "1.0.0"
 
 mavenPublishing {
     coordinates(
-        groupId = "com.3xcool",
+        groupId = "com.tekmoon",
         artifactId = "kompass",
         version = kompassVersion
     )

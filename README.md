@@ -104,7 +104,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.3xcool:kompass:1.0.0")
+    implementation("com.tekmoon:kompass:1.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 }
