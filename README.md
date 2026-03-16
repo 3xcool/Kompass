@@ -7,8 +7,8 @@
 [![API](https://img.shields.io/badge/API-21%2B-brightgreen)](https://www.android.com)
 
 <p align="center">
-  <strong>A state-first, testable navigation library for Compose / Compose Multiplatform.</strong><br/>
-  Pure reducer-driven navigation + pluggable layouts, deep links, results, and lifecycle-aware scopes.
+  <strong>Modern navigation library for Compose Multiplatform (Android, iOS and Desktop).</strong><br/>
+  Designed to make navigation predictable, scalable, and platform-agnostic. Built around pure reducers and reactive state updates, it replaces traditional navigation patterns with a more composable and testable approach.
 </p>
 
 
@@ -29,7 +29,7 @@ Kompass is the next-generation navigation library designed from the ground up fo
 - **Multi-Graph Architecture** - Organize large applications across multiple modular navigation graphs with independent layouts and transitions.
 - **Lifecycle-Aware Scopes** - Built-in scope management provides ViewModel-like instance storage with automatic cleanup and memory leak prevention.
 - **Deep Linking Made Simple** - Extensible deep link handlers convert URIs into navigation commands with type-safe argument parsing.
-- **Result Passing** - Deliver typed results between destinations without tight coupling or callback hell.
+- **Result** - Deliver typed results between destinations without tight coupling or callback hell.
 - **Persistent State** - Automatic serialization and restoration across configuration changes, process death, and app relaunches.
 - **Customizable Layouts & Transitions** - Per-graph scene layouts support any composition pattern: single-stack, master-detail, split-screen, or custom multi-pane designs.
 
