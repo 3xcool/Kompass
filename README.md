@@ -1,5 +1,6 @@
 # Kompass (KMP Navigation)
 
+[![Android Weekly](https://img.shields.io/badge/Android%20Weekly-%23719-blue.svg)](https://androidweekly.net/issues/issue-719)
 [![Maven Central](https://img.shields.io/maven-central/v/com.tekmoon/kompass)](https://central.sonatype.com/artifact/com.tekmoon/kompass)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-purple?logo=kotlin)](https://kotlinlang.org)
