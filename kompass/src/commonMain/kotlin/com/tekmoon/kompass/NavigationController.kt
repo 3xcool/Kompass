@@ -46,6 +46,19 @@ import kotlinx.serialization.modules.SerializersModule
 class NavController internal constructor(
     private val navState: MutableState<NavigationState>,
     private val handler: NavigationHandler,
+    /**
+     * The [Json] instance used by Kompass for state restoration and for typed
+     * argument encoding/decoding (see [TypedDestination] and [navigateTo]).
+     *
+     * `internal` so the typed-args extensions defined in this module can use it,
+     * while preventing external consumers from poking at the raw [Json].
+     * Configured with the [SerializersModule] passed to [rememberNavController].
+     *
+     * If a consumer ever needs raw encode/decode, the right pattern is a public
+     * extension on [NavController] that wraps the encoding — not direct access
+     * to this property.
+     */
+    internal val json: Json,
     private val deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf()
 ) {
 
@@ -279,6 +292,7 @@ fun rememberNavController(
         NavController(
             navState = navigationState,
             handler = handler,
+            json = json,
             deepLinkHandlers = deepLinkHandlers
         )
     }
@@ -352,6 +366,7 @@ fun rememberNavController(
         NavController(
             navState = navigationState,
             handler = handler,
+            json = json,
             deepLinkHandlers = deepLinkHandlers
         )
     }

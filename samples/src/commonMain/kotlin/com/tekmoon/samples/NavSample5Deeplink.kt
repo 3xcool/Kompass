@@ -16,7 +16,11 @@ import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.TypedDestination
+import com.tekmoon.kompass.navigateTo
+import com.tekmoon.kompass.requireArgs
 import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.toBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -84,13 +88,23 @@ import kotlinx.collections.immutable.persistentListOf
 
 /* -------------------------------------------
  * Destinations
+ *
+ * Sample5Dest is a sealed interface — Home is parameterless (plain Destination),
+ * Profile carries typed args (TypedDestination<ProfileArgs>) so we can use
+ * navController.navigateTo(...) and navController.requireArgs(...) at call sites
+ * without manual Json.encodeToString / decodeFromString.
  * ------------------------------------------- */
 
-private enum class Sample5Dest : Destination {
-    Home,
-    Profile;
+private sealed interface Sample5Dest : Destination {
 
-    override val id: String get() = "kompass/sample5/main/${name.lowercase()}"
+    data object Home : Sample5Dest {
+        override val id: String = "kompass/sample5/main/home"
+    }
+
+    data object Profile : Sample5Dest, TypedDestination<ProfileArgs> {
+        override val id: String = "kompass/sample5/main/profile"
+        override val argsSerializer = ProfileArgs.serializer()
+    }
 }
 
 /* -------------------------------------------
@@ -104,6 +118,12 @@ private data class ProfileArgs(
 
 /* -------------------------------------------
  * Deep link
+ *
+ * Note: a DeepLinkHandler runs without a NavController, so it can't call
+ * navController.navigateTo. Instead we build entries with the destination's
+ * own toBackStackEntry helper, passing a Json instance ourselves.
+ * Json.Default works fine for plain @Serializable args; if you need polymorphic
+ * args, configure a SerializersModule and pass it here.
  * ------------------------------------------- */
 
 private object ProfileDeepLinkHandler : DeepLinkHandler {
@@ -113,9 +133,6 @@ private object ProfileDeepLinkHandler : DeepLinkHandler {
     override fun resolve(uri: String): List<NavigationCommand> {
         val userId = uri.substringAfter("userId=")
 
-        val argsJson = Json.encodeToString(ProfileArgs(userId))
-
-        // List all Routes, for the real app this can be tricky
         return listOf(
             NavigationCommand.ReplaceRoot(
                 BackStackEntry(
@@ -124,9 +141,9 @@ private object ProfileDeepLinkHandler : DeepLinkHandler {
                 )
             ),
             NavigationCommand.Navigate(
-                BackStackEntry(
-                    destinationId = Sample5Dest.Profile.id,
-                    args = argsJson,
+                Sample5Dest.Profile.toBackStackEntry(
+                    args = ProfileArgs(userId),
+                    json = Json,
                     scopeId = newScope()
                 )
             )
@@ -141,13 +158,18 @@ private object ProfileDeepLinkHandler : DeepLinkHandler {
 private object Sample5Graph : NavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
-        Sample5Dest.entries.any { it.id == destinationId }
+        destinationId == Sample5Dest.Home.id ||
+                destinationId == Sample5Dest.Profile.id
 
     override fun resolveDestination(
         destinationId: String,
         args: String?
     ): Destination =
-        Sample5Dest.entries.first { it.id == destinationId }
+        when (destinationId) {
+            Sample5Dest.Home.id -> Sample5Dest.Home
+            Sample5Dest.Profile.id -> Sample5Dest.Profile
+            else -> error("Unknown Sample5 destination: $destinationId")
+        }
 
     @Composable
     override fun Content(
@@ -216,14 +238,10 @@ private fun HomeScreen(
         BasicText("🏠 Home")
 
         Button(onClick = {
-            navController.navigate(
-                entry = BackStackEntry(
-                    destinationId = Sample5Dest.Profile.id,
-                    args = Json.encodeToString(
-                        ProfileArgs("manual")
-                    ),
-                    scopeId = newScope()
-                )
+            navController.navigateTo(
+                destination = Sample5Dest.Profile,
+                args = ProfileArgs("manual"),
+                scopeId = newScope()
             )
         }) {
             BasicText("Go to Profile (manual)")
@@ -236,14 +254,11 @@ private fun ProfileScreen(
     entry: BackStackEntry,
     navController: NavController
 ) {
-    val args =
-        entry.args?.let {
-            Json.decodeFromString<ProfileArgs>(it)
-        }
+    val args = navController.requireArgs(Sample5Dest.Profile, entry)
 
     Column {
         BasicText("👤 Profile")
-        BasicText("UserId = ${args?.userId}")
+        BasicText("UserId = ${args.userId}")
 
         Button(onClick = {
             navController.pop()
@@ -252,4 +267,3 @@ private fun ProfileScreen(
         }
     }
 }
-
