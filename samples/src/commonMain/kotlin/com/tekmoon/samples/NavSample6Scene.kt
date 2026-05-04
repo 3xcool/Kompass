@@ -14,23 +14,33 @@ import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.SceneLayoutListDetail
 import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.TypedDestination
+import com.tekmoon.kompass.navigateTo
 import com.tekmoon.kompass.newScope
 import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.requireArgs
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 /* -------------------------------------------
  * Destinations
+ *
+ * List is parameterless (plain Destination); Profile carries typed args
+ * (TypedDestination<Sample6ProfileArgs>) so navigation and arg-reading both
+ * use the typed API — no manual Json.encodeToString at call sites.
  * ------------------------------------------- */
 
-private enum class Sample6Dest : Destination {
-    List,
-    Profile;
+private sealed interface Sample6Dest : Destination {
 
-    override val id: String get() = "kompass/sample6/$name"
+    data object List : Sample6Dest {
+        override val id: String = "kompass/sample6/List"
+    }
+
+    data object Profile : Sample6Dest, TypedDestination<Sample6ProfileArgs> {
+        override val id: String = "kompass/sample6/Profile"
+        override val argsSerializer = Sample6ProfileArgs.serializer()
+    }
 }
 
 /* -------------------------------------------
@@ -52,13 +62,18 @@ object Sample6Graph : NavigationGraph {
     override val sceneLayout = SceneLayoutListDetail() // magic is here
 
     override fun canResolveDestination(destinationId: String): Boolean =
-        Sample6Dest.entries.any { it.id == destinationId }
+        destinationId == Sample6Dest.List.id ||
+                destinationId == Sample6Dest.Profile.id
 
     override fun resolveDestination(
         destinationId: String,
         args: String?
     ): Destination =
-        Sample6Dest.entries.first { it.id == destinationId }
+        when (destinationId) {
+            Sample6Dest.List.id -> Sample6Dest.List
+            Sample6Dest.Profile.id -> Sample6Dest.Profile
+            else -> error("Unknown Sample6 destination: $destinationId")
+        }
 
     @Composable
     override fun Content(
@@ -125,13 +140,10 @@ private fun ProfileListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable {
-                        navController.navigate(
-                            entry = Sample6Dest.Profile.toBackStackEntry(
-                                args = Json.encodeToString(
-                                    Sample6ProfileArgs(id)
-                                ),
-                                scopeId = newScope()
-                            )
+                        navController.navigateTo(
+                            destination = Sample6Dest.Profile,
+                            args = Sample6ProfileArgs(id),
+                            scopeId = newScope()
                         )
                     }
                     .padding(8.dp)
@@ -145,14 +157,11 @@ private fun ProfileDetailScreen(
     entry: BackStackEntry,
     navController: NavController
 ) {
-    val args =
-        entry.args?.let {
-            Json.decodeFromString<Sample6ProfileArgs>(it)
-        }
+    val args = navController.requireArgs(Sample6Dest.Profile, entry)
 
     Column(Modifier.padding(16.dp)) {
         BasicText("Profile Detail")
-        BasicText("ID = ${args?.id}")
+        BasicText("ID = ${args.id}")
 
         Spacer(Modifier.height(16.dp))
 
