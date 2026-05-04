@@ -46,7 +46,7 @@ jobs:
       - name: Publish to Maven Central
         run: |
           ./gradlew publishAllPublicationsToMavenCentralRepository \
-            -Pversion=${{ steps.version.outputs.VERSION }} \
+            -PkompassVersion=${{ steps.version.outputs.VERSION }} \
             -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
             -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }}
         env:
