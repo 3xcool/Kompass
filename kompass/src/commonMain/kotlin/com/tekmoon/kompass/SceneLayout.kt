@@ -101,7 +101,6 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
         direction: NavDirection
     ) {
         val entry = backStack.last()
-        val (graph, destination) = remember(entry) { resolve(entry) }
 
         AnimatedContent(
             targetState = entry,
@@ -110,9 +109,10 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
                 transition = SceneTransitionDefault()
             ),
             label = "SinglePane"
-        ) {
+        ) { animatedEntry ->
+            val (graph, destination) = remember(animatedEntry) { resolve(entry) }
             graph.Content(
-                entry = entry,
+                entry = animatedEntry,
                 destination = destination,
                 navController = navController
             )
