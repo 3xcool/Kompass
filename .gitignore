@@ -17,3 +17,16 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Obsidian — per-machine window state and caches.
+.obsidian/
+
+# Vault images stay local — Obsidian syncs them. The markdown notes ARE committed.
+# Without this the vault's PNGs would enter git history permanently.
+VaultKompassKmp/**/*.png
+VaultKompassKmp/**/*.jpg
+VaultKompassKmp/**/*.jpeg
+VaultKompassKmp/**/*.gif
+VaultKompassKmp/**/*.webp
+VaultKompassKmp/**/*.pdf
+VaultKompassKmp/**/*.mp4
