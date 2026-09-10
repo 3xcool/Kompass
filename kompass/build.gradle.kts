@@ -24,6 +24,10 @@ kotlin {
 
     jvm()
 
+    wasmJs {
+        browser()
+    }
+
     listOf(
         iosX64(),
         iosArm64(),
@@ -71,6 +75,11 @@ kotlin {
             dependencies {
             }
         }
+
+        wasmJsMain {
+            dependencies {
+            }
+        }
     }
 }
 
@@ -95,13 +104,15 @@ android {
     }
 }
 
-signing {
-    val keyId = System.getenv("GPG_KEY_ID") ?: findProperty("GPG_KEY_ID")?.toString()
-    val key = System.getenv("GPG_SECRET_KEY") ?: findProperty("GPG_SECRET_KEY")?.toString()
-    val password = System.getenv("GPG_PASSPHRASE") ?: findProperty("GPG_PASSPHRASE")?.toString()
+val gpgKeyId: String? = System.getenv("GPG_KEY_ID") ?: findProperty("GPG_KEY_ID")?.toString()
+val gpgSecretKey: String? = System.getenv("GPG_SECRET_KEY") ?: findProperty("GPG_SECRET_KEY")?.toString()
+val gpgPassphrase: String? = System.getenv("GPG_PASSPHRASE") ?: findProperty("GPG_PASSPHRASE")?.toString()
 
-    if (keyId != null && key != null && password != null) {
-        useInMemoryPgpKeys(keyId, key, password)
+val canSignPublications: Boolean = gpgKeyId != null && gpgSecretKey != null && gpgPassphrase != null
+
+signing {
+    if (canSignPublications) {
+        useInMemoryPgpKeys(gpgKeyId, gpgSecretKey, gpgPassphrase)
         sign(publishing.publications)
     }
 }
@@ -156,7 +167,9 @@ mavenPublishing {
     }
 
     publishToMavenCentral(automaticRelease = true)
-    signAllPublications()
+    if (canSignPublications) {
+        signAllPublications()
+    }
 }
 
 tasks.withType<org.gradle.api.publish.maven.tasks.PublishToMavenRepository>().configureEach {
