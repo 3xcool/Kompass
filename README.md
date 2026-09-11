@@ -680,3 +680,37 @@ command. The existing `state`, `currentEntry`, typed helpers and deep-link metho
 serialize live ViewModels, SavedStateHandles or Compose UI state. Use rememberNavController
 for automatic composition-owned restoration/retention. An external controller's lifetime and
 persistence belong to its owner; close is idempotent, and navigation after close throws.
+
+## Transition context and controlled progress
+
+Direction now follows the command that changes the active occurrence: Navigate and ReplaceRoot
+are Push, Pop is Pop. Consuming results, updating the current occurrence and no-op commands do
+not overwrite the last direction. Recomposition no longer changes the direction.
+
+Existing `SceneTransition.transition(direction)` implementations remain supported. Override
+`transition(context: SceneTransitionContext)` to inspect source/target entries, including their
+destination IDs and arguments. Built-in animated layouts supply this context. Custom layouts
+can use `entryTransition(direction, transition)`; the generic directionalTransition helper
+remains available for direction-only use.
+
+For controlled visual progress, select `SceneLayoutSeekable(progress, transition)` as the graph's
+sceneLayout. A null transition uses the target graph's sceneTransition, then the default.
+
+- `progress = null`: animate automatically, or finish from the current fraction.
+- `progress` between 0 and 1: seek the visual transition forward or backward.
+- `progress = 1f`: complete the transition and dispose outgoing content.
+
+Keep this layout mounted while adjusting progress. Source and target owners remain available
+while their content is composed. Payload/result updates do not restart progress. This API
+controls the visual transition after navigation has committed; moving back to zero does not
+undo the command. Platform gestures and predictive Back are not included.
+
+The implementation uses Compose's
+[SeekableTransitionState](https://developer.android.com/reference/kotlin/androidx/compose/animation/core/SeekableTransitionState).
+
+### API compatibility for these additions
+
+Existing constructor/helpers and direction-only transition implementations remain usable from
+Kotlin source. New optional parameters and interface methods can change binary compatibility;
+recompile consumers. NavigationCommand adds ConsumeResult, so exhaustive consumer `when`
+expressions over commands must handle it. Invalid direct deserialization now throws explicitly.
