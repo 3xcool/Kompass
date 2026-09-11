@@ -3,6 +3,9 @@ package com.tekmoon.kompass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
+import com.tekmoon.kompass.util.randomUUID
 
 /**
  * Represents a logical navigation destination.
@@ -83,14 +86,20 @@ typealias ArgsJson = String
  *
  * @param results Map of delivered navigation results keyed by result identifier.
  * Results are immutable once delivered.
+ *
+ * @param id Identity of this back-stack occurrence, retained across result updates and state
+ * restoration. Prefer the destination helpers when constructing a new occurrence. Do not use
+ * this ID as a replacement for [scopeId]: explicitly shared scopes remain supported.
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
 data class BackStackEntry(
     val destinationId: String,
     val args: ArgsJson? = null,
     val scopeId: NavigationScopeId,
     val pendingResultKey: String? = null,
-    val results: Map<String, NavigationResult> = emptyMap()
+    val results: Map<String, NavigationResult> = emptyMap(),
+    @EncodeDefault val id: String = randomUUID(),
 )
 
 /**

@@ -57,8 +57,12 @@ class NavigationHandler() {
                     val existingIndex =
                         baseStack.indexOfLast { it.destinationId == command.entry.destinationId }
                     if (existingIndex >= 0) {
-                        // Replace existing entry, keeping it in place
-                        (baseStack.filterIndexed { index, _ -> index != existingIndex } + command.entry).toImmutableList()
+                        // Move the matching occurrence to the top, updating its payload but retaining identity
+                        (baseStack.filterIndexed { index, _ -> index != existingIndex } +
+                            command.entry.copy(
+                                id = if (command.entry.scopeId == baseStack[existingIndex].scopeId)
+                                    baseStack[existingIndex].id else command.entry.id
+                            )).toImmutableList()
                     } else {
                         // Entry doesn't exist, add it
                         (baseStack + command.entry).toImmutableList()
@@ -185,8 +189,9 @@ sealed interface NavigationCommand {
      * [popUpTo] is also removed.
      *
      * @param reuseIfExists If true and a destination with the same ID
-     * already exists in the stack, reuses that entry instead of
-     * adding a new one.
+     * already exists in the stack, moves the last matching occurrence to the top and updates
+     * its payload. Its identity (and UI state) is retained when the scope is unchanged;
+     * explicitly supplying a different scope starts new ownership.
      */
     data class Navigate(
         val entry: BackStackEntry,

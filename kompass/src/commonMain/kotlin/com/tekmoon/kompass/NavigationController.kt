@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import com.tekmoon.kompass.util.randomUUID
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.KSerializer
@@ -59,7 +60,8 @@ class NavController internal constructor(
      * to this property.
      */
     internal val json: Json,
-    private val deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf()
+    private val deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
+    internal val entryOwners: KompassOwnerStore = KompassOwnerStore(),
 ) {
 
     /**
@@ -104,13 +106,20 @@ class NavController internal constructor(
      */
     private fun dispatch(command: NavigationCommand) {
         val oldState = navState.value
-        val newState = handler.reduce(oldState, command)
+        // A caller may navigate with an entry object it already holds. New navigation must
+        // still create a distinct occurrence, including through runNavCommands/deep links.
+        val normalized = if (command is NavigationCommand.Navigate && !command.reuseIfExists &&
+            oldState.backStack.any { it.id == command.entry.id }) {
+            command.copy(entry = command.entry.copy(id = randomUUID()))
+        } else command
+        val newState = handler.reduce(oldState, normalized)
 
         val oldScopes = oldState.backStack.map { it.scopeId }.toSet()
         val newScopes = newState.backStack.map { it.scopeId }.toSet()
-        (oldScopes - newScopes).forEach(NavigationScopes::clearScope)
-
         navState.value = newState
+        entryOwners.reconcile(newState.backStack)
+        newScopes.forEach(NavigationScopes::cancelClear)
+        (oldScopes - newScopes).forEach(NavigationScopes::requestClear)
     }
 
     /**
@@ -130,7 +139,8 @@ class NavController internal constructor(
      * [popUpTo] should also be removed from the back stack.
      *
      * @param reuseIfExists Whether an existing matching entry in the
-     * back stack should be reused instead of creating a new one.
+     * back stack should be moved to the top with updated arguments. An unchanged scope
+     * preserves entry ownership and UI state; a different scope requests fresh ownership.
      */
     fun navigate(
         entry: BackStackEntry,
@@ -288,12 +298,14 @@ fun rememberNavController(
         mutableStateOf(resolvedInitialState)
     }
 
-    return remember {
+    val entryOwners = rememberKompassOwnerStore(navigationState.value.backStack)
+    return remember(entryOwners) {
         NavController(
             navState = navigationState,
             handler = handler,
             json = json,
-            deepLinkHandlers = deepLinkHandlers
+            deepLinkHandlers = deepLinkHandlers,
+            entryOwners = entryOwners,
         )
     }
 }
@@ -362,12 +374,14 @@ fun rememberNavController(
         mutableStateOf(initialState)
     }
 
-    return remember {
+    val entryOwners = rememberKompassOwnerStore(navigationState.value.backStack)
+    return remember(entryOwners) {
         NavController(
             navState = navigationState,
             handler = handler,
             json = json,
-            deepLinkHandlers = deepLinkHandlers
+            deepLinkHandlers = deepLinkHandlers,
+            entryOwners = entryOwners,
         )
     }
 }

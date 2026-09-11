@@ -51,12 +51,35 @@ kotlin {
 
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)
+                implementation(libs.compose.runtimeSaveable)
+                api(libs.androidx.lifecycle.viewmodelCompose)
+                api(libs.androidx.lifecycle.runtimeCompose)
+                api(libs.androidx.lifecycle.viewmodelSavedstate)
+                api(libs.androidx.savedstateCompose)
             }
         }
 
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+            }
+        }
+
+        jvmTest {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.compose.uiTest)
+                implementation(compose.desktop.currentOs)
+                implementation(libs.kotlinx.coroutinesSwing)
+                implementation(libs.test.koinViewmodel)
+            }
+        }
+
+        androidUnitTest {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.test.robolectric)
+                implementation(libs.test.navigationCompose)
             }
         }
 
@@ -96,6 +119,8 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+
+    testOptions.unitTests.isIncludeAndroidResources = true
 
     buildTypes {
         release {
