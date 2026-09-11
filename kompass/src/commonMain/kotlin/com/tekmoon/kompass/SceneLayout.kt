@@ -2,6 +2,7 @@ package com.tekmoon.kompass
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ContentTransform
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
@@ -75,7 +76,7 @@ object SceneLayoutSinglePane : SceneLayout {
         direction: NavDirection
     ) {
         val entry = backStack.last()
-        val (graph, destination) = remember(entry) { resolve(entry) }
+        val (graph, destination) = remember(entry, resolve) { resolve(entry) }
 
         graph.Content(
             entry = entry,
@@ -104,13 +105,14 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
 
         AnimatedContent(
             targetState = entry,
+            contentKey = { it.id },
             transitionSpec = directionalTransition<BackStackEntry>(
                 direction = direction,
-                transition = SceneTransitionDefault()
+                transition = resolve(entry).first.sceneTransition ?: SceneTransitionDefault()
             ),
             label = "SinglePane"
         ) { animatedEntry ->
-            val (graph, destination) = remember(animatedEntry) { resolve(entry) }
+            val (graph, destination) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
             graph.Content(
                 entry = animatedEntry,
                 destination = destination,
@@ -146,11 +148,11 @@ data class SceneLayoutListDetail(
 
             if (isCompact || backStack.size == 1) {
                 val entry = backStack.last()
-//                val (graph, destination) = remember(entry) { resolve(entry) }
 
                 AnimatedContent(
                     modifier = Modifier.fillMaxSize(),
                     targetState = entry,
+                    contentKey = { it.id },
                     transitionSpec = directionalTransition<BackStackEntry>(
                         direction = direction,
                         transition = transition
@@ -158,7 +160,7 @@ data class SceneLayoutListDetail(
                     label = "DetailOnly",
 //                    contentKey = { it to it.destinationId }
                 ) { animatedEntry ->
-                    val (graph, destination) = remember(animatedEntry) { resolve(animatedEntry) }
+                    val (graph, destination) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
                     graph.Content(
                         entry = animatedEntry,
                         destination = destination,
@@ -169,7 +171,7 @@ data class SceneLayoutListDetail(
                 val master = backStack.first()
                 val detail = backStack.last()
 
-                val (masterGraph, masterDest) = remember(master) { resolve(master) }
+                val (masterGraph, masterDest) = remember(master, resolve) { resolve(master) }
 
                 // By calling here we will show the next screen before the transition animation is triggered
 //                val (detailGraph, detailDest) = remember(detail) { resolve(detail) }
@@ -188,6 +190,7 @@ data class SceneLayoutListDetail(
                     Box(Modifier.weight(0.65f)) {
                         AnimatedContent(
                             targetState = detail,
+                            contentKey = { it.id },
                             transitionSpec = directionalTransition<BackStackEntry>(
                                 direction = direction,
                                 transition = transition
@@ -197,7 +200,7 @@ data class SceneLayoutListDetail(
                         ) { animatedEntry ->
 //                          // Important
                             // We must use animatedEntry, cause we need to render the new screen after the animation is finished
-                            val (detailGraph, detailDest) = remember(animatedEntry) { resolve(animatedEntry) }
+                            val (detailGraph, detailDest) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
                             detailGraph.Content(
                                 entry = animatedEntry,
                                 destination = detailDest,
@@ -232,16 +235,16 @@ data class SceneTransitionVertical(
     override fun transition(direction: NavDirection): ContentTransform {
         return when (direction) {
             NavDirection.Push ->
-                slideInVertically { fullHeight -> fullHeight } +
-                        fadeIn() togetherWith
-                        slideOutVertically { fullHeight -> -fullHeight / 3 } +
-                        fadeOut()
+                slideInVertically(tween(durationMs)) { fullHeight -> fullHeight } +
+                        fadeIn(tween(durationMs)) togetherWith
+                        slideOutVertically(tween(durationMs)) { fullHeight -> -fullHeight / 3 } +
+                        fadeOut(tween(durationMs))
 
             NavDirection.Pop ->
-                slideInVertically { fullHeight -> -fullHeight / 3 } +
-                        fadeIn() togetherWith
-                        slideOutVertically { fullHeight -> fullHeight } +
-                        fadeOut()
+                slideInVertically(tween(durationMs)) { fullHeight -> -fullHeight / 3 } +
+                        fadeIn(tween(durationMs)) togetherWith
+                        slideOutVertically(tween(durationMs)) { fullHeight -> fullHeight } +
+                        fadeOut(tween(durationMs))
         }
     }
 }

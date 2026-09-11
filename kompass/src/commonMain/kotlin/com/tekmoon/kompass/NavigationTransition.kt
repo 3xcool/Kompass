@@ -91,7 +91,7 @@ interface SceneTransition {
  *
  * @return A lambda suitable for [AnimatedContentTransitionScope].
  */
-internal fun <T> directionalTransition(
+fun <T> directionalTransition(
     direction: NavDirection,
     transition: SceneTransition = SceneTransitionDefault()
 ): AnimatedContentTransitionScope<T>.() -> ContentTransform = {

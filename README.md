@@ -380,14 +380,14 @@ Resolve deep link URIs to navigation commands:
 
 ```kotlin
 interface DeepLinkHandler {
-    fun canHandle(uri: String): Boolean
-    fun resolve(uri: String): List<NavigationCommand>?
+    fun matches(uri: String): Boolean
+    fun resolve(uri: String): List<NavigationCommand>
 }
 
 class ProfileDeepLinkHandler : DeepLinkHandler {
-    override fun canHandle(uri: String): Boolean = uri.startsWith("app://profile/")
+    override fun matches(uri: String): Boolean = uri.startsWith("app://profile/")
 
-    override fun resolve(uri: String): List<NavigationCommand>? {
+    override fun resolve(uri: String): List<NavigationCommand> {
         val userId = uri.removePrefix("app://profile/")
         return listOf(
             NavigationCommand.Navigate(
@@ -488,13 +488,8 @@ val navController = rememberNavController(
 
 ### Custom Navigation Scopes
 
-Extend `NavigationScope` for specialized instance management:
-
-```kotlin
-class CustomNavigationScope(id: NavigationScopeId) : NavigationScope(id) {
-    // Add custom behavior
-}
-```
+Use an explicit `NavigationScopeId` and the `key`, `factory`, and `onCleared` parameters of
+`rememberScoped` to share and manage arbitrary objects. `NavigationScope` is final.
 
 ## Performance Considerations
 
@@ -506,8 +501,8 @@ class CustomNavigationScope(id: NavigationScopeId) : NavigationScope(id) {
 ## Thread Safety
 
 - Navigation state is immutable and thread-safe
-- `NavigationScopes` uses `@Volatile` and copy-on-write for lock-free thread safety
-- Safe to call from Composable and background threads
+- Call navigation and `NavigationScopes` operations on the UI thread.
+- Volatile map publication does not make compound operations or stored objects thread-safe.
 
 ## Contributing
 
@@ -527,3 +522,106 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization)
 - [Kotlinx Collections Immutable](https://github.com/Kotlin/kotlinx.collections.immutable)
 - [GitHub Repository](https://github.com/3xcool/kompass)
+
+## Automatic ownership and UI state
+
+`KompassNavigationHost` provides owners automatically. Each back-stack occurrence has its
+own LifecycleOwner and SavedStateRegistryOwner; entries with the same `scopeId` share a
+ViewModelStore and SavedStateHandle storage within their controller. Existing graphs and custom layouts
+that render the graph returned by `resolve(entry)` receive these automatically; screens need
+no ownership wrappers and the core library has no Koin dependency.
+
+Use `viewModel()` or `koinViewModel()` inside graph content. Android supports the standard
+SavedStateViewModelFactory, including SavedStateHandle constructors. Desktop supports no-arg
+and SavedStateHandle constructors. On iOS and Wasm, supply an initializer/factory (including
+Koin's factory), as usual on platforms without constructor reflection.
+
+Entry owners remain alive while the entry is in the back stack **or** its content is still
+composed. Removing an entry destroys its lifecycle after exit disposal. Shared ViewModels
+are cleared exactly once after the last entry of their scope is removed and its outgoing
+content is disposed. Removing the entry that originally created a ViewModel does not clear
+that ViewModel while another entry still uses the scope. Covered
+entries that are no longer rendered remain at CREATED; rendered non-top entries are STARTED;
+the top entry can reach RESUMED, capped by the host lifecycle. STARTED still permits the default
+collectAsStateWithLifecycle collection. Each visible pane receives its own owner.
+
+The host also wraps each entry in a SaveableStateProvider. `rememberSaveable` state survives
+push-and-return. A new visit after pop starts fresh. Each host owns an independent holder;
+nested hosts save inside their parent entry's saveable state and retain their ViewModels
+while that parent entry remains in the back stack.
+
+### Reusing an entry versus sharing a scope
+
+These are separate choices:
+
+- `reuseIfExists = false` adds a new occurrence with its own UI state and lifecycle. Its
+  ViewModels are shared when another entry in the controller uses the same scope.
+- `reuseIfExists = true` moves the last matching destination to the top, keeping other entries
+  in their existing order. It uses the incoming arguments and result fields. With the same
+  scope it retains the occurrence ID and UI state. Supplying a different scope creates fresh
+  entry state and uses that scope's ViewModels (creating them if the scope is new).
+- `defaultScope()` shares ViewModels across visits to the same destination within a controller;
+  `newScope()` isolates them. Pass the same explicit `scopeId` to different routes to share
+  a ViewModel across a flow. The ViewModel class/key must also match. Factory parameters only
+  apply on creation; another route does not recreate an existing shared ViewModel.
+- `rememberScoped` retains its existing process-wide scope registry. AndroidX ViewModel
+  sharing is controller-local, so independent hosts do not accidentally share ViewModels.
+  Neither form of sharing merges entry lifecycle or UI state.
+- Existing direct NavigationScopes access remains available. Explicit clearScope/clearAll
+  clears immediately; automatic navigation cleanup waits for rendered content to leave.
+
+For example, reusing B in A → B → C produces A → C → B, not A → B.
+
+`BackStackEntry.id` is a read-only occurrence key generated by the library, with no constructor
+or `copy` parameter. It is saved with the stack and preserved when arguments or results are
+copied. Copying to a different destination or scope creates a new identity. Navigating again
+with an entry already in the stack creates a distinct occurrence unless reuse is requested. In a custom AnimatedContent layout,
+use `contentKey = { it.id }` so updating an entry's arguments or results does not animate two
+copies of that same occurrence. Pass the lambda's entry to `resolve`, and do not cache a
+resolved destination solely by ID: the arguments may change on reuse.
+
+### Restoration and disposal
+
+Navigation entries, `rememberSaveable` values, and SavedStateHandle values are saved through
+the enclosing saveable registry. Handles are saved once per scope, including scopes whose
+screens are not composed. Restoration recreates one shared ViewModel per scope and class/key;
+its state does not depend on which route first requests it. Saved values must satisfy the platform's saveable types.
+
+On Android, an enclosing ViewModelStore retains entry owners across Activity recreation;
+permanent controller disposal releases them. Other targets release entry owners when the
+controller composition leaves. Process recreation creates new ViewModels from saved values:
+arbitrary objects held by rememberScoped are not serialized. Persistence across a full app
+relaunch depends on the platform's enclosing saved-state infrastructure.
+
+Arguments remain opaque strings. Kompass does not guess how to expand them into SavedStateHandle
+fields; use the typed helpers to read navigation arguments.
+
+### Typed navigation
+
+```kotlin
+@Serializable
+data class ProfileArgs(val userId: String)
+
+object Profile : TypedDestination<ProfileArgs> {
+    override val id = "profile"
+    override val argsSerializer = ProfileArgs.serializer()
+}
+
+// All navigation flags and explicit scope choices remain available.
+navController.navigateTo(Profile, ProfileArgs("example"), scopeId = newScope())
+val args = navController.requireArgs(Profile, entry)
+```
+
+For commands built outside a controller, use `Profile.toBackStackEntry(args, json)` with the
+appropriate serializers. With a controller, `navController.toBackStackEntry(Profile, args)`
+and `navController.encodeArgs(Profile, args)` use its configured Json. Existing opaque argument
+strings, polymorphic NavigationResult serializers, deep-link handlers and command sequences
+remain supported.
+
+### Compatibility notes
+
+BackStackEntry keeps its original five constructor/copy parameters and destructuring fields.
+It is now a regular class with explicit copy/equality behavior so occurrence identity cannot
+be supplied by callers. Equality includes identity; separately constructed equal payloads
+represent different occurrences. Consumers relying on data-class reflection must adapt.
+Legacy serialized entries without an ID are accepted and assigned one during restoration.

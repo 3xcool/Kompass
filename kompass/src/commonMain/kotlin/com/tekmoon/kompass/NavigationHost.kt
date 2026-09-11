@@ -33,8 +33,9 @@ fun KompassNavigationHost(
     navController: NavController,
     graphs: ImmutableList<NavigationGraph>
 ) {
-    val router = remember(graphs) {
-        NavigationGraphRouter(graphs)
+    val ownedGraphs = rememberOwnedGraphs(navController, graphs)
+    val router = remember(ownedGraphs) {
+        NavigationGraphRouter(ownedGraphs)
     }
 
     val previousState = remember { mutableStateOf<NavigationState?>(null) }
