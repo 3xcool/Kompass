@@ -408,4 +408,156 @@ class KompassHostTest {
         runOnIdle { assertEquals(1, probes[first.id]!!.clears) }
     }
 
+    @Test fun broken_saved_navigation_restores_root_and_reports_once_without_host_crash() = runComposeUiTest {
+        var registry by mutableStateOf(SaveableStateRegistry(null) { true })
+        var mounted by mutableStateOf(true)
+        var reports = 0
+        lateinit var nav: NavController
+        val graph = Graph { entry, _ -> BasicText("restored:${entry.destinationId}") }
+        setContent {
+            if (mounted) CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
+                nav = rememberNavController(A, onRestoreFailure = { reports++ })
+                KompassNavigationHost(nav, persistentListOf(graph))
+            }
+        }
+        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        lateinit var saved: Map<String, List<Any?>>
+        runOnIdle {
+            saved = registry.performSave().mapValues { (_, values) -> values.map {
+                if (it is String && it.contains("backStack")) "{broken" else it
+            } }
+            mounted = false
+        }
+        waitForIdle()
+        runOnIdle { registry = SaveableStateRegistry(saved) { true }; mounted = true }
+        onNodeWithText("restored:a").assertExists()
+        runOnIdle { assertEquals(1, reports); assertNotNull(nav.restorationFailure); nav.navigate(B.toBackStackEntry()) }
+        onNodeWithText("restored:b").assertExists()
+        runOnIdle { assertEquals(1, reports) }
+    }
+
+    @Test fun externally_created_controller_renders_and_survives_host_unmount_until_closed() = runComposeUiTest {
+        var mounted by mutableStateOf(true)
+        val nav = createNavController(A)
+        lateinit var probe: Probe
+        val graph = Graph { entry, _ -> probe = viewModel { Probe() }; BasicText("external:${entry.destinationId}") }
+        try {
+            nav.navigate(B.toBackStackEntry())
+            setContent { if (mounted) KompassNavigationHost(nav, persistentListOf(graph)) }
+            onNodeWithText("external:b").assertExists()
+            lateinit var original: Probe
+            runOnIdle { original = probe; mounted = false }
+            runOnIdle { assertEquals(0, original.clears); mounted = true }
+            runOnIdle { assertSame(original, probe); mounted = false }
+            runOnIdle { nav.close(); assertEquals(1, original.clears) }
+        } finally { nav.close() }
+    }
+
+    @Test fun transition_context_observes_command_direction_and_legacy_specs_still_work() = runComposeUiTest {
+        lateinit var nav: NavController
+        val seen = mutableListOf<SceneTransitionContext>()
+        val contextual = object : SceneTransition {
+            override fun transition(context: SceneTransitionContext): androidx.compose.animation.ContentTransform {
+                seen += context
+                return SceneTransitionDefault().transition(context.direction)
+            }
+        }
+        val graph = object : NavigationGraph {
+            override fun canResolveDestination(destinationId: String) = true
+            override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
+            override val sceneTransition = contextual
+            @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+                Box(Modifier.size(100.dp)) { BasicText(entry.destinationId) }
+            }
+        }
+        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        runOnIdle { nav.replaceRoot(B.toBackStackEntry(args = "new-root")) }
+        waitForIdle()
+        runOnIdle {
+            assertTrue(seen.any { it.from.destinationId == "a" && it.to.args == "new-root" && it.direction == NavDirection.Push })
+            nav.navigate(A.toBackStackEntry())
+        }
+        waitForIdle()
+        runOnIdle { nav.pop() }
+        waitForIdle()
+        runOnIdle { assertTrue(seen.any { it.from.destinationId == "a" && it.to.destinationId == "b" && it.direction == NavDirection.Pop }) }
+        var legacyDirection: NavDirection? = null
+        val legacy = object : SceneTransition {
+            override fun transition(direction: NavDirection): androidx.compose.animation.ContentTransform {
+                legacyDirection = direction
+                return SceneTransitionStatic.transition(direction)
+            }
+        }
+        runOnIdle {
+            legacy.transition(SceneTransitionContext(A.toBackStackEntry(), B.toBackStackEntry(), NavDirection.Push))
+            assertEquals(NavDirection.Push, legacyDirection)
+        }
+    }
+
+    @Test fun seekable_progress_moves_both_ways_and_keeps_outgoing_owner_until_completion() = runComposeUiTest {
+        lateinit var nav: NavController
+        var progress by mutableStateOf<Float?>(0f)
+        val probes = mutableMapOf<String, Probe>()
+        val graph = object : NavigationGraph {
+            override fun canResolveDestination(destinationId: String) = true
+            override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
+            override val sceneLayout get() = SceneLayoutSeekable(progress, SceneTransitionDefault(durationMs = 1000, fadeEnabled = false))
+            @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+                probes[entry.id] = viewModel { Probe() }
+                Box(Modifier.size(100.dp)) { BasicText("seek:${entry.destinationId}") }
+            }
+        }
+        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        lateinit var initial: BackStackEntry
+        mainClock.autoAdvance = false
+        runOnIdle {
+            initial = nav.currentEntry
+            nav.replaceRoot(B.toBackStackEntry(scopeId = newScope(), results = mapOf("pending" to object : NavigationResult {})))
+        }
+        mainClock.advanceTimeBy(64)
+        runOnIdle { progress = 0.6f }
+        mainClock.advanceTimeBy(64)
+        val forwardX = onNodeWithText("seek:b").fetchSemanticsNode().positionInRoot.x
+        runOnIdle { assertNotNull(nav.consumeResult<NavigationResult>("pending")) }
+        mainClock.advanceTimeBy(64)
+        assertEquals(forwardX, onNodeWithText("seek:b").fetchSemanticsNode().positionInRoot.x, 0.5f)
+        runOnIdle { assertEquals(0, probes[initial.id]!!.clears); progress = 0.2f }
+        mainClock.advanceTimeBy(64)
+        val backwardX = onNodeWithText("seek:b").fetchSemanticsNode().positionInRoot.x
+        assertTrue(backwardX > forwardX, "Seeking backward must move the incoming screen back toward its starting position")
+        runOnIdle { assertEquals("b", nav.currentEntry.destinationId); progress = 1f }
+        mainClock.advanceTimeBy(64)
+        waitForIdle()
+        runOnIdle { assertEquals(1, probes[initial.id]!!.clears) }
+        onNodeWithText("seek:b").assertExists()
+    }
+
+    @Test fun seekable_survives_interruption_and_can_resume_automatically() = runComposeUiTest {
+        lateinit var nav: NavController
+        var progress by mutableStateOf<Float?>(0.3f)
+        val probes = mutableMapOf<String, Probe>()
+        val graph = object : NavigationGraph {
+            override fun canResolveDestination(destinationId: String) = true
+            override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
+            override val sceneLayout get() = SceneLayoutSeekable(progress)
+            @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+                probes[entry.id] = viewModel { Probe() }
+                Box(Modifier.size(100.dp)) { BasicText(entry.id) }
+            }
+        }
+        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        mainClock.autoAdvance = false
+        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        mainClock.advanceTimeBy(64)
+        runOnIdle { nav.replaceRoot(A.toBackStackEntry(scopeId = newScope())); progress = 0.6f }
+        mainClock.advanceTimeBy(64)
+        runOnIdle { progress = null }
+        mainClock.advanceTimeBy(2000)
+        waitForIdle()
+        runOnIdle {
+            assertEquals(3, probes.size)
+            probes.forEach { (id, probe) -> assertEquals(if (id == nav.currentEntry.id) 0 else 1, probe.clears) }
+        }
+    }
+
 }

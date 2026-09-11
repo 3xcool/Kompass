@@ -18,8 +18,7 @@ import androidx.compose.ui.unit.IntOffset
 /**
  * Represents the direction of a navigation change.
  *
- * This information is derived from differences between
- * consecutive [NavigationState] instances and is used
+ * This information comes from the command that changed the active occurrence and is used
  * primarily to drive directional animations.
  */
 enum class NavDirection {
@@ -36,28 +35,18 @@ enum class NavDirection {
     Pop
 }
 
-/**
- * Determines the navigation direction by comparing this state
- * with a previous [NavigationState].
- *
- * @param previous The previous navigation state.
- *
- * @return [NavDirection.Push] if the back stack grew,
- * [NavDirection.Pop] otherwise.
- */
-internal fun NavigationState.directionFrom(
-    previous: NavigationState
-): NavDirection =
-    if (backStack.size > previous.backStack.size)
-        NavDirection.Push
-    else
-        NavDirection.Pop
+/** Entries include destination IDs and arguments so transitions can depend on either endpoint. */
+data class SceneTransitionContext(
+    val from: BackStackEntry,
+    val to: BackStackEntry,
+    val direction: NavDirection,
+)
 
 /**
  * Abstraction defining how transitions between destinations are animated.
  *
  * A [SceneTransition] is responsible only for describing animation behavior.
- * It does not know about destinations, layouts, or navigation rules.
+ * It can inspect source/target entries without owning navigation rules or gesture handling.
  *
  * Implementations are expected to return a [ContentTransform] compatible
  * with Compose animation APIs.
@@ -73,9 +62,10 @@ interface SceneTransition {
      * @return A [ContentTransform] describing how content should enter
      * and exit.
      */
-    fun transition(
-        direction: NavDirection
-    ): ContentTransform
+    fun transition(direction: NavDirection): ContentTransform = SceneTransitionDefault().transition(direction)
+
+    /** Override this for destination-aware motion; existing direction-only implementations still work. */
+    fun transition(context: SceneTransitionContext): ContentTransform = transition(context.direction)
 }
 
 /**
@@ -217,4 +207,12 @@ data object SceneTransitionStatic : SceneTransition {
     override fun transition(direction: NavDirection): ContentTransform {
         return EnterTransition.None togetherWith ExitTransition.None
     }
+}
+
+/** Context-aware counterpart of directionalTransition for navigation entries. */
+fun entryTransition(
+    direction: NavDirection,
+    transition: SceneTransition = SceneTransitionDefault(),
+): AnimatedContentTransitionScope<BackStackEntry>.() -> ContentTransform = {
+    transition.transition(SceneTransitionContext(initialState, targetState, direction))
 }

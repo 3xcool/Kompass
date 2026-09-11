@@ -287,27 +287,38 @@ val entry = BackStackEntry(
 
 ## Navigation Results
 
-Pass data between destinations using results:
+Use `pendingResultKey` when opening the destination, then return a result with `pop`:
 
 ```kotlin
-// Send result when popping
-navController.pop(
-    result = ProfileResult(userId = "123"),
-    count = 1
+navController.navigate(
+    Profile.toBackStackEntry(pendingResultKey = "profile_result")
 )
 
-// Receive result in destination
-@Composable
-fun HomeScreen(navController: NavController, entry: BackStackEntry) {
-    val result = entry.results["profile_result"] as? ProfileResult
+// Inside Profile: remove this destination and deliver the result to the previous entry.
+navController.pop(result = ProfileResult(userId = "123"))
+```
 
-    LaunchedEffect(result) {
-        if (result != null) {
-            // Handle result
-        }
+For one-time processing, use `consumeResult<T>()` from an effect or event handler:
+
+```kotlin
+@Composable
+fun HomeScreen(
+    navController: NavController,
+    entry: BackStackEntry,
+    onProfileResult: (ProfileResult) -> Unit,
+) {
+    LaunchedEffect(navController, entry.id, entry.results["profile_result"]) {
+        val result = navController.consumeResult<ProfileResult>(
+            key = "profile_result",
+            entryId = entry.id,
+        ) ?: return@LaunchedEffect
+        onProfileResult(result)
     }
 }
 ```
+
+For consumption semantics and serializer registration, see
+[Results, restoration and external controllers](#results-restoration-and-external-controllers).
 
 ## Custom Layouts & Transitions
 
@@ -625,3 +636,98 @@ It is now a regular class with explicit copy/equality behavior so occurrence ide
 be supplied by callers. Equality includes identity; separately constructed equal payloads
 represent different occurrences. Consumers relying on data-class reflection must adapt.
 Legacy serialized entries without an ID are accepted and assigned one during restoration.
+
+
+## Results, restoration and external controllers
+
+`consumeResult<T>(key, entryId)` returns and removes one result from the specified occurrence.
+Omitting entryId targets the current entry. A missing key/entry or mismatched type returns null
+without deleting anything. Consumption removes the result from the receiving entry's map,
+not the entry from the back stack; `pop` already removed the sending destination.
+
+Reading `entry.results[key]` only inspects the value and leaves it available for later reads.
+Use `consumeResult` for one-time processing, from an event handler or effect rather than the
+composable body. See [Navigation Results](#navigation-results) for a complete send/receive example.
+
+NavigationResult implementations must be serializable and registered for saved navigation:
+
+```kotlin
+@Serializable
+@SerialName("name-result")
+data class NameResult(val name: String) : NavigationResult
+
+val resultSerializers = SerializersModule {
+    polymorphic(NavigationResult::class) { subclass(NameResult::class) }
+}
+val controller = createNavController(Home, serializersModule = resultSerializers)
+// After a destination has delivered a result with pendingResultKey = "name":
+val result = controller.consumeResult<NameResult>("name")
+```
+
+This consumes stored data; it is not a transactional guarantee for application side effects.
+Unregistered result types fail when saving rather than silently dropping data. Registered
+results survive restoration until consumed. Reusing a result key before consumption replaces
+its previous value, as before.
+
+Invalid saved navigation (including an empty stack or duplicate occurrence IDs) falls back to
+the valid initial state by default. `restorationFailure` retains the cause and `onRestoreFailure`
+reports it once per restoration. In composition, the callback runs from an effect. Select
+`NavigationRestorePolicy.Throw` to reject restoration instead. Direct deserialization throws;
+the serializer no longer disguises a failure as an empty stack. Recovery does not validate
+whether the app's graphs still support every saved destination; graph resolution remains the
+app's routing contract.
+
+```kotlin
+val controller = createNavController(
+    Home,
+    serializersModule = resultSerializers,
+    savedNavigationState = previouslySavedJson,
+    onRestoreFailure = { cause -> reportNavigationFailure(cause) },
+)
+controller.stateFlow.collect { state -> /* observe the current immutable stack */ }
+```
+
+`createNavController` does not require composition. Pass it directly to KompassNavigationHost.
+Its owner must call `close()` when finished; temporary host unmount does not close it. Mutation,
+saving and close must run on the UI thread. Flow collection can use another dispatcher.
+`stateFlow` is read-only and conflated: it represents current state, not every intermediate
+command. The existing `state`, `currentEntry`, typed helpers and deep-link methods remain available.
+
+`saveNavigationState()` serializes the stack, arguments and pending results only. It does not
+serialize live ViewModels, SavedStateHandles or Compose UI state. Use rememberNavController
+for automatic composition-owned restoration/retention. An external controller's lifetime and
+persistence belong to its owner; close is idempotent, and navigation after close throws.
+
+## Transition context and controlled progress
+
+Direction now follows the command that changes the active occurrence: Navigate and ReplaceRoot
+are Push, Pop is Pop. Consuming results, updating the current occurrence and no-op commands do
+not overwrite the last direction. Recomposition no longer changes the direction.
+
+Existing `SceneTransition.transition(direction)` implementations remain supported. Override
+`transition(context: SceneTransitionContext)` to inspect source/target entries, including their
+destination IDs and arguments. Built-in animated layouts supply this context. Custom layouts
+can use `entryTransition(direction, transition)`; the generic directionalTransition helper
+remains available for direction-only use.
+
+For controlled visual progress, select `SceneLayoutSeekable(progress, transition)` as the graph's
+sceneLayout. A null transition uses the target graph's sceneTransition, then the default.
+
+- `progress = null`: animate automatically, or finish from the current fraction.
+- `progress` between 0 and 1: seek the visual transition forward or backward.
+- `progress = 1f`: complete the transition and dispose outgoing content.
+
+Keep this layout mounted while adjusting progress. Source and target owners remain available
+while their content is composed. Payload/result updates do not restart progress. This API
+controls the visual transition after navigation has committed; moving back to zero does not
+undo the command. Platform gestures and predictive Back are not included.
+
+The implementation uses Compose's
+[SeekableTransitionState](https://developer.android.com/reference/kotlin/androidx/compose/animation/core/SeekableTransitionState).
+
+### API compatibility for these additions
+
+Existing constructor/helpers and direction-only transition implementations remain usable from
+Kotlin source. New optional parameters and interface methods can change binary compatibility;
+recompile consumers. NavigationCommand adds ConsumeResult, so exhaustive consumer `when`
+expressions over commands must handle it. Invalid direct deserialization now throws explicitly.

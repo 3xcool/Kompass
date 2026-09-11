@@ -106,7 +106,7 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
         AnimatedContent(
             targetState = entry,
             contentKey = { it.id },
-            transitionSpec = directionalTransition<BackStackEntry>(
+            transitionSpec = entryTransition(
                 direction = direction,
                 transition = resolve(entry).first.sceneTransition ?: SceneTransitionDefault()
             ),
@@ -153,7 +153,7 @@ data class SceneLayoutListDetail(
                     modifier = Modifier.fillMaxSize(),
                     targetState = entry,
                     contentKey = { it.id },
-                    transitionSpec = directionalTransition<BackStackEntry>(
+                    transitionSpec = entryTransition(
                         direction = direction,
                         transition = transition
                     ),
@@ -191,7 +191,7 @@ data class SceneLayoutListDetail(
                         AnimatedContent(
                             targetState = detail,
                             contentKey = { it.id },
-                            transitionSpec = directionalTransition<BackStackEntry>(
+                            transitionSpec = entryTransition(
                                 direction = direction,
                                 transition = transition
                             ),

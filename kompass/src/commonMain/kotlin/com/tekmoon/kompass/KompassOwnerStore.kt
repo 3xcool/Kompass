@@ -15,6 +15,7 @@ internal class KompassOwnerStore(restored: Map<String, SavedState> = emptyMap())
     private var topId: String? = null
     private var hostState = Lifecycle.State.CREATED
     private var closed = false
+    internal val isClosed: Boolean get() = closed
     var platformExtras: CreationExtras = CreationExtras.Empty
 
     fun owner(entry: BackStackEntry): KompassEntryOwner {

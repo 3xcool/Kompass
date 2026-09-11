@@ -82,7 +82,7 @@ fun defaultNavigationState(
  * This serializer is intentionally implemented manually to:
  * - Support immutable persistent collections
  * - Enable forward-compatible decoding
- * - Gracefully recover from corrupted or incompatible state
+ * - Reject corrupted or incompatible state so the controller can apply its recovery policy
  *
  * Serialization format:
  * - Encodes the back stack as a list of [BackStackEntry]
@@ -121,41 +121,31 @@ private class NavigationStateSerializer(
      * This implementation is tolerant to unknown fields to support
      * forward compatibility when newer versions add fields.
      *
-     * In case of deserialization failure, a safe fallback state
-     * is returned instead of throwing.
+     * Invalid or incompatible state throws. Controller restoration applies the selected
+     * fallback policy; direct serializer callers receive the original failure.
      *
      * @param decoder Decoder used to read the serialized form.
      *
-     * @return A decoded [NavigationState] or a safe fallback state.
+     * @return A valid decoded [NavigationState].
      */
     override fun deserialize(decoder: Decoder): NavigationState {
-        var backStack: ImmutableList<BackStackEntry> = persistentListOf()
-
-        return try {
-            decoder.decodeStructure(descriptor) {
-                while (true) {
-                    when (decodeElementIndex(descriptor)) {
-                        0 -> {
-                            backStack = decodeSerializableElement(
-                                descriptor,
-                                0,
-                                listSerializer
-                            ).toPersistentList()
-                        }
-                        -1 -> break
-                        else -> {
-                            // Ignore unknown indices for forward compatibility
-                            // This allows older apps to read newer serialization formats
-                        }
-                    }
+        var entries: ImmutableList<BackStackEntry>? = null
+        decoder.decodeStructure(descriptor) {
+            while (true) {
+                when (val index = decodeElementIndex(descriptor)) {
+                    0 -> entries = decodeSerializableElement(descriptor, 0, listSerializer).toPersistentList()
+                    -1 -> break
+                    else -> throw kotlinx.serialization.SerializationException("Unexpected navigation field index: $index")
                 }
             }
-            NavigationState(backStack)
-        } catch (e: Exception) {
-            // Log error and return safe fallback state
-            e.printStackTrace()
-            // Return empty state - app should handle recovery with a default destination
-            NavigationState(persistentListOf())
         }
+        return NavigationState(entries ?: throw kotlinx.serialization.SerializationException("Missing backStack"))
+            .also { it.requireValid() }
     }
+}
+
+/** Invalid stacks must never reach a host. Recovery belongs to the caller that knows the root. */
+internal fun NavigationState.requireValid() {
+    require(backStack.isNotEmpty()) { "Navigation requires a non-empty back stack" }
+    require(backStack.map { it.id }.toSet().size == backStack.size) { "Duplicate navigation occurrence IDs" }
 }

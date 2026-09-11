@@ -45,6 +45,7 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlin.stdlib)
+                api(libs.kotlinx.coroutinesCore)
 
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.collections.immutable)

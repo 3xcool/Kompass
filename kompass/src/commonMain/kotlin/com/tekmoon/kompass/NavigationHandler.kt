@@ -127,6 +127,12 @@ class NavigationHandler() {
                 state.copy(backStack = finalStack.toImmutableList())
             }
 
+            is NavigationCommand.ConsumeResult -> {
+                state.copy(backStack = state.backStack.map { entry ->
+                    if (entry.id == command.entryId) entry.copy(results = entry.results - command.key) else entry
+                }.toImmutableList())
+            }
+
             is NavigationCommand.ReplaceRoot -> {
                 state.copy(backStack = persistentListOf(command.entry))
             }
@@ -172,6 +178,10 @@ class NavigationHandler() {
  * They are interpreted and applied by [NavigationHandler].
  */
 sealed interface NavigationCommand {
+
+    /** Removes one result from a specific occurrence; does not navigate or animate. */
+    data class ConsumeResult(val entryId: String, val key: String) : NavigationCommand
+
 
     /**
      * Navigate to a destination.
