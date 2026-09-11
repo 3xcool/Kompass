@@ -287,27 +287,38 @@ val entry = BackStackEntry(
 
 ## Navigation Results
 
-Pass data between destinations using results:
+Use `pendingResultKey` when opening the destination, then return a result with `pop`:
 
 ```kotlin
-// Send result when popping
-navController.pop(
-    result = ProfileResult(userId = "123"),
-    count = 1
+navController.navigate(
+    Profile.toBackStackEntry(pendingResultKey = "profile_result")
 )
 
-// Receive result in destination
-@Composable
-fun HomeScreen(navController: NavController, entry: BackStackEntry) {
-    val result = entry.results["profile_result"] as? ProfileResult
+// Inside Profile: remove this destination and deliver the result to the previous entry.
+navController.pop(result = ProfileResult(userId = "123"))
+```
 
-    LaunchedEffect(result) {
-        if (result != null) {
-            // Handle result
-        }
+For one-time processing, use `consumeResult<T>()` from an effect or event handler:
+
+```kotlin
+@Composable
+fun HomeScreen(
+    navController: NavController,
+    entry: BackStackEntry,
+    onProfileResult: (ProfileResult) -> Unit,
+) {
+    LaunchedEffect(navController, entry.id, entry.results["profile_result"]) {
+        val result = navController.consumeResult<ProfileResult>(
+            key = "profile_result",
+            entryId = entry.id,
+        ) ?: return@LaunchedEffect
+        onProfileResult(result)
     }
 }
 ```
+
+For consumption semantics and serializer registration, see
+[Results, restoration and external controllers](#results-restoration-and-external-controllers).
 
 ## Custom Layouts & Transitions
 
@@ -631,7 +642,13 @@ Legacy serialized entries without an ID are accepted and assigned one during res
 
 `consumeResult<T>(key, entryId)` returns and removes one result from the specified occurrence.
 Omitting entryId targets the current entry. A missing key/entry or mismatched type returns null
-without deleting anything. Consume in an event handler or effect, not during composition.
+without deleting anything. Consumption removes the result from the receiving entry's map,
+not the entry from the back stack; `pop` already removed the sending destination.
+
+Reading `entry.results[key]` only inspects the value and leaves it available for later reads.
+Use `consumeResult` for one-time processing, from an event handler or effect rather than the
+composable body. See [Navigation Results](#navigation-results) for a complete send/receive example.
+
 NavigationResult implementations must be serializable and registered for saved navigation:
 
 ```kotlin
