@@ -42,6 +42,7 @@ internal class OwnedNavigationGraph(
 
 @Composable
 internal fun rememberOwnedGraphs(navController: NavController, graphs: List<NavigationGraph>): List<NavigationGraph> {
+    navController.entryOwners.platformExtras = kompassPlatformCreationExtras()
     val holder = rememberSaveableStateHolder()
     val knownIds = remember(navController) { navController.backStack.map { it.id }.toMutableSet() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle

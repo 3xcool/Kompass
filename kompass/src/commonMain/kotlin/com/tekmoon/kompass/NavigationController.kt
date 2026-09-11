@@ -1,15 +1,22 @@
 package com.tekmoon.kompass
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.serialization.KSerializer
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 
@@ -30,8 +37,9 @@ import kotlinx.serialization.modules.SerializersModule
  * All rules are delegated to the reducer to ensure consistency,
  * testability, and predictability.
  *
- * Instances of [NavController] are expected to be created via
- * [rememberNavController] and retained across recompositions.
+ * Use [rememberNavController] in composition or [createNavController] for external ownership.
+ * Mutation, saving and disposal are confined to the UI thread. StateFlow observation may
+ * occur on any dispatcher.
  *
  * @param navState Mutable holder of the current [NavigationState].
  * This state is internally updated when navigation commands are dispatched.
@@ -61,7 +69,48 @@ class NavController internal constructor(
     internal val json: Json,
     private val deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
     internal val entryOwners: KompassOwnerStore = KompassOwnerStore(),
+    val restorationFailure: Throwable? = null,
 ) {
+    private val observedState = MutableStateFlow(navState.value)
+    /** Read-only, conflated state observation; this is not a queue of navigation events. */
+    val stateFlow: StateFlow<NavigationState> = observedState.asStateFlow()
+
+    /** Direction of the last command that changed the active occurrence. */
+    var direction: NavDirection by mutableStateOf(NavDirection.Push)
+        private set
+
+    init {
+        navState.value.requireValid()
+        entryOwners.reconcile(navState.value.backStack)
+    }
+
+    /** Save navigation payloads. Register NavigationResult subtypes in serializersModule. */
+    fun saveNavigationState(): String = json.encodeToString(NavigationState.serializer(BackStackEntry.serializer()), state)
+
+    /** Release an externally owned controller. Idempotent; do not call for a temporary host unmount. */
+    fun close() {
+        if (entryOwners.isClosed) return
+        entryOwners.close()
+        state.backStack.map { it.scopeId }.toSet().forEach(NavigationScopes::requestClear)
+    }
+
+    /**
+     * Returns and removes a matching result once. Missing entry/key or wrong type returns null
+     * without removing anything. Pass entryId when consuming from a covered occurrence.
+     * Call from an event handler or effect, never while rendering composition.
+     */
+    inline fun <reified T : NavigationResult> consumeResult(key: String, entryId: String = currentEntry.id): T? =
+        consumeResultMatching(key, entryId) { it is T } as? T
+
+    @PublishedApi
+    internal fun consumeResultMatching(key: String, entryId: String, matches: (NavigationResult) -> Boolean): NavigationResult? {
+        check(!entryOwners.isClosed) { "The navigation controller has been closed" }
+        val result = backStack.firstOrNull { it.id == entryId }?.results?.get(key) ?: return null
+        if (!matches(result)) return null
+        dispatch(NavigationCommand.ConsumeResult(entryId, key))
+        return result
+    }
+
 
     /**
      * The current immutable [NavigationState].
@@ -104,6 +153,7 @@ class NavController internal constructor(
      * into a new [NavigationState].
      */
     private fun dispatch(command: NavigationCommand) {
+        check(!entryOwners.isClosed) { "The navigation controller has been closed" }
         val oldState = navState.value
         // A caller may navigate with an entry object it already holds. New navigation must
         // still create a distinct occurrence, including through runNavCommands/deep links.
@@ -112,6 +162,11 @@ class NavController internal constructor(
             command.copy(entry = command.entry.newOccurrence())
         } else command
         val newState = handler.reduce(oldState, normalized)
+        newState.requireValid()
+        if (newState == oldState) return
+        if (newState.backStack.last().id != oldState.backStack.last().id) {
+            direction = if (command is NavigationCommand.Pop) NavDirection.Pop else NavDirection.Push
+        }
 
         val oldScopes = oldState.backStack.map { it.scopeId }.toSet()
         val newScopes = newState.backStack.map { it.scopeId }.toSet()
@@ -119,6 +174,7 @@ class NavController internal constructor(
         entryOwners.reconcile(newState.backStack)
         newScopes.forEach(NavigationScopes::cancelClear)
         (oldScopes - newScopes).forEach(NavigationScopes::requestClear)
+        observedState.value = newState
     }
 
     /**
@@ -248,188 +304,107 @@ class NavController internal constructor(
 }
 
 
+/** Recovery for invalid saved navigation. Initial state must itself be valid. */
+enum class NavigationRestorePolicy { UseInitialState, Throw }
+
+private class NavigationRestoration(val state: MutableState<NavigationState>, val failure: Throwable? = null)
+
+private fun navigationJson(serializersModule: SerializersModule): Json = Json {
+    ignoreUnknownKeys = true
+    classDiscriminator = "_type"
+    this.serializersModule = serializersModule
+}
+
+private fun restoreNavigation(
+    saved: String?,
+    initialState: NavigationState,
+    json: Json,
+    policy: NavigationRestorePolicy,
+): NavigationRestoration {
+    initialState.requireValid()
+    if (saved == null) return NavigationRestoration(mutableStateOf(initialState))
+    return try {
+        NavigationRestoration(mutableStateOf(json.decodeFromString(NavigationState.serializer(BackStackEntry.serializer()), saved)))
+    } catch (cause: Exception) {
+        if (cause is CancellationException || policy == NavigationRestorePolicy.Throw) throw cause
+        NavigationRestoration(mutableStateOf(initialState), cause)
+    }
+}
+
 /**
- * Remembers a [NavController] using a pre-built [NavigationState].
- *
- * @param initialState The initial navigation state used as the
- * starting point for this controller.
- *
- * @param serializersModule Optional [SerializersModule] used to
- * register custom serializers for destinations and arguments.
- *
- * @param deepLinkUri Optional deep link URI that will be resolved
- * and applied during initialization.
- *
- * @param deepLinkHandlers List of [DeepLinkHandler]s used to resolve
- * deep link URIs.
+ * Create a controller without composition. Its owner must call close() on the UI thread.
+ * savedNavigationState restores navigation only; it does not serialize live ViewModels or UI.
+ * Recovery reports the failure and uses initialState unless Throw is selected.
  */
+fun createNavController(
+    initialState: NavigationState,
+    serializersModule: SerializersModule = SerializersModule {},
+    deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
+    savedNavigationState: String? = null,
+    restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
+    onRestoreFailure: (Throwable) -> Unit = {},
+): NavController {
+    val json = navigationJson(serializersModule)
+    val restored = restoreNavigation(savedNavigationState, initialState, json, restorePolicy)
+    restored.failure?.let(onRestoreFailure)
+    return NavController(restored.state, NavigationHandler(), json, deepLinkHandlers, restorationFailure = restored.failure)
+}
+
+/** External-ownership convenience overload starting at a destination. */
+fun createNavController(
+    startDestination: Destination,
+    serializersModule: SerializersModule = SerializersModule {},
+    scopeId: NavigationScopeId? = null,
+    deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
+    savedNavigationState: String? = null,
+    restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
+    onRestoreFailure: (Throwable) -> Unit = {},
+): NavController = createNavController(
+    defaultNavigationState(startDestination.toBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())),
+    serializersModule, deepLinkHandlers, savedNavigationState, restorePolicy, onRestoreFailure,
+)
+
+/** Remember a controller with automatic owner retention and saved navigation recovery. */
 @Composable
 fun rememberNavController(
     initialState: NavigationState,
     serializersModule: SerializersModule = SerializersModule {},
     deepLinkUri: String? = null,
-    deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf()
+    deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
+    restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
+    onRestoreFailure: (Throwable) -> Unit = {},
 ): NavController {
-    val handler = remember { NavigationHandler() }
-    val json = rememberNavigationJson(serializersModule)
-    val deepLinkManager = remember(deepLinkHandlers) {
-        DeepLinkManager(deepLinkHandlers)
+    val json = remember(serializersModule) { navigationJson(serializersModule) }
+    val initial = remember {
+        initialState.requireValid()
+        val commands = deepLinkUri?.let { DeepLinkManager(deepLinkHandlers).resolve(it) }
+        if (commands == null) initialState else applyDeepLink(initialState, commands, NavigationHandler()).also { it.requireValid() }
     }
-
-    val resolvedInitialState = remember(deepLinkUri, initialState) {
-        if (deepLinkUri == null) {
-            initialState
-        } else {
-            deepLinkManager
-                .resolve(deepLinkUri)
-                ?.let { commands ->
-                    applyDeepLink(initialState, commands, handler)
-                }
-                ?: initialState
-        }
-    }
-
-    val navigationState = rememberSaveable(
-        saver = remember(json) {
-            navigationStateSaver(json, BackStackEntry.serializer())
-        }
-    ) {
-        mutableStateOf(resolvedInitialState)
-    }
-
-    val entryOwners = rememberKompassOwnerStore(navigationState.value.backStack)
-    return remember(entryOwners) {
-        NavController(
-            navState = navigationState,
-            handler = handler,
-            json = json,
-            deepLinkHandlers = deepLinkHandlers,
-            entryOwners = entryOwners,
+    val restored = rememberSaveable(saver = remember(json, initial, restorePolicy) {
+        Saver<NavigationRestoration, String>(
+            save = { json.encodeToString(NavigationState.serializer(BackStackEntry.serializer()), it.state.value) },
+            restore = { restoreNavigation(it, initial, json, restorePolicy) },
         )
+    }) { NavigationRestoration(mutableStateOf(initial)) }
+    val reportFailure by rememberUpdatedState(onRestoreFailure)
+    LaunchedEffect(restored) { restored.failure?.let(reportFailure) }
+    val owners = rememberKompassOwnerStore(restored.state.value.backStack)
+    return remember(owners) {
+        NavController(restored.state, NavigationHandler(), json, deepLinkHandlers, owners, restored.failure)
     }
 }
 
-/**
- * Remembers a [NavController] starting from a single root destination.
- *
- * @param startDestination The root [Destination] used to create
- * the initial back stack entry.
- *
- * @param serializersModule Optional [SerializersModule] used to
- * register custom serializers.
- *
- * @param scopeId Optional [NavigationScopeId] used to override the
- * default scope of the start destination.
- *
- * @param deepLinkUri Optional deep link URI that may override
- * the start destination.
- *
- * @param deepLinkHandlers List of [DeepLinkHandler]s used to resolve
- * deep link URIs.
- */
+/** Remember a controller starting at one destination. */
 @Composable
 fun rememberNavController(
     startDestination: Destination,
     serializersModule: SerializersModule = SerializersModule {},
     scopeId: NavigationScopeId? = null,
     deepLinkUri: String? = null,
-    deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf()
+    deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
+    restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
+    onRestoreFailure: (Throwable) -> Unit = {},
 ): NavController {
-    val handler = remember { NavigationHandler() }
-    val json = rememberNavigationJson(serializersModule)
-    val deepLinkManager = remember(deepLinkHandlers) {
-        DeepLinkManager(deepLinkHandlers)
-    }
-
-    val startEntry = remember(startDestination) {
-        BackStackEntry(
-            destinationId = startDestination.id,
-            scopeId = scopeId ?: startDestination.defaultScope()
-        )
-    }
-
-    val baseState = remember {
-        defaultNavigationState(startEntry)
-    }
-
-    val initialState = remember(deepLinkUri) {
-        if (deepLinkUri == null) {
-            baseState
-        } else {
-            deepLinkManager
-                .resolve(deepLinkUri)
-                ?.let { commands ->
-                    applyDeepLink(baseState, commands, handler)
-                }
-                ?: baseState
-        }
-    }
-
-    val navigationState = rememberSaveable(
-        saver = remember(json) {
-            navigationStateSaver(json, BackStackEntry.serializer())
-        }
-    ) {
-        mutableStateOf(initialState)
-    }
-
-    val entryOwners = rememberKompassOwnerStore(navigationState.value.backStack)
-    return remember(entryOwners) {
-        NavController(
-            navState = navigationState,
-            handler = handler,
-            json = json,
-            deepLinkHandlers = deepLinkHandlers,
-            entryOwners = entryOwners,
-        )
-    }
+    val initial = remember { defaultNavigationState(startDestination.toBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())) }
+    return rememberNavController(initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure)
 }
-
-/**
- * Creates and remembers a configured [Json] instance used for
- * serializing and restoring [NavigationState].
- *
- * @param serializersModule Module providing serializers required
- * to encode and decode navigation-related types.
- */
-@Composable
-private fun rememberNavigationJson(
-    serializersModule: SerializersModule
-): Json {
-    return remember(serializersModule) {
-        Json {
-            ignoreUnknownKeys = true
-            classDiscriminator = "_type"
-            this.serializersModule = serializersModule
-        }
-    }
-}
-
-/**
- * A [Saver] responsible for serializing and restoring [NavigationState].
- *
- * @param json Configured [Json] instance used for encoding and decoding.
- *
- * @param backStackEntrySerializer Serializer used to encode and decode
- * individual [BackStackEntry] instances.
- */
-private fun navigationStateSaver(
-    json: Json,
-    backStackEntrySerializer: KSerializer<BackStackEntry>
-): Saver<MutableState<NavigationState>, String> =
-    Saver(
-        save = { state ->
-            json.encodeToString(
-                NavigationState.serializer(backStackEntrySerializer),
-                state.value
-            )
-        },
-        restore = { saved ->
-            mutableStateOf(
-                json.decodeFromString(
-                    NavigationState.serializer(backStackEntrySerializer),
-                    saved
-                )
-            )
-        }
-    )

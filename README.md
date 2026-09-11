@@ -625,3 +625,58 @@ It is now a regular class with explicit copy/equality behavior so occurrence ide
 be supplied by callers. Equality includes identity; separately constructed equal payloads
 represent different occurrences. Consumers relying on data-class reflection must adapt.
 Legacy serialized entries without an ID are accepted and assigned one during restoration.
+
+
+## Results, restoration and external controllers
+
+`consumeResult<T>(key, entryId)` returns and removes one result from the specified occurrence.
+Omitting entryId targets the current entry. A missing key/entry or mismatched type returns null
+without deleting anything. Consume in an event handler or effect, not during composition.
+NavigationResult implementations must be serializable and registered for saved navigation:
+
+```kotlin
+@Serializable
+@SerialName("name-result")
+data class NameResult(val name: String) : NavigationResult
+
+val resultSerializers = SerializersModule {
+    polymorphic(NavigationResult::class) { subclass(NameResult::class) }
+}
+val controller = createNavController(Home, serializersModule = resultSerializers)
+// After a destination has delivered a result with pendingResultKey = "name":
+val result = controller.consumeResult<NameResult>("name")
+```
+
+This consumes stored data; it is not a transactional guarantee for application side effects.
+Unregistered result types fail when saving rather than silently dropping data. Registered
+results survive restoration until consumed. Reusing a result key before consumption replaces
+its previous value, as before.
+
+Invalid saved navigation (including an empty stack or duplicate occurrence IDs) falls back to
+the valid initial state by default. `restorationFailure` retains the cause and `onRestoreFailure`
+reports it once per restoration. In composition, the callback runs from an effect. Select
+`NavigationRestorePolicy.Throw` to reject restoration instead. Direct deserialization throws;
+the serializer no longer disguises a failure as an empty stack. Recovery does not validate
+whether the app's graphs still support every saved destination; graph resolution remains the
+app's routing contract.
+
+```kotlin
+val controller = createNavController(
+    Home,
+    serializersModule = resultSerializers,
+    savedNavigationState = previouslySavedJson,
+    onRestoreFailure = { cause -> reportNavigationFailure(cause) },
+)
+controller.stateFlow.collect { state -> /* observe the current immutable stack */ }
+```
+
+`createNavController` does not require composition. Pass it directly to KompassNavigationHost.
+Its owner must call `close()` when finished; temporary host unmount does not close it. Mutation,
+saving and close must run on the UI thread. Flow collection can use another dispatcher.
+`stateFlow` is read-only and conflated: it represents current state, not every intermediate
+command. The existing `state`, `currentEntry`, typed helpers and deep-link methods remain available.
+
+`saveNavigationState()` serializes the stack, arguments and pending results only. It does not
+serialize live ViewModels, SavedStateHandles or Compose UI state. Use rememberNavController
+for automatic composition-owned restoration/retention. An external controller's lifetime and
+persistence belong to its owner; close is idempotent, and navigation after close throws.

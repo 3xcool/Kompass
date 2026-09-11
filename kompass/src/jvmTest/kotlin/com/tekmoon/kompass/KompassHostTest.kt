@@ -408,4 +408,49 @@ class KompassHostTest {
         runOnIdle { assertEquals(1, probes[first.id]!!.clears) }
     }
 
+    @Test fun broken_saved_navigation_restores_root_and_reports_once_without_host_crash() = runComposeUiTest {
+        var registry by mutableStateOf(SaveableStateRegistry(null) { true })
+        var mounted by mutableStateOf(true)
+        var reports = 0
+        lateinit var nav: NavController
+        val graph = Graph { entry, _ -> BasicText("restored:${entry.destinationId}") }
+        setContent {
+            if (mounted) CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
+                nav = rememberNavController(A, onRestoreFailure = { reports++ })
+                KompassNavigationHost(nav, persistentListOf(graph))
+            }
+        }
+        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        lateinit var saved: Map<String, List<Any?>>
+        runOnIdle {
+            saved = registry.performSave().mapValues { (_, values) -> values.map {
+                if (it is String && it.contains("backStack")) "{broken" else it
+            } }
+            mounted = false
+        }
+        waitForIdle()
+        runOnIdle { registry = SaveableStateRegistry(saved) { true }; mounted = true }
+        onNodeWithText("restored:a").assertExists()
+        runOnIdle { assertEquals(1, reports); assertNotNull(nav.restorationFailure); nav.navigate(B.toBackStackEntry()) }
+        onNodeWithText("restored:b").assertExists()
+        runOnIdle { assertEquals(1, reports) }
+    }
+
+    @Test fun externally_created_controller_renders_and_survives_host_unmount_until_closed() = runComposeUiTest {
+        var mounted by mutableStateOf(true)
+        val nav = createNavController(A)
+        lateinit var probe: Probe
+        val graph = Graph { entry, _ -> probe = viewModel { Probe() }; BasicText("external:${entry.destinationId}") }
+        try {
+            nav.navigate(B.toBackStackEntry())
+            setContent { if (mounted) KompassNavigationHost(nav, persistentListOf(graph)) }
+            onNodeWithText("external:b").assertExists()
+            lateinit var original: Probe
+            runOnIdle { original = probe; mounted = false }
+            runOnIdle { assertEquals(0, original.clears); mounted = true }
+            runOnIdle { assertSame(original, probe); mounted = false }
+            runOnIdle { nav.close(); assertEquals(1, original.clears) }
+        } finally { nav.close() }
+    }
+
 }

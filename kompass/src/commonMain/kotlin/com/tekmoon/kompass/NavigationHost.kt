@@ -1,8 +1,6 @@
 package com.tekmoon.kompass
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -38,16 +36,7 @@ fun KompassNavigationHost(
         NavigationGraphRouter(ownedGraphs)
     }
 
-    val previousState = remember { mutableStateOf<NavigationState?>(null) }
-
-    val direction =
-        previousState.value?.let { prev ->
-            navController.state.directionFrom(prev)
-        } ?: NavDirection.Push
-
-    SideEffect {
-        previousState.value = navController.state
-    }
+    val direction = navController.direction
 
     val activeEntry = navController.state.backStack.last()
     val activeGraph = router.resolve(activeEntry).graph
