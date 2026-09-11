@@ -7,7 +7,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
-import com.tekmoon.kompass.util.randomUUID
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.KSerializer
@@ -110,7 +109,7 @@ class NavController internal constructor(
         // still create a distinct occurrence, including through runNavCommands/deep links.
         val normalized = if (command is NavigationCommand.Navigate && !command.reuseIfExists &&
             oldState.backStack.any { it.id == command.entry.id }) {
-            command.copy(entry = command.entry.copy(id = randomUUID()))
+            command.copy(entry = command.entry.newOccurrence())
         } else command
         val newState = handler.reduce(oldState, normalized)
 

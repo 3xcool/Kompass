@@ -51,17 +51,25 @@ class NestedNavHostTest {
         val owner = store.owner(entry)
         val original = androidx.lifecycle.ViewModelProvider.create(owner)[HandleViewModel::class]
         original.handle["counter"] = 42
-        val saved = store.save().getValue(entry.id)
-        val parcel = android.os.Parcel.obtain()
-        val restored = try {
-            parcel.writeBundle(saved)
-            parcel.setDataPosition(0)
-            parcel.readBundle(javaClass.classLoader)!!
-        } finally { parcel.recycle() }
+        val nextEntry = BackStackEntry("b", scopeId = entry.scopeId)
+        store.reconcile(listOf(entry, nextEntry))
+        val shared = androidx.lifecycle.ViewModelProvider.create(store.owner(nextEntry))[HandleViewModel::class]
+        assertSame(original, shared)
+        store.reconcile(listOf(nextEntry))
+        assertEquals(Lifecycle.State.DESTROYED, owner.lifecycle.currentState)
+        assertEquals(42, shared.handle.get<Int>("counter"))
+        val restored = store.save().mapValues { (_, saved) ->
+            val parcel = android.os.Parcel.obtain()
+            try {
+                parcel.writeBundle(saved)
+                parcel.setDataPosition(0)
+                parcel.readBundle(javaClass.classLoader)!!
+            } finally { parcel.recycle() }
+        }
         store.close()
-        val recreated = KompassOwnerStore(mapOf(entry.id to restored))
-        recreated.reconcile(listOf(entry))
-        val next = androidx.lifecycle.ViewModelProvider.create(recreated.owner(entry))[HandleViewModel::class]
+        val recreated = KompassOwnerStore(restored)
+        recreated.reconcile(listOf(nextEntry))
+        val next = androidx.lifecycle.ViewModelProvider.create(recreated.owner(nextEntry))[HandleViewModel::class]
         assertNotSame(original, next)
         assertEquals(42, next.handle.get<Int>("counter"))
         recreated.close()

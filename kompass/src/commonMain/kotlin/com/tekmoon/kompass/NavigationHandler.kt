@@ -59,10 +59,8 @@ class NavigationHandler() {
                     if (existingIndex >= 0) {
                         // Move the matching occurrence to the top, updating its payload but retaining identity
                         (baseStack.filterIndexed { index, _ -> index != existingIndex } +
-                            command.entry.copy(
-                                id = if (command.entry.scopeId == baseStack[existingIndex].scopeId)
-                                    baseStack[existingIndex].id else command.entry.id
-                            )).toImmutableList()
+                            (if (command.entry.scopeId == baseStack[existingIndex].scopeId)
+                                command.entry.withIdentityOf(baseStack[existingIndex]) else command.entry)).toImmutableList()
                     } else {
                         // Entry doesn't exist, add it
                         (baseStack + command.entry).toImmutableList()

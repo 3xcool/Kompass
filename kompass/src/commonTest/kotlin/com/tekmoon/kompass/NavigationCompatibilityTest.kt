@@ -20,7 +20,7 @@ class NavigationCompatibilityTest {
         val incoming = entry("b", args = "new")
         val result = reducer.reduce(NavigationState(persistentListOf(a, b, c)),
             NavigationCommand.Navigate(incoming, reuseIfExists = true))
-        assertEquals(listOf(a, c, incoming.copy(id = b.id)), result.backStack)
+        assertEquals(listOf(a, c, incoming.withIdentityOf(b)), result.backStack)
     }
 
     @Test fun reuse_respects_an_explicit_different_scope() {
@@ -46,7 +46,7 @@ class NavigationCompatibilityTest {
         val state = NavigationState(persistentListOf(a, b1, c, b2))
         val incoming = entry("b", args = "updated")
         val result = reducer.reduce(state, NavigationCommand.Navigate(incoming, popUpTo = "c", reuseIfExists = true))
-        assertEquals(listOf(a, c, incoming.copy(id = b1.id)), result.backStack)
+        assertEquals(listOf(a, c, incoming.withIdentityOf(b1)), result.backStack)
     }
 
     @Test fun result_delivery_preserves_receiver_identity_and_previous_results() {
@@ -93,4 +93,19 @@ class NavigationCompatibilityTest {
     }
 
     @Serializable private data class Result(val value: String) : NavigationResult
+    @Test fun copying_payload_preserves_library_identity_and_original_constructor() {
+        val original = BackStackEntry("a", "old", newScope(), "result", emptyMap())
+        val updated = original.copy(args = "new")
+        assertEquals(original.id, updated.id)
+        assertNotEquals(original.id, original.copy(scopeId = newScope()).id)
+        assertNotEquals(original.id, original.copy(destinationId = "b").id)
+        val (route, args, scope, resultKey, results) = updated
+        assertEquals("a", route)
+        assertEquals("new", args)
+        assertEquals(original.scopeId, scope)
+        assertEquals("result", resultKey)
+        assertTrue(results.isEmpty())
+        assertEquals(updated, Json.decodeFromString<BackStackEntry>(Json.encodeToString(updated)))
+    }
+
 }

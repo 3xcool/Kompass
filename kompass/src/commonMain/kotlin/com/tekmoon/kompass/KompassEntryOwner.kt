@@ -3,14 +3,8 @@ package com.tekmoon.kompass
 import androidx.lifecycle.HasDefaultViewModelProviderFactory
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.SAVED_STATE_REGISTRY_OWNER_KEY
-import androidx.lifecycle.VIEW_MODEL_STORE_OWNER_KEY
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.enableSavedStateHandles
-import androidx.lifecycle.viewmodel.CreationExtras
-import androidx.lifecycle.viewmodel.MutableCreationExtras
 import androidx.savedstate.SavedState
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
@@ -19,7 +13,7 @@ import androidx.savedstate.savedState
 /** An entry's AndroidX resources. The host keeps this alive through the last exit composition. */
 internal class KompassEntryOwner(
     restored: SavedState? = null,
-    private val platformExtras: CreationExtras = CreationExtras.Empty,
+    internal val scopeOwner: KompassScopeOwner,
 ) :
     ViewModelStoreOwner, SavedStateRegistryOwner, HasDefaultViewModelProviderFactory {
     private val registry = LifecycleRegistry(this)
@@ -29,19 +23,14 @@ internal class KompassEntryOwner(
     internal val childStores by lazy {
         KompassOwnerStores(savedStateRegistry.consumeRestoredStateForKey("kompass:children"))
     }
-    override val viewModelStore = ViewModelStore()
+    override val viewModelStore get() = scopeOwner.viewModelStore
     override val lifecycle: Lifecycle get() = registry
     override val savedStateRegistry get() = controller.savedStateRegistry
-    override val defaultViewModelProviderFactory: ViewModelProvider.Factory = kompassViewModelFactory()
-    override val defaultViewModelCreationExtras: CreationExtras
-        get() = MutableCreationExtras(platformExtras).apply {
-            set(SAVED_STATE_REGISTRY_OWNER_KEY, this@KompassEntryOwner)
-            set(VIEW_MODEL_STORE_OWNER_KEY, this@KompassEntryOwner)
-        }
+    override val defaultViewModelProviderFactory get() = scopeOwner.defaultViewModelProviderFactory
+    override val defaultViewModelCreationExtras get() = scopeOwner.defaultViewModelCreationExtras
 
     init {
         controller.performAttach()
-        enableSavedStateHandles()
         controller.performRestore(restored)
         registry.currentState = Lifecycle.State.CREATED
         savedStateRegistry.registerSavedStateProvider("kompass:children") { childStores.save() }
@@ -57,7 +46,6 @@ internal class KompassEntryOwner(
         if (registry.currentState == Lifecycle.State.DESTROYED) return
         childStores.close()
         registry.currentState = Lifecycle.State.DESTROYED
-        viewModelStore.clear()
     }
 }
 

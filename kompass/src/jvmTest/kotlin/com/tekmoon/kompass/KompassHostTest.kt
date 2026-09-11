@@ -306,4 +306,106 @@ class KompassHostTest {
         onNodeWithText("child-handle:changed-while-covered").assertExists()
     }
 
+    @Test fun shared_scope_reuses_viewmodel_but_keeps_each_occurrence_ui_and_lifecycle() = runComposeUiTest {
+        lateinit var nav: NavController
+        val probes = mutableMapOf<String, Probe>()
+        val owners = mutableMapOf<String, androidx.lifecycle.LifecycleOwner>()
+        var increment: () -> Unit = {}
+        val graph = Graph { entry, _ ->
+            probes[entry.id] = viewModel { Probe() }
+            owners[entry.id] = androidx.lifecycle.compose.LocalLifecycleOwner.current
+            var count by rememberSaveable { mutableStateOf(0) }
+            increment = { count++ }
+            BasicText("${entry.destinationId}:$count")
+        }
+        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        lateinit var first: BackStackEntry
+        lateinit var second: BackStackEntry
+        runOnIdle { first = nav.currentEntry; increment() }
+        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = first.scopeId)) }
+        onNodeWithText("b:0").assertExists()
+        runOnIdle {
+            second = nav.currentEntry
+            assertSame(probes[first.id], probes[second.id])
+            assertNotSame(owners[first.id], owners[second.id])
+            assertEquals(androidx.lifecycle.Lifecycle.State.CREATED, owners[first.id]!!.lifecycle.currentState)
+            increment()
+            nav.navigate(A.toBackStackEntry(scopeId = first.scopeId))
+        }
+        onNodeWithText("a:0").assertExists()
+        runOnIdle { assertSame(probes[first.id], probes[nav.currentEntry.id]); nav.pop() }
+        onNodeWithText("b:1").assertExists()
+        runOnIdle { assertEquals(0, probes[first.id]!!.clears); nav.pop() }
+        onNodeWithText("a:1").assertExists()
+        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope()), clearBackStack = true) }
+        runOnIdle { assertEquals(1, probes[first.id]!!.clears); assertNotSame(probes[first.id], probes[nav.currentEntry.id]) }
+    }
+
+    @Test fun koin_shared_handle_survives_creator_removal_and_restoration() = runComposeUiTest {
+        var registry by mutableStateOf(SaveableStateRegistry(null) { true })
+        var mounted by mutableStateOf(true)
+        lateinit var nav: NavController
+        lateinit var current: HandleProbe
+        val module = org.koin.dsl.module { viewModel { HandleProbe(get()) } }
+        val graph = Graph { _, _ ->
+            current = org.koin.compose.viewmodel.koinViewModel<HandleProbe>()
+            BasicText("value:${current.handle.get<String>("answer")}")
+        }
+        setContent {
+            org.koin.compose.KoinApplication(application = { modules(module) }) {
+                if (mounted) CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
+                    nav = rememberNavController(A)
+                    KompassNavigationHost(nav, persistentListOf(graph))
+                }
+            }
+        }
+        lateinit var original: HandleProbe
+        runOnIdle {
+            original = current
+            current.handle["answer"] = "shared"
+            nav.navigate(B.toBackStackEntry(scopeId = A.defaultScope()))
+        }
+        runOnIdle {
+            assertSame(original, current)
+            nav.navigate(A.toBackStackEntry(), reuseIfExists = true)
+        }
+        runOnIdle { nav.pop() }
+        runOnIdle { assertSame(original, current); current.handle["answer"] = "after-creator-pop" }
+        lateinit var saved: Map<String, List<Any?>>
+        runOnIdle { saved = registry.performSave(); mounted = false }
+        waitForIdle()
+        runOnIdle { registry = SaveableStateRegistry(saved) { true }; mounted = true }
+        onNodeWithText("value:after-creator-pop").assertExists()
+        lateinit var recreated: HandleProbe
+        runOnIdle {
+            assertNotSame(original, current)
+            recreated = current
+            nav.navigate(A.toBackStackEntry())
+        }
+        runOnIdle { assertSame(recreated, current) }
+    }
+
+    @Test fun final_shared_entry_clears_viewmodel_only_after_its_exit_animation() = runComposeUiTest {
+        lateinit var nav: NavController
+        val probes = mutableMapOf<String, Probe>()
+        val graph = Graph(SceneLayoutDefaultAnimatedSinglePane) { entry, _ ->
+            probes[entry.id] = viewModel { Probe() }
+            Box(Modifier.size(100.dp)) { BasicText(entry.destinationId) }
+        }
+        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        lateinit var first: BackStackEntry
+        runOnIdle { first = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = first.scopeId)) }
+        waitForIdle()
+        runOnIdle { assertSame(probes[first.id], probes[nav.currentEntry.id]); nav.pop() }
+        waitForIdle()
+        runOnIdle { assertEquals(0, probes[first.id]!!.clears) }
+        mainClock.autoAdvance = false
+        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope()), clearBackStack = true) }
+        mainClock.advanceTimeBy(100)
+        runOnIdle { assertEquals(0, probes[first.id]!!.clears) }
+        mainClock.advanceTimeBy(1000)
+        waitForIdle()
+        runOnIdle { assertEquals(1, probes[first.id]!!.clears) }
+    }
+
 }
