@@ -105,7 +105,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.tekmoon:kompass:1.0.0")
+    implementation("com.tekmoon:kompass:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-collections-immutable:0.3.7")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.2")
 }
@@ -288,27 +288,38 @@ val entry = BackStackEntry(
 
 ## Navigation Results
 
-Pass data between destinations using results:
+Use `pendingResultKey` when opening the destination, then return a result with `pop`:
 
 ```kotlin
-// Send result when popping
-navController.pop(
-    result = ProfileResult(userId = "123"),
-    count = 1
+navController.navigate(
+    Profile.toBackStackEntry(pendingResultKey = "profile_result")
 )
 
-// Receive result in destination
-@Composable
-fun HomeScreen(navController: NavController, entry: BackStackEntry) {
-    val result = entry.results["profile_result"] as? ProfileResult
+// Inside Profile: remove this destination and deliver the result to the previous entry.
+navController.pop(result = ProfileResult(userId = "123"))
+```
 
-    LaunchedEffect(result) {
-        if (result != null) {
-            // Handle result
-        }
+For one-time processing, use `consumeResult<T>()` from an effect or event handler:
+
+```kotlin
+@Composable
+fun HomeScreen(
+    navController: NavController,
+    entry: BackStackEntry,
+    onProfileResult: (ProfileResult) -> Unit,
+) {
+    LaunchedEffect(navController, entry.id, entry.results["profile_result"]) {
+        val result = navController.consumeResult<ProfileResult>(
+            key = "profile_result",
+            entryId = entry.id,
+        ) ?: return@LaunchedEffect
+        onProfileResult(result)
     }
 }
 ```
+
+For consumption semantics and serializer registration, see
+[Results, restoration and external controllers](#results-restoration-and-external-controllers).
 
 ## Custom Layouts & Transitions
 
@@ -381,14 +392,14 @@ Resolve deep link URIs to navigation commands:
 
 ```kotlin
 interface DeepLinkHandler {
-    fun canHandle(uri: String): Boolean
-    fun resolve(uri: String): List<NavigationCommand>?
+    fun matches(uri: String): Boolean
+    fun resolve(uri: String): List<NavigationCommand>
 }
 
 class ProfileDeepLinkHandler : DeepLinkHandler {
-    override fun canHandle(uri: String): Boolean = uri.startsWith("app://profile/")
+    override fun matches(uri: String): Boolean = uri.startsWith("app://profile/")
 
-    override fun resolve(uri: String): List<NavigationCommand>? {
+    override fun resolve(uri: String): List<NavigationCommand> {
         val userId = uri.removePrefix("app://profile/")
         return listOf(
             NavigationCommand.Navigate(
@@ -489,13 +500,8 @@ val navController = rememberNavController(
 
 ### Custom Navigation Scopes
 
-Extend `NavigationScope` for specialized instance management:
-
-```kotlin
-class CustomNavigationScope(id: NavigationScopeId) : NavigationScope(id) {
-    // Add custom behavior
-}
-```
+Use an explicit `NavigationScopeId` and the `key`, `factory`, and `onCleared` parameters of
+`rememberScoped` to share and manage arbitrary objects. `NavigationScope` is final.
 
 ## Performance Considerations
 
@@ -507,8 +513,8 @@ class CustomNavigationScope(id: NavigationScopeId) : NavigationScope(id) {
 ## Thread Safety
 
 - Navigation state is immutable and thread-safe
-- `NavigationScopes` uses `@Volatile` and copy-on-write for lock-free thread safety
-- Safe to call from Composable and background threads
+- Call navigation and `NavigationScopes` operations on the UI thread.
+- Volatile map publication does not make compound operations or stored objects thread-safe.
 
 ## Contributing
 
@@ -528,3 +534,201 @@ This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENS
 - [Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization)
 - [Kotlinx Collections Immutable](https://github.com/Kotlin/kotlinx.collections.immutable)
 - [GitHub Repository](https://github.com/3xcool/kompass)
+
+## Automatic ownership and UI state
+
+`KompassNavigationHost` provides owners automatically. Each back-stack occurrence has its
+own LifecycleOwner and SavedStateRegistryOwner; entries with the same `scopeId` share a
+ViewModelStore and SavedStateHandle storage within their controller. Existing graphs and custom layouts
+that render the graph returned by `resolve(entry)` receive these automatically; screens need
+no ownership wrappers and the core library has no Koin dependency.
+
+Use `viewModel()` or `koinViewModel()` inside graph content. Android supports the standard
+SavedStateViewModelFactory, including SavedStateHandle constructors. Desktop supports no-arg
+and SavedStateHandle constructors. On iOS and Wasm, supply an initializer/factory (including
+Koin's factory), as usual on platforms without constructor reflection.
+
+Entry owners remain alive while the entry is in the back stack **or** its content is still
+composed. Removing an entry destroys its lifecycle after exit disposal. Shared ViewModels
+are cleared exactly once after the last entry of their scope is removed and its outgoing
+content is disposed. Removing the entry that originally created a ViewModel does not clear
+that ViewModel while another entry still uses the scope. Covered
+entries that are no longer rendered remain at CREATED; rendered non-top entries are STARTED;
+the top entry can reach RESUMED, capped by the host lifecycle. STARTED still permits the default
+collectAsStateWithLifecycle collection. Each visible pane receives its own owner.
+
+The host also wraps each entry in a SaveableStateProvider. `rememberSaveable` state survives
+push-and-return. A new visit after pop starts fresh. Each host owns an independent holder;
+nested hosts save inside their parent entry's saveable state and retain their ViewModels
+while that parent entry remains in the back stack.
+
+### Reusing an entry versus sharing a scope
+
+These are separate choices:
+
+- `reuseIfExists = false` adds a new occurrence with its own UI state and lifecycle. Its
+  ViewModels are shared when another entry in the controller uses the same scope.
+- `reuseIfExists = true` moves the last matching destination to the top, keeping other entries
+  in their existing order. It uses the incoming arguments and result fields. With the same
+  scope it retains the occurrence ID and UI state. Supplying a different scope creates fresh
+  entry state and uses that scope's ViewModels (creating them if the scope is new).
+- `defaultScope()` shares ViewModels across visits to the same destination within a controller;
+  `newScope()` isolates them. Pass the same explicit `scopeId` to different routes to share
+  a ViewModel across a flow. The ViewModel class/key must also match. Factory parameters only
+  apply on creation; another route does not recreate an existing shared ViewModel.
+- `rememberScoped` retains its existing process-wide scope registry. AndroidX ViewModel
+  sharing is controller-local, so independent hosts do not accidentally share ViewModels.
+  Neither form of sharing merges entry lifecycle or UI state.
+- Existing direct NavigationScopes access remains available. Explicit clearScope/clearAll
+  clears immediately; automatic navigation cleanup waits for rendered content to leave.
+
+For example, reusing B in A → B → C produces A → C → B, not A → B.
+
+`BackStackEntry.id` is a read-only occurrence key generated by the library, with no constructor
+or `copy` parameter. It is saved with the stack and preserved when arguments or results are
+copied. Copying to a different destination or scope creates a new identity. Navigating again
+with an entry already in the stack creates a distinct occurrence unless reuse is requested. In a custom AnimatedContent layout,
+use `contentKey = { it.id }` so updating an entry's arguments or results does not animate two
+copies of that same occurrence. Pass the lambda's entry to `resolve`, and do not cache a
+resolved destination solely by ID: the arguments may change on reuse.
+
+### Restoration and disposal
+
+Navigation entries, `rememberSaveable` values, and SavedStateHandle values are saved through
+the enclosing saveable registry. Handles are saved once per scope, including scopes whose
+screens are not composed. Restoration recreates one shared ViewModel per scope and class/key;
+its state does not depend on which route first requests it. Saved values must satisfy the platform's saveable types.
+
+On Android, an enclosing ViewModelStore retains entry owners across Activity recreation;
+permanent controller disposal releases them. Other targets release entry owners when the
+controller composition leaves. Process recreation creates new ViewModels from saved values:
+arbitrary objects held by rememberScoped are not serialized. Persistence across a full app
+relaunch depends on the platform's enclosing saved-state infrastructure.
+
+Arguments remain opaque strings. Kompass does not guess how to expand them into SavedStateHandle
+fields; use the typed helpers to read navigation arguments.
+
+### Typed navigation
+
+```kotlin
+@Serializable
+data class ProfileArgs(val userId: String)
+
+object Profile : TypedDestination<ProfileArgs> {
+    override val id = "profile"
+    override val argsSerializer = ProfileArgs.serializer()
+}
+
+// All navigation flags and explicit scope choices remain available.
+navController.navigateTo(Profile, ProfileArgs("example"), scopeId = newScope())
+val args = navController.requireArgs(Profile, entry)
+```
+
+For commands built outside a controller, use `Profile.toBackStackEntry(args, json)` with the
+appropriate serializers. With a controller, `navController.toBackStackEntry(Profile, args)`
+and `navController.encodeArgs(Profile, args)` use its configured Json. Existing opaque argument
+strings, polymorphic NavigationResult serializers, deep-link handlers and command sequences
+remain supported.
+
+### Compatibility notes
+
+BackStackEntry keeps its original five constructor/copy parameters and destructuring fields.
+It is now a regular class with explicit copy/equality behavior so occurrence identity cannot
+be supplied by callers. Equality includes identity; separately constructed equal payloads
+represent different occurrences. Consumers relying on data-class reflection must adapt.
+Legacy serialized entries without an ID are accepted and assigned one during restoration.
+
+
+## Results, restoration and external controllers
+
+`consumeResult<T>(key, entryId)` returns and removes one result from the specified occurrence.
+Omitting entryId targets the current entry. A missing key/entry or mismatched type returns null
+without deleting anything. Consumption removes the result from the receiving entry's map,
+not the entry from the back stack; `pop` already removed the sending destination.
+
+Reading `entry.results[key]` only inspects the value and leaves it available for later reads.
+Use `consumeResult` for one-time processing, from an event handler or effect rather than the
+composable body. See [Navigation Results](#navigation-results) for a complete send/receive example.
+
+NavigationResult implementations must be serializable and registered for saved navigation:
+
+```kotlin
+@Serializable
+@SerialName("name-result")
+data class NameResult(val name: String) : NavigationResult
+
+val resultSerializers = SerializersModule {
+    polymorphic(NavigationResult::class) { subclass(NameResult::class) }
+}
+val controller = createNavController(Home, serializersModule = resultSerializers)
+// After a destination has delivered a result with pendingResultKey = "name":
+val result = controller.consumeResult<NameResult>("name")
+```
+
+This consumes stored data; it is not a transactional guarantee for application side effects.
+Unregistered result types fail when saving rather than silently dropping data. Registered
+results survive restoration until consumed. Reusing a result key before consumption replaces
+its previous value, as before.
+
+Invalid saved navigation (including an empty stack or duplicate occurrence IDs) falls back to
+the valid initial state by default. `restorationFailure` retains the cause and `onRestoreFailure`
+reports it once per restoration. In composition, the callback runs from an effect. Select
+`NavigationRestorePolicy.Throw` to reject restoration instead. Direct deserialization throws;
+the serializer no longer disguises a failure as an empty stack. Recovery does not validate
+whether the app's graphs still support every saved destination; graph resolution remains the
+app's routing contract.
+
+```kotlin
+val controller = createNavController(
+    Home,
+    serializersModule = resultSerializers,
+    savedNavigationState = previouslySavedJson,
+    onRestoreFailure = { cause -> reportNavigationFailure(cause) },
+)
+controller.stateFlow.collect { state -> /* observe the current immutable stack */ }
+```
+
+`createNavController` does not require composition. Pass it directly to KompassNavigationHost.
+Its owner must call `close()` when finished; temporary host unmount does not close it. Mutation,
+saving and close must run on the UI thread. Flow collection can use another dispatcher.
+`stateFlow` is read-only and conflated: it represents current state, not every intermediate
+command. The existing `state`, `currentEntry`, typed helpers and deep-link methods remain available.
+
+`saveNavigationState()` serializes the stack, arguments and pending results only. It does not
+serialize live ViewModels, SavedStateHandles or Compose UI state. Use rememberNavController
+for automatic composition-owned restoration/retention. An external controller's lifetime and
+persistence belong to its owner; close is idempotent, and navigation after close throws.
+
+## Transition context and controlled progress
+
+Direction now follows the command that changes the active occurrence: Navigate and ReplaceRoot
+are Push, Pop is Pop. Consuming results, updating the current occurrence and no-op commands do
+not overwrite the last direction. Recomposition no longer changes the direction.
+
+Existing `SceneTransition.transition(direction)` implementations remain supported. Override
+`transition(context: SceneTransitionContext)` to inspect source/target entries, including their
+destination IDs and arguments. Built-in animated layouts supply this context. Custom layouts
+can use `entryTransition(direction, transition)`; the generic directionalTransition helper
+remains available for direction-only use.
+
+For controlled visual progress, select `SceneLayoutSeekable(progress, transition)` as the graph's
+sceneLayout. A null transition uses the target graph's sceneTransition, then the default.
+
+- `progress = null`: animate automatically, or finish from the current fraction.
+- `progress` between 0 and 1: seek the visual transition forward or backward.
+- `progress = 1f`: complete the transition and dispose outgoing content.
+
+Keep this layout mounted while adjusting progress. Source and target owners remain available
+while their content is composed. Payload/result updates do not restart progress. This API
+controls the visual transition after navigation has committed; moving back to zero does not
+undo the command. Platform gestures and predictive Back are not included.
+
+The implementation uses Compose's
+[SeekableTransitionState](https://developer.android.com/reference/kotlin/androidx/compose/animation/core/SeekableTransitionState).
+
+### API compatibility for these additions
+
+Existing constructor/helpers and direction-only transition implementations remain usable from
+Kotlin source. New optional parameters and interface methods can change binary compatibility;
+recompile consumers. NavigationCommand adds ConsumeResult, so exhaustive consumer `when`
+expressions over commands must handle it. Invalid direct deserialization now throws explicitly.

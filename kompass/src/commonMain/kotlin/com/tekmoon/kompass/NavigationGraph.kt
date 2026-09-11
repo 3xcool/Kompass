@@ -2,6 +2,10 @@ package com.tekmoon.kompass
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import com.tekmoon.kompass.util.randomUUID
+import kotlinx.serialization.EncodeDefault
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
@@ -83,15 +87,65 @@ typealias ArgsJson = String
  *
  * @param results Map of delivered navigation results keyed by result identifier.
  * Results are immutable once delivered.
+ *
+ * Occurrence identity is managed by Kompass. [id] is read-only and can be used as a
+ * content key in custom animated layouts. Sharing [scopeId] does not merge UI state.
  */
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
-data class BackStackEntry(
+class BackStackEntry(
     val destinationId: String,
     val args: ArgsJson? = null,
     val scopeId: NavigationScopeId,
     val pendingResultKey: String? = null,
-    val results: Map<String, NavigationResult> = emptyMap()
-)
+    val results: Map<String, NavigationResult> = emptyMap(),
+) {
+    @EncodeDefault
+    @SerialName("id")
+    private var occurrenceId: String = randomUUID()
+
+    /** Stable, library-managed occurrence key for custom layouts. */
+    val id: String get() = occurrenceId
+
+    /** Copies payload while retaining identity; a different destination or scope starts a new occurrence. */
+    fun copy(
+        destinationId: String = this.destinationId,
+        args: ArgsJson? = this.args,
+        scopeId: NavigationScopeId = this.scopeId,
+        pendingResultKey: String? = this.pendingResultKey,
+        results: Map<String, NavigationResult> = this.results,
+    ): BackStackEntry = BackStackEntry(destinationId, args, scopeId, pendingResultKey, results).also {
+        if (scopeId == this.scopeId && destinationId == this.destinationId) it.occurrenceId = occurrenceId
+    }
+
+    internal fun withIdentityOf(entry: BackStackEntry): BackStackEntry = copy().also {
+        it.occurrenceId = entry.id
+    }
+
+    internal fun newOccurrence(): BackStackEntry = BackStackEntry(destinationId, args, scopeId, pendingResultKey, results)
+
+    operator fun component1() = destinationId
+    operator fun component2() = args
+    operator fun component3() = scopeId
+    operator fun component4() = pendingResultKey
+    operator fun component5() = results
+
+    override fun equals(other: Any?): Boolean = other is BackStackEntry &&
+        id == other.id && destinationId == other.destinationId && args == other.args &&
+        scopeId == other.scopeId && pendingResultKey == other.pendingResultKey && results == other.results
+
+    override fun hashCode(): Int {
+        var result = id.hashCode()
+        result = 31 * result + destinationId.hashCode()
+        result = 31 * result + (args?.hashCode() ?: 0)
+        result = 31 * result + scopeId.hashCode()
+        result = 31 * result + (pendingResultKey?.hashCode() ?: 0)
+        return 31 * result + results.hashCode()
+    }
+
+    override fun toString(): String = "BackStackEntry(destinationId=$destinationId, args=$args, " +
+        "scopeId=$scopeId, pendingResultKey=$pendingResultKey, results=$results, id=$id)"
+}
 
 /**
  * Defines a navigation graph responsible for resolving and rendering destinations.

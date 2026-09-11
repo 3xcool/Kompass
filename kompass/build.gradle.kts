@@ -24,6 +24,10 @@ kotlin {
 
     jvm()
 
+    wasmJs {
+        browser()
+    }
+
     listOf(
         iosX64(),
         iosArm64(),
@@ -41,18 +45,42 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlin.stdlib)
+                api(libs.kotlinx.coroutinesCore)
 
                 implementation(libs.kotlinx.serialization.json)
                 implementation(libs.kotlinx.collections.immutable)
 
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)
+                implementation(libs.compose.runtimeSaveable)
+                api(libs.androidx.lifecycle.viewmodelCompose)
+                api(libs.androidx.lifecycle.runtimeCompose)
+                api(libs.androidx.lifecycle.viewmodelSavedstate)
+                api(libs.androidx.savedstateCompose)
             }
         }
 
         commonTest {
             dependencies {
                 implementation(libs.kotlin.test)
+            }
+        }
+
+        jvmTest {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.compose.uiTest)
+                implementation(compose.desktop.currentOs)
+                implementation(libs.kotlinx.coroutinesSwing)
+                implementation(libs.test.koinViewmodel)
+            }
+        }
+
+        androidUnitTest {
+            dependencies {
+                implementation(libs.kotlin.testJunit)
+                implementation(libs.test.robolectric)
+                implementation(libs.test.navigationCompose)
             }
         }
 
@@ -68,6 +96,11 @@ kotlin {
         }
 
         jvmMain {
+            dependencies {
+            }
+        }
+
+        wasmJsMain {
             dependencies {
             }
         }
@@ -88,6 +121,8 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    testOptions.unitTests.isIncludeAndroidResources = true
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -95,13 +130,15 @@ android {
     }
 }
 
-signing {
-    val keyId = System.getenv("GPG_KEY_ID") ?: findProperty("GPG_KEY_ID")?.toString()
-    val key = System.getenv("GPG_SECRET_KEY") ?: findProperty("GPG_SECRET_KEY")?.toString()
-    val password = System.getenv("GPG_PASSPHRASE") ?: findProperty("GPG_PASSPHRASE")?.toString()
+val gpgKeyId: String? = System.getenv("GPG_KEY_ID") ?: findProperty("GPG_KEY_ID")?.toString()
+val gpgSecretKey: String? = System.getenv("GPG_SECRET_KEY") ?: findProperty("GPG_SECRET_KEY")?.toString()
+val gpgPassphrase: String? = System.getenv("GPG_PASSPHRASE") ?: findProperty("GPG_PASSPHRASE")?.toString()
 
-    if (keyId != null && key != null && password != null) {
-        useInMemoryPgpKeys(keyId, key, password)
+val canSignPublications: Boolean = gpgKeyId != null && gpgSecretKey != null && gpgPassphrase != null
+
+signing {
+    if (canSignPublications) {
+        useInMemoryPgpKeys(gpgKeyId, gpgSecretKey, gpgPassphrase)
         sign(publishing.publications)
     }
 }
@@ -113,8 +150,9 @@ val localProps = Properties().apply {
 
 // Resolution order (highest priority first):
 //   1. -PkompassVersion=... passed on the Gradle command line (used by CI publish workflow)
-//   2. kompassVersion=... in local.properties (used for local dev / publishToMavenLocal)
-//   3. literal "1.0.0" fallback (should never be hit in practice)
+//   2. kompassVersion=... in gradle.properties (versioned release default)
+//   3. kompassVersion=... in local.properties (legacy fallback)
+//   4. literal "1.0.0" fallback
 val kompassVersion: String =
     (project.findProperty("kompassVersion") as? String)?.takeIf { it.isNotBlank() }
         ?: localProps.getProperty("kompassVersion")
@@ -156,7 +194,9 @@ mavenPublishing {
     }
 
     publishToMavenCentral(automaticRelease = true)
-    signAllPublications()
+    if (canSignPublications) {
+        signAllPublications()
+    }
 }
 
 tasks.withType<org.gradle.api.publish.maven.tasks.PublishToMavenRepository>().configureEach {

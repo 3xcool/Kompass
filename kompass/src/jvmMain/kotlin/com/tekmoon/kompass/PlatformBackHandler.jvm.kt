@@ -11,7 +11,7 @@ actual fun PlatformBackHandler(
     backPressedChannel: BackPressedChannel?, // for desktop
     onBack: () -> Unit
 ) {
-    if (backPressedChannel == null) return
+    if (!enabled || backPressedChannel == null) return
 
     LaunchedEffect(backPressedChannel, onBack) {
         backPressedChannel.channel.receiveAsFlow().collect { event ->

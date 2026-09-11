@@ -57,8 +57,10 @@ class NavigationHandler() {
                     val existingIndex =
                         baseStack.indexOfLast { it.destinationId == command.entry.destinationId }
                     if (existingIndex >= 0) {
-                        // Replace existing entry, keeping it in place
-                        (baseStack.filterIndexed { index, _ -> index != existingIndex } + command.entry).toImmutableList()
+                        // Move the matching occurrence to the top, updating its payload but retaining identity
+                        (baseStack.filterIndexed { index, _ -> index != existingIndex } +
+                            (if (command.entry.scopeId == baseStack[existingIndex].scopeId)
+                                command.entry.withIdentityOf(baseStack[existingIndex]) else command.entry)).toImmutableList()
                     } else {
                         // Entry doesn't exist, add it
                         (baseStack + command.entry).toImmutableList()
@@ -125,6 +127,12 @@ class NavigationHandler() {
                 state.copy(backStack = finalStack.toImmutableList())
             }
 
+            is NavigationCommand.ConsumeResult -> {
+                state.copy(backStack = state.backStack.map { entry ->
+                    if (entry.id == command.entryId) entry.copy(results = entry.results - command.key) else entry
+                }.toImmutableList())
+            }
+
             is NavigationCommand.ReplaceRoot -> {
                 state.copy(backStack = persistentListOf(command.entry))
             }
@@ -171,6 +179,10 @@ class NavigationHandler() {
  */
 sealed interface NavigationCommand {
 
+    /** Removes one result from a specific occurrence; does not navigate or animate. */
+    data class ConsumeResult(val entryId: String, val key: String) : NavigationCommand
+
+
     /**
      * Navigate to a destination.
      *
@@ -185,8 +197,9 @@ sealed interface NavigationCommand {
      * [popUpTo] is also removed.
      *
      * @param reuseIfExists If true and a destination with the same ID
-     * already exists in the stack, reuses that entry instead of
-     * adding a new one.
+     * already exists in the stack, moves the last matching occurrence to the top and updates
+     * its payload. Its identity (and UI state) is retained when the scope is unchanged;
+     * explicitly supplying a different scope starts new ownership.
      */
     data class Navigate(
         val entry: BackStackEntry,
