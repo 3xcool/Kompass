@@ -43,6 +43,7 @@ Perfect for applications that need robust, scalable, and testable navigation wit
 * [Installation](#installation)
 * [Quick Start](#quick-start)
 * [Navigation Commands](#navigation-commands)
+* [Back handling and predictive Back](#back-handling-and-predictive-back)
 * [Navigation Scopes](#navigation-scopes)
 * [Navigation Results](#navigation-results)
 * [Custom Layouts & Transitions](#custom-layouts--transitions)
@@ -195,6 +196,98 @@ fun HomeScreen(navController: NavController) {
     }
 }
 ```
+
+## Back handling and predictive Back
+
+Use one handler for each back action on a controller. On every supported target,
+`KompassPredictiveBackHandler(navController)` replaces the `KompassBackHandler` that performs
+that controller's pop. Do not enable both for the same action: they compete to handle the same
+system back event.
+
+| API | Use |
+| --- | --- |
+| `KompassBackHandler` | Handle an ordinary back event with your own `onBack` callback; also accepts a `BackPressedChannel`. |
+| `KompassPredictiveBackHandler` | Connect platform back events to a `NavController`; manages preview progress, commits a pop, and handles cancellation. |
+| `PlatformPredictiveBackHandler` | Low-level platform callbacks (`onStart`, `onProgress`, `onCommit`, `onCancel`). Use for custom integration; it does not pop a controller by itself. |
+| `PlatformBackHandler` | Deprecated. It never received a native event on iOS or on the web, so it only worked there through a `BackPressedChannel`. Replace each call with `KompassBackHandler`, which keeps the same parameters. |
+
+### Setup
+
+In your graph, select the predictive layout:
+
+```kotlin
+// Inside MainNavigationGraph:
+override val sceneLayout: SceneLayout = SceneLayoutPredictive()
+```
+
+It uses the target graph's `sceneTransition`, or the default transition. Pass
+`SceneLayoutPredictive(transition = myTransition)` to override it. Without a seekable layout,
+the handler still performs the pop, but the screen does not follow the gesture.
+
+Install the controller-aware handler beside the host:
+
+```kotlin
+@Composable
+fun AppNavigation(onDismiss: () -> Unit) {
+    val navController = rememberNavController(MainDestination.Home)
+
+    KompassPredictiveBackHandler(navController)
+
+    // Optional: leave this flow when its stack reaches the root.
+    // The predictive handler disables itself there, so these handlers are mutually exclusive.
+    KompassBackHandler(enabled = !navController.canGoBack()) {
+        onDismiss()
+    }
+
+    KompassNavigationHost(
+        navController = navController,
+        graphs = persistentListOf(MainNavigationGraph()),
+    )
+}
+```
+
+Omit the root handler to leave root back behavior to Android. Enable predictive Back in the
+Android app manifest, as the sample app does:
+
+```xml
+<application
+    android:enableOnBackInvokedCallback="true"
+    ... />
+```
+
+During a gesture, the previous entry is previewed without changing the back stack. Committing
+pops through the normal controller path. Cancelling returns to the current screen without
+popping or clearing its navigation scope. `navController.predictiveBack` exposes `progress`,
+`targetEntryId`, and `isActive` for custom gesture visuals.
+
+### Platform support
+
+- **Android API 34+:** streams the system back gesture, including progress and cancellation.
+- **Earlier Android versions:** handles an ordinary back press without streamed progress.
+- **iOS:** uses the native Compose edge-swipe dispatcher, including progress and cancellation.
+  Keep back gestures enabled in `ComposeUIViewController` (do not set `enableBackGesture = false`).
+- **Desktop and web:** `SceneLayoutPredictive` supports a primary mouse or touch drag starting in
+  the leftmost **24 dp** of the navigation area. Release beyond **35%** of its width or swipe
+  forward quickly to commit; drag back to cancel. Vertical drags and taps keep their normal behavior.
+  **ESC** performs an ordinary animated back through the Compose window's dispatcher.
+
+The same handler and graph setup works across targets. On desktop, let the Compose `Window`
+receive ESC: remove custom key handlers that consume it or forward it into `BackPressedChannel`.
+`KompassBackHandler` still accepts that channel for separate host-defined events;
+`KompassPredictiveBackHandler` does not consume the channel.
+
+Web edge drags apply to the Kompass navigation area. They do **not** synchronize the browser's
+History API, address bar, toolbar Back button, or browser-owned trackpad gestures. A host with
+browser-history routing must integrate those events separately and avoid navigating twice.
+
+The low-level `PlatformPredictiveBackHandler` receives native/dispatcher events. To obtain the
+in-content desktop/web drag automatically, pair `KompassPredictiveBackHandler` with
+`SceneLayoutPredictive`. Reaching 100% preview still does not pop until the gesture commits.
+Disabling or removing a handler cancels its active preview.
+
+See [Sample 9](samples/src/commonMain/kotlin/com/tekmoon/samples/NavSample9PredictiveBack.kt)
+for the gesture demo and root-handler setup. The desktop sample uses the window's native ESC
+handling without a forwarding channel.
 
 ## Navigation Commands
 
@@ -720,7 +813,9 @@ sceneLayout. A null transition uses the target graph's sceneTransition, then the
 Keep this layout mounted while adjusting progress. Source and target owners remain available
 while their content is composed. Payload/result updates do not restart progress. This API
 controls the visual transition after navigation has committed; moving back to zero does not
-undo the command. Platform gestures and predictive Back are not included.
+undo the command. For platform-driven predictive Back before navigation commits, use
+`SceneLayoutPredictive` with `KompassPredictiveBackHandler`; see
+[Back handling and predictive Back](#back-handling-and-predictive-back).
 
 The implementation uses Compose's
 [SeekableTransitionState](https://developer.android.com/reference/kotlin/androidx/compose/animation/core/SeekableTransitionState).

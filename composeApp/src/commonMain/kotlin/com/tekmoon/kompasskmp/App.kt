@@ -28,14 +28,9 @@ fun App(
     backPressedChannel: BackPressedChannel? = null
 ) {
     MaterialTheme {
-        // See basic samples
-//        KompassNavSample(
-//            backPressedChannel = backPressedChannel
-//        )
-
-        Sample8_ExpenseTracker(
-            backPressedChannel = backPressedChannel,
-            onDismiss = {}
+        // Basic samples
+        KompassNavSample(
+            backPressedChannel = backPressedChannel
         )
     }
 }

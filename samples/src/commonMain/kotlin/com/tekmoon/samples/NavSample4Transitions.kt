@@ -22,7 +22,7 @@ import com.tekmoon.kompass.NavDirection
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationScopeId
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.SceneTransition
 import com.tekmoon.kompass.rememberNavController
 import com.tekmoon.kompass.rememberScoped
@@ -154,7 +154,7 @@ fun Sample4_PerGraphTransitions(
         previousState.value = navController.state
     }
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan{

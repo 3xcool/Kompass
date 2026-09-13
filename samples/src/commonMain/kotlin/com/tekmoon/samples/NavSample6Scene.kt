@@ -13,7 +13,7 @@ import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.SceneLayoutListDetail
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.TypedDestination
 import com.tekmoon.kompass.navigateTo
 import com.tekmoon.kompass.newScope
@@ -103,7 +103,7 @@ fun Sample6_ListDetail(
 
     val navController = rememberNavController(Sample6Dest.List)
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan {

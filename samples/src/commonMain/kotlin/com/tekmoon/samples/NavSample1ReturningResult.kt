@@ -4,7 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.BackStackEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.NavigationGraph
@@ -77,7 +77,7 @@ fun Sample1_ResultNavigation(
         serializersModule = navigationSerializersModule
     )
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan{

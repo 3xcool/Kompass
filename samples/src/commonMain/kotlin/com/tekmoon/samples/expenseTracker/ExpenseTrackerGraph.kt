@@ -210,7 +210,7 @@ fun ExpenseTrackerApp(
 ) {
     val navController = rememberNavController(ExpenseTrackerDest.ClientsList)
 
-    PlatformBackHandler(backPressedChannel = backPressedChannel) {
+    KompassBackHandler(backPressedChannel = backPressedChannel) {
         navController.popIfCan { onDismiss() }
     }
 

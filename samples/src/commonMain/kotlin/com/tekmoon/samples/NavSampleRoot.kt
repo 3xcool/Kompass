@@ -15,7 +15,7 @@ import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationGraph
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.rememberNavController
 import com.tekmoon.kompass.toBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
@@ -31,7 +31,8 @@ private enum class KompassSampleDestinations : Destination {
     Sample5Deeplink,
     Sample6Scene,
     Sample7AuthLogin,
-    Sample8ExpenseTrackerAuthLogin;
+    Sample8ExpenseTrackerAuthLogin,
+    Sample9PredictiveBack;
 
     override val id: String
         get() = "kompass/$name"
@@ -137,6 +138,15 @@ private data class KompassNavSampleGraph(
                     }
                 )
             }
+
+            KompassSampleDestinations.Sample9PredictiveBack -> {
+                Sample9_PredictiveBack(
+                    backPressedChannel = backPressedChannel,
+                    onDismiss = {
+                        navController.popIfCan()
+                    }
+                )
+            }
         }
     }
 
@@ -151,7 +161,7 @@ fun KompassNavSample(
 
     val navController = rememberNavController(KompassSampleDestinations.SampleList)
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan()

@@ -13,7 +13,7 @@ import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationScopeId
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
 import com.tekmoon.kompass.rememberNavController
 import com.tekmoon.kompass.rememberScoped
@@ -106,7 +106,7 @@ fun Sample3_WithScope(
 
     val navController = rememberNavController(Sample3Dest.First)
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan{

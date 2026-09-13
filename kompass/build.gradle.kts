@@ -25,7 +25,11 @@ kotlin {
     jvm()
 
     wasmJs {
-        browser()
+        browser {
+            testTask {
+                useKarma { useChromeHeadless() }
+            }
+        }
     }
 
     listOf(
@@ -52,6 +56,7 @@ kotlin {
 
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)
+                implementation(libs.compose.navigationevent)
                 implementation(libs.compose.runtimeSaveable)
                 api(libs.androidx.lifecycle.viewmodelCompose)
                 api(libs.androidx.lifecycle.runtimeCompose)
