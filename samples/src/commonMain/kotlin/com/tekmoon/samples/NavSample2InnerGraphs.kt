@@ -3,7 +3,7 @@ package com.tekmoon.samples
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.BackStackEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.NavigationGraph
@@ -100,7 +100,7 @@ fun Sample2_InnerGraphs_SameScopeId(
     val navController = rememberNavController(startDestination = MainDestination.Home)
 
     // Always enabled to avoid closing the app
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan {

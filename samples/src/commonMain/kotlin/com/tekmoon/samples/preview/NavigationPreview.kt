@@ -26,10 +26,7 @@ import com.tekmoon.kompass.rememberNavController
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
-import org.jetbrains.compose.ui.tooling.preview.Preview
-
-
-//import org.jetbrains.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.tooling.preview.Preview
 
 /* -------------------- Fake Destinations -------------------- */
 

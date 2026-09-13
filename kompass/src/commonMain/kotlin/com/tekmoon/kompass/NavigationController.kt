@@ -79,6 +79,15 @@ class NavController internal constructor(
     var direction: NavDirection by mutableStateOf(NavDirection.Push)
         private set
 
+    /**
+     * Visual state of an unfinished Back gesture.
+     *
+     * This is UI state, not navigation state. It never enters [NavigationState] and
+     * [saveNavigationState] never writes it. Feed it with [KompassPredictiveBackHandler] and render
+     * it with [SceneLayoutPredictive].
+     */
+    val predictiveBack: PredictiveBackState = PredictiveBackState()
+
     init {
         navState.value.requireValid()
         entryOwners.reconcile(navState.value.backStack)

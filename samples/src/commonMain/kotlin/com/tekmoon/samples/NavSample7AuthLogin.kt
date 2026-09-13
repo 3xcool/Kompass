@@ -8,7 +8,7 @@ import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationGraph
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
 import com.tekmoon.kompass.rememberNavController
 import com.tekmoon.kompass.toBackStackEntry
@@ -89,7 +89,7 @@ fun Sample7_AuthLogin(
         startDestination = LoginDestination.Email
     )
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel
     ) {
         navController.popIfCan {
