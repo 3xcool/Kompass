@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sample10_home_title">Shared element transition</string>
+    <string name="sample10_home_body">Open the card to follow the artwork and title between screens.</string>
+    <string name="sample10_detail_title">Visual atlas</string>
+    <string name="sample10_detail_heading">Visual atlas — detail</string>
+    <string name="sample10_detail_body">The content changes while shared elements preserve spatial continuity.</string>
+    <string name="sample10_open">Open details</string>
+    <string name="sample10_back">Back</string>
+    <string name="sample10_monogram">K</string>
+</resources>

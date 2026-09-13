@@ -850,6 +850,58 @@ undo the command. For platform-driven predictive Back before navigation commits,
 The implementation uses Compose's
 [SeekableTransitionState](https://developer.android.com/reference/kotlin/androidx/compose/animation/core/SeekableTransitionState).
 
+## Shared element transitions
+
+`KompassSharedTransitionHost` is the opt-in counterpart of `KompassNavigationHost`. It creates one
+Compose `SharedTransitionScope` around the navigation host, so outgoing and incoming destinations
+can match the same shared-content key. The built-in animated single-pane, list-detail, seekable and
+predictive layouts expose the `AnimatedVisibilityScope` from each animated content slot to its
+destination content.
+
+```kotlin
+@OptIn(
+    ExperimentalKompassSharedTransitionApi::class,
+    ExperimentalSharedTransitionApi::class,
+)
+@Composable
+fun App() {
+    val navController = rememberNavController(Home)
+
+    KompassSharedTransitionHost(
+        navController = navController,
+        graphs = persistentListOf(AppGraph),
+    )
+}
+```
+
+Read both scopes in each destination and give matching content the same key:
+
+```kotlin
+val sharedTransitionScope = LocalKompassSharedTransitionScope.current
+val animatedVisibilityScope = LocalKompassAnimatedVisibilityScope.current
+
+with(requireNotNull(sharedTransitionScope)) {
+    Image(
+        painter = image,
+        contentDescription = null,
+        modifier = Modifier.sharedElement(
+            sharedContentState = rememberSharedContentState("hero:$itemId"),
+            animatedVisibilityScope = requireNotNull(animatedVisibilityScope),
+        ),
+    )
+}
+```
+
+The regular `KompassNavigationHost` leaves the shared-transition scope null and has no additional
+layout cost. `SceneLayoutSinglePane` is static and therefore supplies no animated-visibility scope.
+For a custom animated layout, provide `LocalKompassAnimatedVisibilityScope` around
+`NavigationGraph.Content` from the `AnimatedContent` content lambda. See
+`Sample10_SharedElementTransition` for `sharedElement`, `sharedBounds`, forward navigation and pop.
+
+The underlying API is experimental in Compose, so Kompass marks this integration with
+`ExperimentalKompassSharedTransitionApi` as well. Modifier ordering, clipping and overlays follow
+the [Compose shared element guidance](https://developer.android.com/develop/ui/compose/animation/shared-elements).
+
 ### API compatibility for these additions
 
 Existing constructor/helpers and direction-only transition implementations remain usable from
