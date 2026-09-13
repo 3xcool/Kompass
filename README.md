@@ -590,6 +590,18 @@ fun testPopCommand() {
 
 ## Configuration & Customization
 
+### iOS Signing
+
+Create the local Xcode configuration before opening the iOS project:
+
+```bash
+cp iosApp/Configuration/Config.xcconfig.template \
+   iosApp/Configuration/Config.xcconfig
+```
+
+Set `TEAM_ID` in `Config.xcconfig` to your Apple Developer Team ID when signing for a device.
+The simulator does not require a Team ID. The local file is ignored by Git.
+
 ### Custom Serialization
 
 Register custom serializers for destination arguments:

@@ -17,3 +17,7 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Holds the local Apple Team ID, which is personal to each machine.
+# Copy iosApp/Configuration/Config.xcconfig.template and set TEAM_ID.
+iosApp/Configuration/Config.xcconfig
