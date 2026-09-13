@@ -937,8 +937,11 @@ not overwrite the last direction. Recomposition no longer changes the direction.
 Existing `SceneTransition.transition(direction)` implementations remain supported. Override
 `transition(context: SceneTransitionContext)` to inspect source/target entries, including their
 destination IDs and arguments. Built-in animated layouts supply this context. Custom layouts
-can use `entryTransition(direction, transition)`; the generic directionalTransition helper
-remains available for direction-only use.
+can use `entryTransition(direction, transition)` or the destination-aware overload
+`entryTransition(direction, resolve, transition)`. `SceneLayoutListDetail` uses an explicit
+transition when one is supplied; otherwise it falls back to the target graph's transition and
+then the default. The generic directionalTransition helper remains available for direction-only
+use.
 
 For controlled visual progress, select `SceneLayoutSeekable(progress, transition)` as the graph's
 sceneLayout. A null transition uses the target graph's sceneTransition, then the default.
