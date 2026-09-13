@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalKompassSharedTransitionApi::class)
+
 package com.tekmoon.kompass
 
 import androidx.compose.animation.AnimatedContent
@@ -6,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.SeekableTransitionState
 import androidx.compose.animation.core.rememberTransition
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -96,7 +99,9 @@ internal fun SeekableScene(
             onDispose { rendered.remove(id) }
         }
         val (graph, destination) = resolve(entry)
-        graph.Content(entry, destination, navController)
+        CompositionLocalProvider(LocalKompassAnimatedVisibilityScope provides this) {
+            graph.Content(entry, destination, navController)
+        }
     }
     SideEffect {
         entries.keys.retainAll(backStack.map { it.id }.toSet() + rendered + seekable.currentState + seekable.targetState)

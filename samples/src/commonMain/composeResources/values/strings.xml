@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sample10_home_title">Transição de elemento compartilhado</string>
+    <string name="sample10_home_body">Abra o cartão para acompanhar a arte e o título entre as telas.</string>
+    <string name="sample10_detail_title">Atlas visual</string>
+    <string name="sample10_detail_body">O conteúdo muda, mas os elementos compartilhados preservam a continuidade espacial.</string>
+    <string name="sample10_open">Abrir detalhes</string>
+    <string name="sample10_back">Voltar</string>
+    <string name="sample10_monogram">K</string>
+</resources>

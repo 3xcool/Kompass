@@ -32,7 +32,8 @@ private enum class KompassSampleDestinations : Destination {
     Sample6Scene,
     Sample7AuthLogin,
     Sample8ExpenseTrackerAuthLogin,
-    Sample9PredictiveBack;
+    Sample9PredictiveBack,
+    Sample10SharedElementTransition;
 
     override val id: String
         get() = "kompass/$name"
@@ -141,6 +142,15 @@ private data class KompassNavSampleGraph(
 
             KompassSampleDestinations.Sample9PredictiveBack -> {
                 Sample9_PredictiveBack(
+                    backPressedChannel = backPressedChannel,
+                    onDismiss = {
+                        navController.popIfCan()
+                    }
+                )
+            }
+
+            KompassSampleDestinations.Sample10SharedElementTransition -> {
+                Sample10_SharedElementTransition(
                     backPressedChannel = backPressedChannel,
                     onDismiss = {
                         navController.popIfCan()

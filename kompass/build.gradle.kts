@@ -56,6 +56,7 @@ kotlin {
 
                 implementation(libs.compose.runtime)
                 implementation(libs.compose.foundation)
+                api(libs.compose.animation)
                 implementation(libs.compose.navigationevent)
                 implementation(libs.compose.runtimeSaveable)
                 api(libs.androidx.lifecycle.viewmodelCompose)
