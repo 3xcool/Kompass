@@ -216,3 +216,19 @@ fun entryTransition(
 ): AnimatedContentTransitionScope<BackStackEntry>.() -> ContentTransform = {
     transition.transition(SceneTransitionContext(initialState, targetState, direction))
 }
+
+/**
+ * Adapts a destination-aware transition selection to [AnimatedContent].
+ *
+ * The selected transition is still responsible for both enter and exit motion. The resolver only
+ * decides which transition describes the current source/target pair.
+ */
+fun entryTransition(
+    direction: NavDirection,
+    resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
+    transition: SceneTransition? = null,
+): AnimatedContentTransitionScope<BackStackEntry>.() -> ContentTransform = {
+    val context = SceneTransitionContext(initialState, targetState, direction)
+    (transition ?: resolve(targetState).first.sceneTransition ?: SceneTransitionDefault())
+        .transition(context)
+}

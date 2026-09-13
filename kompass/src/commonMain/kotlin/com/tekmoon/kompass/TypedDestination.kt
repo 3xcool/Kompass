@@ -76,15 +76,27 @@ fun <T : Any> TypedDestination<T>.encodeArgs(args: T, json: Json): ArgsJson =
  * Decodes args from a [BackStackEntry] for this typed destination.
  *
  * Returns `null` if the entry has no args attached.
+ *
+ * Throws [IllegalArgumentException] if the entry belongs to another destination.
  */
 fun <T : Any> TypedDestination<T>.argsOrNull(entry: BackStackEntry, json: Json): T? =
-    entry.args?.let { json.decodeFromString(argsSerializer, it) }
+    entry.args?.let {
+        entry.requireDestination(this)
+        json.decodeFromString(argsSerializer, it)
+    }
+
+private fun <T : Any> BackStackEntry.requireDestination(destination: TypedDestination<T>) {
+    require(destinationId == destination.id) {
+        "Entry destination '$destinationId' does not match typed destination '${destination.id}'."
+    }
+}
 
 /**
  * Decodes args from a [BackStackEntry] for this typed destination.
  *
  * Throws [IllegalStateException] if no args are attached. Prefer this when the
  * destination contractually requires arguments (the common case).
+ * Throws [IllegalArgumentException] if the entry belongs to another destination.
  */
 fun <T : Any> TypedDestination<T>.argsFrom(entry: BackStackEntry, json: Json): T =
     argsOrNull(entry, json)
@@ -101,12 +113,14 @@ fun <T : Any> TypedDestination<T>.toBackStackEntry(
     json: Json,
     scopeId: NavigationScopeId = defaultScope(),
     pendingResultKey: String? = null,
+    metadata: Map<String, String> = emptyMap(),
 ): BackStackEntry =
     BackStackEntry(
         destinationId = id,
         args = encodeArgs(args, json),
         scopeId = scopeId,
         pendingResultKey = pendingResultKey,
+        metadata = metadata,
     )
 
 // ----------------------------------------------------------------------------
@@ -125,6 +139,7 @@ fun <T : Any> TypedDestination<T>.toBackStackEntry(
  * @param scopeId Optional scope override. Defaults to the destination's [defaultScope].
  * @param pendingResultKey Optional key for [NavigationResult] return when this
  * entry is later popped.
+ * @param metadata Presentation hints for the shell.
  * @param clearBackStack Whether to clear the back stack before navigating.
  * @param popUpTo Optional destination ID to pop up to before navigating.
  * @param popUpToInclusive Whether to also remove [popUpTo] itself.
@@ -139,12 +154,14 @@ fun <T : Any> NavController.navigateTo(
     popUpTo: String? = null,
     popUpToInclusive: Boolean = false,
     reuseIfExists: Boolean = false,
+    metadata: Map<String, String> = emptyMap(),
 ) {
     val entry = destination.toBackStackEntry(
         args = args,
         json = json,
         scopeId = scopeId,
         pendingResultKey = pendingResultKey,
+        metadata = metadata,
     )
     navigate(
         entry = entry,
@@ -179,12 +196,14 @@ fun <T : Any> NavController.replaceStackTo(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
+    metadata: Map<String, String> = emptyMap(),
 ) {
     replaceStack(
         destination.toBackStackEntry(
             args = args,
             json = json,
             scopeId = scopeId,
+            metadata = metadata,
         )
     )
 }
@@ -245,9 +264,11 @@ fun <T : Any> NavController.toBackStackEntry(
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
     pendingResultKey: String? = null,
+    metadata: Map<String, String> = emptyMap(),
 ): BackStackEntry = destination.toBackStackEntry(
     args = args,
     json = json,
     scopeId = scopeId,
     pendingResultKey = pendingResultKey,
+    metadata = metadata,
 )

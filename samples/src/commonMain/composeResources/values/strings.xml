@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="sample_list_title">Exemplos do Kompass</string>
+    <string name="sample_list_returning_result">Resultado retornado</string>
+    <string name="sample_list_inner_graphs">Grafos internos</string>
+    <string name="sample_list_scope">Escopos</string>
+    <string name="sample_list_transitions">Transições</string>
+    <string name="sample_list_deeplink">Deep link</string>
+    <string name="sample_list_scene">Cena</string>
+    <string name="sample_list_auth_login">Autenticação</string>
+    <string name="sample_list_expense_tracker_auth_login">Autenticação do controle de despesas</string>
+    <string name="sample_list_predictive_back">Voltar preditivo</string>
+    <string name="sample_list_shared_element_transition">Transição de elemento compartilhado</string>
+    <string name="sample_list_tabs">Abas</string>
     <string name="sample10_home_title">Transição de elemento compartilhado</string>
     <string name="sample10_home_body">Abra o cartão para acompanhar a arte e o título entre as telas.</string>
     <string name="sample10_detail_title">Atlas visual</string>
@@ -8,4 +20,14 @@
     <string name="sample10_open">Abrir detalhes</string>
     <string name="sample10_back">Voltar</string>
     <string name="sample10_monogram">K</string>
+    <string name="sample11_tab_home">Início</string>
+    <string name="sample11_tab_search">Busca</string>
+    <string name="sample11_tab_profile">Perfil</string>
+    <string name="sample11_visits">Visitas a esta aba: %1$d</string>
+    <string name="sample11_open_detail">Abrir detalhe</string>
+    <string name="sample11_back">Voltar</string>
+    <string name="sample11_detail">Detalhe dentro da aba</string>
+    <string name="sample11_stack">Pilha: %1$s</string>
+    <string name="sample11_model_reorder">Reordenar</string>
+    <string name="sample11_model_per_tab">Pilha por aba</string>
 </resources>

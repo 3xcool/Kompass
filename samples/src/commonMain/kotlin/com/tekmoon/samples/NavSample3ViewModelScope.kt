@@ -1,8 +1,8 @@
 package com.tekmoon.samples
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -141,15 +141,15 @@ private fun FirstScreen(
     }
 
     Column {
-        BasicText("First screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("First screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen counter")
+            Text("Inc screen counter")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared counter")
+            Text("Inc shared counter")
         }
 
         Button(onClick = {
@@ -160,7 +160,7 @@ private fun FirstScreen(
                 )
             )
         }) {
-            BasicText("Go to Second")
+            Text("Go to Second")
         }
     }
 }
@@ -179,19 +179,19 @@ private fun SecondScreen(
     }
 
     Column {
-        BasicText("Second screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("Second screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen counter")
+            Text("Inc screen counter")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared counter")
+            Text("Inc shared counter")
         }
 
         Button(onClick = { navController.pop() }) {
-            BasicText("Pop")
+            Text("Pop")
         }
     }
 }

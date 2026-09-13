@@ -1,7 +1,7 @@
 package com.tekmoon.samples
 
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.BackStackEntry
@@ -131,7 +131,7 @@ private fun MainHome(
             )
         )
     }) {
-        BasicText("Open Feature")
+        Text("Open Feature")
     }
 }
 
@@ -147,7 +147,7 @@ private fun MainFeature(
             )
         )
     }) {
-        BasicText("Start Feature Flow")
+        Text("Start Feature Flow")
     }
 }
 
@@ -163,7 +163,7 @@ private fun StepOne(
             )
         )
     }) {
-        BasicText("Next")
+        Text("Next")
     }
 }
 
@@ -174,6 +174,6 @@ private fun StepTwo(
     Button(onClick = {
         navController.pop()
     }) {
-        BasicText("Finish")
+        Text("Finish")
     }
 }

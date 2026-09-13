@@ -1,7 +1,7 @@
 package com.tekmoon.samples
 
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.tekmoon.kompass.BackStackEntry
 import com.tekmoon.kompass.Destination
@@ -130,7 +130,7 @@ private fun LoginEmailScreen(
             )
         }
     ) {
-        BasicText("Next (Email)")
+        Text("Next (Email)")
     }
 }
 
@@ -151,12 +151,12 @@ private fun LoginPasswordScreen(
             )
         }
     ) {
-        BasicText("Login")
+        Text("Login")
     }
 }
 
 
 @Composable
 private fun MockedAppScreen() {
-    BasicText("🏠 App Home")
+    Text("🏠 App Home")
 }

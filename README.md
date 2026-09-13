@@ -44,6 +44,8 @@ Perfect for applications that need robust, scalable, and testable navigation wit
 * [Quick Start](#quick-start)
 * [Navigation Commands](#navigation-commands)
 * [Back handling and predictive Back](#back-handling-and-predictive-back)
+* [Presentation metadata](#presentation-metadata)
+* [Tabs, and the two models](#tabs-and-the-two-models)
 * [Navigation Scopes](#navigation-scopes)
 * [Navigation Results](#navigation-results)
 * [Custom Layouts & Transitions](#custom-layouts--transitions)
@@ -126,25 +128,27 @@ sealed interface MainDestination : Destination {
     data object Settings : MainDestination {
         override val id: String = "settings"
     }
+
+    companion object {
+        val entries = listOf(Home, Profile, Settings)
+    }
 }
 ```
+
+Each destination is its own type, which is what [typed navigation](#typed-navigation) builds on. An
+`enum class MainDestination(override val id: String)` works the same way and is shorter, when no
+destination carries arguments.
 
 ### 2. Create a Navigation Graph
 
 ```kotlin
-class MainNavigationGraph : NavigationGraph {
-    override fun canResolveDestination(destinationId: String): Boolean =
-        destinationId in setOf("home", "profile", "settings")
+object MainNavigationGraph : NavigationGraph {
 
-    override fun resolveDestination(
-        destinationId: String,
-        args: String?
-    ): Destination = when (destinationId) {
-        "home" -> MainDestination.Home
-        "profile" -> MainDestination.Profile
-        "settings" -> MainDestination.Settings
-        else -> error("Unknown destination: $destinationId")
-    }
+    override fun canResolveDestination(destinationId: String): Boolean =
+        MainDestination.entries.any { it.id == destinationId }
+
+    override fun resolveDestination(destinationId: String, args: String?): Destination =
+        MainDestination.entries.first { it.id == destinationId }
 
     @Composable
     override fun Content(
@@ -152,7 +156,8 @@ class MainNavigationGraph : NavigationGraph {
         destination: Destination,
         navController: NavController
     ) {
-        when (destination) {
+        // Cast once, and the when stays exhaustive: the compiler catches a destination you forgot.
+        when (destination as MainDestination) {
             is MainDestination.Home -> HomeScreen(navController)
             is MainDestination.Profile -> ProfileScreen(navController)
             is MainDestination.Settings -> SettingsScreen(navController)
@@ -160,6 +165,9 @@ class MainNavigationGraph : NavigationGraph {
     }
 }
 ```
+
+Each destination is written twice: once in the sealed hierarchy, once in the `when`. The other two
+overrides read `entries`, so they never change again.
 
 ### 3. Setup Navigation Host
 
@@ -172,7 +180,7 @@ fun AppNavigation() {
 
     KompassNavigationHost(
         navController = navController,
-        graphs = persistentListOf(MainNavigationGraph())
+        graphs = persistentListOf(MainNavigationGraph)
     )
 }
 ```
@@ -183,19 +191,16 @@ fun AppNavigation() {
 @Composable
 fun HomeScreen(navController: NavController) {
     Button(
-        onClick = {
-            navController.navigate(
-                entry = BackStackEntry(
-                    destinationId = "profile",
-                    scopeId = newScope()
-                )
-            )
-        }
+        onClick = { navController.navigate(MainDestination.Profile.toBackStackEntry()) }
     ) {
         Text("Go to Profile")
     }
 }
 ```
+
+`toBackStackEntry` takes the ID from the destination and gives the entry its own scope, so you never
+repeat the string. Build a `BackStackEntry` by hand only when the destination ID arrives at runtime,
+from a server payload or a deep link.
 
 ## Back handling and predictive Back
 
@@ -241,7 +246,7 @@ fun AppNavigation(onDismiss: () -> Unit) {
 
     KompassNavigationHost(
         navController = navController,
-        graphs = persistentListOf(MainNavigationGraph()),
+        graphs = persistentListOf(MainNavigationGraph),
     )
 }
 ```
@@ -357,6 +362,86 @@ occurrence at each level, the same as it does for `navigate`. The list must not 
 
 `replaceRoot`, `NavigationCommand.ReplaceRoot` and `replaceRootTo` are deprecated in 2.0.0. Each has
 a `replaceStack` counterpart with the same behaviour, and they come out in a later release.
+
+## Presentation metadata
+
+`args` says **what** the screen receives. `metadata` says **how** the shell shows it. Keep the two
+apart: `args` belongs to the screen, `metadata` belongs to whoever draws around it.
+
+```kotlin
+navController.navigate(
+    Profile.toBackStackEntry(
+        args = """{"userId":"123"}""",
+        metadata = mapOf("presentation" to "sheet"),
+    )
+)
+```
+
+A layout then reads the hint instead of matching on `destinationId`, so the shell never learns the
+names of the destinations a feature module owns:
+
+```kotlin
+override fun Render(backStack, resolve, navController, direction) {
+    val top = backStack.last()
+    when (top.metadata["presentation"]) {
+        "sheet" -> SheetScene(top, resolve, navController)
+        else -> SinglePaneScene(top, resolve, navController)
+    }
+}
+```
+
+Values are strings because the whole entry crosses the wire. A server payload, a multi-level deep
+link and a session restored from `saveNavigationState` can all set a hint, exactly as they set
+`args`. Kompass never reads a hint itself. It carries it, serialises it with the state, and keeps it
+through `copy`, through a new occurrence and through `reuseIfExists` — where the hint of the
+incoming `navigate` call wins, because that caller decides how the destination appears.
+
+Key names are yours. Kompass defines none.
+
+## Tabs, and the two models
+
+Two different products hide behind the word "tabs". Decide which one you are building first.
+
+### Reorder model — one controller
+
+Tapping a tab moves its entry to the top. Back then walks the visit history across tabs, so it never
+lies about where the user came from. This is what YouTube and Instagram do. The whole bottom bar is
+one line:
+
+```kotlin
+onClick = { navController.navigate(tab.toBackStackEntry(), reuseIfExists = true) }
+```
+
+`reuseIfExists` retains the occurrence ID, so the moved entry keeps its ViewModel and its
+`rememberSaveable` state. Its limit: it moves **one entry, not a segment**. `Home → Profile →
+ProfileDetail`, then tab Home, then tab Profile lands on `Profile`, not back on `ProfileDetail`. That
+is correct for this model.
+
+### Per-tab model — one controller for each tab
+
+Every tab keeps its own depth. Create each controller outside composition with `createNavController`,
+give each tab **its own host**, and compose only the active one:
+
+```kotlin
+val controllers = remember { tabs.associateWith { createNavController(it) } }
+DisposableEffect(controllers) {
+    // An externally owned controller is released by close(), never by leaving composition.
+    onDispose { controllers.values.forEach { it.close() } }
+}
+
+controllers.forEach { (tab, controller) ->
+    if (tab == active) KompassNavigationHost(controller, graphs)
+}
+```
+
+An inactive tab keeps its stack, its ViewModels and its UI state while its host is unmounted.
+
+> **Do not write one host and swap its `navController`.** That is not the same as unmounting a host.
+> Changing the controller of a mounted host reconciles the outgoing controller's entry owners away
+> and clears its ViewModels. `TabNavigationTest` proves both halves of this.
+
+See [Sample 11](samples/src/commonMain/kotlin/com/tekmoon/samples/NavSample11Tabs.kt), which switches
+between the two models, counts visits per tab, and prints the stack so the Back history is visible.
 
 ## Navigation Scopes
 
@@ -498,34 +583,56 @@ override val sceneLayout: SceneLayout = object : SceneLayout {
 
 ## Deep Linking
 
-Resolve deep link URIs to navigation commands:
+A deep link is a URI turned into navigation commands. `PathTemplateDeepLinkHandler` does the parsing:
+
+```kotlin
+val profileLink = PathTemplateDeepLinkHandler("app://profile/{userId}") { match ->
+    listOf(
+        // One command, so a multi-level link applies in one state change and one animation.
+        NavigationCommand.ReplaceStack(
+            listOf(
+                MainDestination.Home.toBackStackEntry(),
+                MainDestination.Profile.toBackStackEntry(args = match.args),
+            )
+        )
+    )
+}
+
+val success = navController.applyDeepLink("app://profile/user123?tab=orders")
+```
+
+`match.args` is a JSON object built from the `{userId}` placeholder and every query parameter, each
+percent-decoded. A path placeholder wins over a query parameter of the same name. The template is
+compared segment by segment: matching is case sensitive, a trailing slash counts, and a fragment is
+ignored.
+
+Never build arguments by joining strings:
+
+```kotlin
+args = """{"userId":"$userId"}"""   // a quote or a backslash in userId breaks the JSON
+```
+
+Use `buildArgs`, which hands the escaping to the serializer and keeps numbers and booleans typed:
+
+```kotlin
+val args = buildArgs {
+    put("userId", userId)
+    put("tab", 2)
+}
+```
+
+`DeepLinkHandler` stays open for anything a template cannot express:
 
 ```kotlin
 interface DeepLinkHandler {
     fun matches(uri: String): Boolean
     fun resolve(uri: String): List<NavigationCommand>
 }
-
-class ProfileDeepLinkHandler : DeepLinkHandler {
-    override fun matches(uri: String): Boolean = uri.startsWith("app://profile/")
-
-    override fun resolve(uri: String): List<NavigationCommand> {
-        val userId = uri.removePrefix("app://profile/")
-        return listOf(
-            NavigationCommand.Navigate(
-                entry = BackStackEntry(
-                    destinationId = "profile",
-                    args = """{"userId":"$userId"}""",
-                    scopeId = newScope()
-                )
-            )
-        )
-    }
-}
-
-// Apply deep link
-val success = navController.applyDeepLink("app://profile/user123")
 ```
+
+Handlers are tried in order and the first match wins, so put the specific templates before the
+general ones. Returning several commands is allowed, but each one publishes its own state and plays
+its own animation — prefer a single `ReplaceStack`.
 
 ## State Serialization
 
@@ -830,8 +937,11 @@ not overwrite the last direction. Recomposition no longer changes the direction.
 Existing `SceneTransition.transition(direction)` implementations remain supported. Override
 `transition(context: SceneTransitionContext)` to inspect source/target entries, including their
 destination IDs and arguments. Built-in animated layouts supply this context. Custom layouts
-can use `entryTransition(direction, transition)`; the generic directionalTransition helper
-remains available for direction-only use.
+can use `entryTransition(direction, transition)` or the destination-aware overload
+`entryTransition(direction, resolve, transition)`. `SceneLayoutListDetail` uses an explicit
+transition when one is supplied; otherwise it falls back to the target graph's transition and
+then the default. The generic directionalTransition helper remains available for direction-only
+use.
 
 For controlled visual progress, select `SceneLayoutSeekable(progress, transition)` as the graph's
 sceneLayout. A null transition uses the target graph's sceneTransition, then the default.

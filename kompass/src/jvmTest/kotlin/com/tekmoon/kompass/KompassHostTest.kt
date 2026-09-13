@@ -513,6 +513,58 @@ class KompassHostTest {
         }
     }
 
+    @Test fun list_detail_uses_the_graph_transition_when_the_layout_has_no_override() = runComposeUiTest {
+        val nav = createNavController(
+            NavigationState(persistentListOf(A.toBackStackEntry(), B.toBackStackEntry()))
+        )
+        val seen = mutableListOf<SceneTransitionContext>()
+        val contextual = object : SceneTransition {
+            override fun transition(context: SceneTransitionContext): androidx.compose.animation.ContentTransform {
+                seen += context
+                return SceneTransitionStatic.transition(context.direction)
+            }
+        }
+        val graph = object : NavigationGraph {
+            override val sceneLayout: SceneLayout = SceneLayoutListDetail()
+            override val sceneTransition: SceneTransition = contextual
+            override fun canResolveDestination(destinationId: String) = true
+            override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
+            @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+                Box(Modifier.size(100.dp)) { BasicText(entry.destinationId) }
+            }
+        }
+        try {
+            setContent { KompassNavigationHost(nav, persistentListOf(graph)) }
+
+            runOnIdle { nav.navigate(A.toBackStackEntry()) }
+            waitForIdle()
+            onAllNodesWithText("a").assertCountEquals(2)
+
+            runOnIdle { nav.pop() }
+            waitForIdle()
+            onNodeWithText("b").assertExists()
+
+            runOnIdle {
+                assertTrue(
+                    seen.any {
+                        it.from.destinationId == "b" && it.to.destinationId == "a" &&
+                            it.direction == NavDirection.Push
+                    },
+                    "SceneLayoutListDetail must use the graph transition on forward navigation",
+                )
+                assertTrue(
+                    seen.any {
+                        it.from.destinationId == "a" && it.to.destinationId == "b" &&
+                            it.direction == NavDirection.Pop
+                    },
+                    "SceneLayoutListDetail must use the graph transition on pop",
+                )
+            }
+        } finally {
+            runOnIdle { nav.close() }
+        }
+    }
+
     @Test fun seekable_progress_moves_both_ways_and_keeps_outgoing_owner_until_completion() = runComposeUiTest {
         lateinit var nav: NavController
         var progress by mutableStateOf<Float?>(0f)

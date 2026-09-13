@@ -138,7 +138,7 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
  */
 data class SceneLayoutListDetail(
     val compactWidthThreshold: Dp = 600.dp,
-    val transition: SceneTransition = SceneTransitionDefault(300)
+    val transition: SceneTransition? = null
 ) : SceneLayout {
 
     @Composable
@@ -160,7 +160,8 @@ data class SceneLayoutListDetail(
                     contentKey = { it.id },
                     transitionSpec = entryTransition(
                         direction = direction,
-                        transition = transition
+                        resolve = resolve,
+                        transition = transition,
                     ),
                     label = "DetailOnly",
 //                    contentKey = { it to it.destinationId }
@@ -200,7 +201,8 @@ data class SceneLayoutListDetail(
                             contentKey = { it.id },
                             transitionSpec = entryTransition(
                                 direction = direction,
-                                transition = transition
+                                resolve = resolve,
+                                transition = transition,
                             ),
                             label = "DetailPane",
 //                            contentKey = { it.destinationId}

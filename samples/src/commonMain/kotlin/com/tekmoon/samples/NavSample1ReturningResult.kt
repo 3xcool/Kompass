@@ -1,8 +1,8 @@
 package com.tekmoon.samples
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.BackStackEntry
@@ -101,7 +101,7 @@ private fun Sample1First(
     val name = (entry.results[navResultKey] as? NameResult)?.name
 
     Column {
-        BasicText("Result: ${name ?: "-"}")
+        Text("Result: ${name ?: "-"}")
 
         Button(onClick = {
 //            navController.navigate(
@@ -118,7 +118,7 @@ private fun Sample1First(
                 )
             )
         }) {
-            BasicText("Open Second")
+            Text("Open Second")
         }
     }
 }
@@ -132,6 +132,6 @@ private fun Sample1Second(
             result = NameResult("Luke Skywalker")
         )
     }) {
-        BasicText("Return Result")
+        Text("Return Result")
     }
 }
