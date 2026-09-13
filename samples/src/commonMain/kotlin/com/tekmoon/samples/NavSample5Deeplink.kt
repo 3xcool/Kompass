@@ -1,9 +1,9 @@
 package com.tekmoon.samples
 
 import com.tekmoon.kompass.BackStackEntry
-import com.tekmoon.kompass.DeepLinkHandler
 import com.tekmoon.kompass.NavigationCommand
 import com.tekmoon.kompass.newScope
+import com.tekmoon.kompass.PathTemplateDeepLinkHandler
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import androidx.compose.foundation.layout.Column
@@ -30,17 +30,17 @@ import kotlinx.collections.immutable.persistentListOf
  * Android:
  * adb shell am start \
  *   -a android.intent.action.VIEW \
- *   -d "myapp://profile?userId=42" \
+ *   -d "myapp://profile/42" \
  *   com.tekmoon.soccos
  *
  * Desktop:
  * For Desktop:
- * ./gradlew :composeApp:run --args="myapp://profile?userId=42"
+ * ./gradlew :composeApp:run --args="myapp://profile/42"
  *
  * On iOS
- * open safari and go to  myapp://profile?userId=42
+ * open safari and go to  myapp://profile/42
  * or via terminal
- * xcrun simctl openurl booted "myapp://profile?userId=42"
+ * xcrun simctl openurl booted "myapp://profile/42"
  */
 
 
@@ -48,11 +48,11 @@ import kotlinx.collections.immutable.persistentListOf
  * Mimic deeplink
  *
  * URI
- * myapp://profile?userId=42
+ * myapp://profile/42
  *
  * adb shell am start \
  *   -a android.intent.action.VIEW \
- *   -d "myapp://profile?userId=42" \
+ *   -d "myapp://profile/42" \
  *   com.tekmoon.soccos
  *
  * What this does:
@@ -61,7 +61,7 @@ import kotlinx.collections.immutable.persistentListOf
  *
  * Passes the URI to the Activity
  *
- * Your app extracts the URI and feeds it into DsDeepLinkRegistry
+ * Your app extracts the URI and feeds it into the Kompass deep-link handler
  *
  * For Android:
  * override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +79,7 @@ import kotlinx.collections.immutable.persistentListOf
  * }
  *
  * For Desktop:
- * ./gradlew :composeApp:run --args="myapp://profile?userId=42"
+ * ./gradlew :composeApp:run --args="myapp://profile/42"
  * fun main(args: Array<String>) {
  *     val deepLinkUri = args.firstOrNull()
  *     launchApp(deepLinkUri)
@@ -119,37 +119,33 @@ private data class ProfileArgs(
 /* -------------------------------------------
  * Deep link
  *
- * Note: a DeepLinkHandler runs without a NavController, so it can't call
+ * PathTemplateDeepLinkHandler parses the URI and gives us the path values. A
+ * deep-link handler runs without a NavController, so it can't call
  * navController.navigateTo. Instead we build entries with the destination's
  * own toBackStackEntry helper, passing a Json instance ourselves.
  * Json.Default works fine for plain @Serializable args; if you need polymorphic
  * args, configure a SerializersModule and pass it here.
  * ------------------------------------------- */
 
-private object ProfileDeepLinkHandler : DeepLinkHandler {
+private val profileDeepLinkHandler = PathTemplateDeepLinkHandler("myapp://profile/{userId}") { match ->
+    val userId = match["userId"] ?: error("Missing userId in deep link")
 
-    override fun matches(uri: String): Boolean = uri.startsWith("myapp://profile")
-
-    override fun resolve(uri: String): List<NavigationCommand> {
-        val userId = uri.substringAfter("userId=")
-
-        // One command applies the whole stack, so the deep link does not flash through Home first.
-        return listOf(
-            NavigationCommand.ReplaceStack(
-                listOf(
-                    BackStackEntry(
-                        destinationId = Sample5Dest.Home.id,
-                        scopeId = newScope()
-                    ),
-                    Sample5Dest.Profile.toBackStackEntry(
-                        args = ProfileArgs(userId),
-                        json = Json,
-                        scopeId = newScope()
-                    )
+    // One command applies the whole stack, so the deep link does not flash through Home first.
+    listOf(
+        NavigationCommand.ReplaceStack(
+            listOf(
+                BackStackEntry(
+                    destinationId = Sample5Dest.Home.id,
+                    scopeId = newScope()
+                ),
+                Sample5Dest.Profile.toBackStackEntry(
+                    args = ProfileArgs(userId),
+                    json = Json,
+                    scopeId = newScope()
                 )
             )
         )
-    }
+    )
 }
 
 /* -------------------------------------------
@@ -203,7 +199,7 @@ fun Sample5_DeepLink(
         rememberNavController(
             startDestination = Sample5Dest.Home,
             deepLinkUri = deepLinkUri,
-            deepLinkHandlers = persistentListOf(ProfileDeepLinkHandler)
+            deepLinkHandlers = persistentListOf(profileDeepLinkHandler)
         )
 
     LaunchedEffect(navController) {
