@@ -32,6 +32,11 @@ class TypedDestinationTest {
         override val argsSerializer = OrderArgs.serializer()
     }
 
+    private object SameShape : TypedDestination<ProfileArgs> {
+        override val id = "same-shape"
+        override val argsSerializer = ProfileArgs.serializer()
+    }
+
     private object Home : Destination { override val id = "home" }
 
     private val json = Json
@@ -71,10 +76,11 @@ class TypedDestinationTest {
         )
     }
 
-    @Test fun reading_args_with_the_wrong_destination_fails_instead_of_returning_nonsense() {
+    @Test fun reading_args_with_the_wrong_destination_fails_even_when_the_payload_shape_matches() {
         val entry = Profile.toBackStackEntry(ProfileArgs("42"), json)
-        // Order expects orderId: Long. The payload has no such field.
-        assertFailsWith<Exception> { Order.argsFrom(entry, json) }
+        // A serializer alone cannot detect this: SameShape accepts the exact same payload shape.
+        assertFailsWith<IllegalArgumentException> { SameShape.argsOrNull(entry, json) }
+        assertFailsWith<IllegalArgumentException> { SameShape.argsFrom(entry, json) }
     }
 
     @Test fun a_typed_entry_takes_the_default_scope_of_its_destination() {
@@ -139,6 +145,17 @@ class TypedDestinationTest {
             assertEquals(listOf("home", "profile"), nav.backStack.map { it.destinationId })
 
             nav.navigateTo(Order, OrderArgs(2L), clearBackStack = true)
+            assertEquals(listOf("order"), nav.backStack.map { it.destinationId })
+        } finally {
+            nav.close()
+        }
+    }
+
+    @Test fun navigate_to_keeps_the_existing_positional_parameter_order() {
+        val nav = createNavController(Home)
+        try {
+            nav.navigateTo(Order, OrderArgs(1L), Order.defaultScope(), null, true)
+
             assertEquals(listOf("order"), nav.backStack.map { it.destinationId })
         } finally {
             nav.close()
