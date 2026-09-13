@@ -137,6 +137,7 @@ fun <T : Any> NavController.navigateTo(
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
     pendingResultKey: String? = null,
+    metadata: Map<String, String> = emptyMap(),
     clearBackStack: Boolean = false,
     popUpTo: String? = null,
     popUpToInclusive: Boolean = false,
@@ -147,6 +148,7 @@ fun <T : Any> NavController.navigateTo(
         json = json,
         scopeId = scopeId,
         pendingResultKey = pendingResultKey,
+        metadata = metadata,
     )
     navigate(
         entry = entry,
@@ -181,12 +183,14 @@ fun <T : Any> NavController.replaceStackTo(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
+    metadata: Map<String, String> = emptyMap(),
 ) {
     replaceStack(
         destination.toBackStackEntry(
             args = args,
             json = json,
             scopeId = scopeId,
+            metadata = metadata,
         )
     )
 }
@@ -247,9 +251,11 @@ fun <T : Any> NavController.toBackStackEntry(
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
     pendingResultKey: String? = null,
+    metadata: Map<String, String> = emptyMap(),
 ): BackStackEntry = destination.toBackStackEntry(
     args = args,
     json = json,
     scopeId = scopeId,
     pendingResultKey = pendingResultKey,
+    metadata = metadata,
 )
