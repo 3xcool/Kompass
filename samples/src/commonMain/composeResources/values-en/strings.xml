@@ -1,5 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="sample_list_title">Kompass samples</string>
+    <string name="sample_list_returning_result">Returning result</string>
+    <string name="sample_list_inner_graphs">Inner graphs</string>
+    <string name="sample_list_scope">Scopes</string>
+    <string name="sample_list_transitions">Transitions</string>
+    <string name="sample_list_deeplink">Deep link</string>
+    <string name="sample_list_scene">Scene</string>
+    <string name="sample_list_auth_login">Auth login</string>
+    <string name="sample_list_expense_tracker_auth_login">Expense tracker auth login</string>
+    <string name="sample_list_predictive_back">Predictive back</string>
+    <string name="sample_list_shared_element_transition">Shared element transition</string>
+    <string name="sample_list_tabs">Tabs</string>
     <string name="sample10_home_title">Shared element transition</string>
     <string name="sample10_home_body">Open the card to follow the artwork and title between screens.</string>
     <string name="sample10_detail_title">Visual atlas</string>
@@ -11,10 +23,11 @@
     <string name="sample11_tab_home">Home</string>
     <string name="sample11_tab_search">Search</string>
     <string name="sample11_tab_profile">Profile</string>
-    <string name="sample11_visits">Visits to this tab: %d</string>
+    <string name="sample11_visits">Visits to this tab: %1$d</string>
     <string name="sample11_open_detail">Open detail</string>
+    <string name="sample11_back">Back</string>
     <string name="sample11_detail">Detail inside the tab</string>
-    <string name="sample11_stack">Stack: %s</string>
+    <string name="sample11_stack">Stack: %1$s</string>
     <string name="sample11_model_reorder">Reorder</string>
     <string name="sample11_model_per_tab">Stack per tab</string>
 </resources>

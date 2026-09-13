@@ -7,8 +7,8 @@ import com.tekmoon.kompass.newScope
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import com.tekmoon.kompass.DeepLinkChannel
 import com.tekmoon.kompass.Destination
@@ -236,7 +236,7 @@ private fun HomeScreen(
     navController: NavController
 ) {
     Column {
-        BasicText("🏠 Home")
+        Text("🏠 Home")
 
         Button(onClick = {
             navController.navigateTo(
@@ -245,7 +245,7 @@ private fun HomeScreen(
                 scopeId = newScope()
             )
         }) {
-            BasicText("Go to Profile (manual)")
+            Text("Go to Profile (manual)")
         }
     }
 }
@@ -258,13 +258,13 @@ private fun ProfileScreen(
     val args = navController.requireArgs(Sample5Dest.Profile, entry)
 
     Column {
-        BasicText("👤 Profile")
-        BasicText("UserId = ${args.userId}")
+        Text("👤 Profile")
+        Text("UserId = ${args.userId}")
 
         Button(onClick = {
             navController.pop()
         }) {
-            BasicText("Back")
+            Text("Back")
         }
     }
 }

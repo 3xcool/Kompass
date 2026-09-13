@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -20,6 +21,20 @@ import com.tekmoon.kompass.rememberNavController
 import com.tekmoon.kompass.toBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
+import kompasskmp.samples.generated.resources.Res
+import kompasskmp.samples.generated.resources.sample_list_auth_login
+import kompasskmp.samples.generated.resources.sample_list_deeplink
+import kompasskmp.samples.generated.resources.sample_list_expense_tracker_auth_login
+import kompasskmp.samples.generated.resources.sample_list_inner_graphs
+import kompasskmp.samples.generated.resources.sample_list_predictive_back
+import kompasskmp.samples.generated.resources.sample_list_returning_result
+import kompasskmp.samples.generated.resources.sample_list_scene
+import kompasskmp.samples.generated.resources.sample_list_scope
+import kompasskmp.samples.generated.resources.sample_list_shared_element_transition
+import kompasskmp.samples.generated.resources.sample_list_tabs
+import kompasskmp.samples.generated.resources.sample_list_title
+import kompasskmp.samples.generated.resources.sample_list_transitions
+import org.jetbrains.compose.resources.stringResource
 
 
 private enum class KompassSampleDestinations : Destination {
@@ -207,12 +222,21 @@ private fun KompassSampleList(
         .filter { it != KompassSampleDestinations.SampleList }
 
     LazyColumn {
+        item {
+            Text(
+                text = stringResource(Res.string.sample_list_title),
+                style = MaterialTheme.typography.headlineMedium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 24.dp)
+            )
+        }
         items(
             items = samples,
             key = { it.id }
         ) { destination ->
             SampleRow(
-                title = destination.name,
+                title = destination.label(),
                 onClick = {
                     navController.navigate(
                         entry = destination.toBackStackEntry()
@@ -221,6 +245,24 @@ private fun KompassSampleList(
             )
         }
     }
+}
+
+@Composable
+private fun KompassSampleDestinations.label(): String = when (this) {
+    KompassSampleDestinations.SampleList -> error("The sample list is not a selectable sample")
+    KompassSampleDestinations.Sample1ReturningResult -> stringResource(Res.string.sample_list_returning_result)
+    KompassSampleDestinations.Sample2InnerGraphs -> stringResource(Res.string.sample_list_inner_graphs)
+    KompassSampleDestinations.Sample3Scope -> stringResource(Res.string.sample_list_scope)
+    KompassSampleDestinations.Sample4Transitions -> stringResource(Res.string.sample_list_transitions)
+    KompassSampleDestinations.Sample5Deeplink -> stringResource(Res.string.sample_list_deeplink)
+    KompassSampleDestinations.Sample6Scene -> stringResource(Res.string.sample_list_scene)
+    KompassSampleDestinations.Sample7AuthLogin -> stringResource(Res.string.sample_list_auth_login)
+    KompassSampleDestinations.Sample8ExpenseTrackerAuthLogin ->
+        stringResource(Res.string.sample_list_expense_tracker_auth_login)
+    KompassSampleDestinations.Sample9PredictiveBack -> stringResource(Res.string.sample_list_predictive_back)
+    KompassSampleDestinations.Sample10SharedElementTransition ->
+        stringResource(Res.string.sample_list_shared_element_transition)
+    KompassSampleDestinations.Sample11Tabs -> stringResource(Res.string.sample_list_tabs)
 }
 
 

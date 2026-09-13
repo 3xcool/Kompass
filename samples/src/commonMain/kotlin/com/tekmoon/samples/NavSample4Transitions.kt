@@ -9,8 +9,8 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -190,16 +190,16 @@ private fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        BasicText("🏠 Home")
-        BasicText("Screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("🏠 Home")
+        Text("Screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen")
+            Text("Inc screen")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared")
+            Text("Inc shared")
         }
 
         Button(onClick = {
@@ -207,7 +207,7 @@ private fun HomeScreen(
                 entry = Sample4Dest.Details.toBackStackEntry()
             )
         }) {
-            BasicText("Go to Details →")
+            Text("Go to Details →")
         }
     }
 }
@@ -230,22 +230,22 @@ private fun DetailsScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        BasicText("📄 Details")
-        BasicText("Screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("📄 Details")
+        Text("Screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen")
+            Text("Inc screen")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared")
+            Text("Inc shared")
         }
 
         Button(onClick = {
             navController.pop()
         }) {
-            BasicText("← Back")
+            Text("← Back")
         }
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -36,6 +37,7 @@ import com.tekmoon.kompass.rememberNavController
 import com.tekmoon.kompass.toBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kompasskmp.samples.generated.resources.Res
+import kompasskmp.samples.generated.resources.sample11_back
 import kompasskmp.samples.generated.resources.sample11_detail
 import kompasskmp.samples.generated.resources.sample11_model_per_tab
 import kompasskmp.samples.generated.resources.sample11_model_reorder
@@ -151,7 +153,7 @@ private fun Sample11DetailScreen(navController: NavController) {
     ) {
         Text(text = stringResource(Res.string.sample11_detail), style = MaterialTheme.typography.headlineMedium)
         Button(onClick = { navController.popIfCan() }) {
-            Text(stringResource(Res.string.sample11_open_detail))
+            Text(stringResource(Res.string.sample11_back))
         }
     }
 }
@@ -176,7 +178,7 @@ fun Sample11_Tabs(
 
     Scaffold(
         bottomBar = {
-            Column {
+            Column(modifier = Modifier.navigationBarsPadding()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
