@@ -76,8 +76,9 @@ class NavController internal constructor(
     val stateFlow: StateFlow<NavigationState> = observedState.asStateFlow()
 
     /** Direction of the last command that changed the active occurrence. */
-    var direction: NavDirection by mutableStateOf(NavDirection.Push)
-        private set
+    private var directionState by mutableStateOf(NavDirection.Push)
+    val direction: NavDirection
+        get() = directionState
 
     /**
      * Visual state of an unfinished Back gesture.
@@ -172,7 +173,7 @@ class NavController internal constructor(
         newState.requireValid()
         if (newState == oldState) return
         if (newState.backStack.last().id != oldState.backStack.last().id) {
-            direction = if (command is NavigationCommand.Pop) NavDirection.Pop else NavDirection.Push
+            directionState = if (command is NavigationCommand.Pop) NavDirection.Pop else NavDirection.Push
         }
 
         val oldScopes = oldState.backStack.map { it.scopeId }.toSet()
