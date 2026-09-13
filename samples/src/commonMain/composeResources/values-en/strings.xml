@@ -8,4 +8,13 @@
     <string name="sample10_open">Open details</string>
     <string name="sample10_back">Back</string>
     <string name="sample10_monogram">K</string>
+    <string name="sample11_tab_home">Home</string>
+    <string name="sample11_tab_search">Search</string>
+    <string name="sample11_tab_profile">Profile</string>
+    <string name="sample11_visits">Visits to this tab: %d</string>
+    <string name="sample11_open_detail">Open detail</string>
+    <string name="sample11_detail">Detail inside the tab</string>
+    <string name="sample11_stack">Stack: %s</string>
+    <string name="sample11_model_reorder">Reorder</string>
+    <string name="sample11_model_per_tab">Stack per tab</string>
 </resources>

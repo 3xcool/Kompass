@@ -45,6 +45,7 @@ Perfect for applications that need robust, scalable, and testable navigation wit
 * [Navigation Commands](#navigation-commands)
 * [Back handling and predictive Back](#back-handling-and-predictive-back)
 * [Presentation metadata](#presentation-metadata)
+* [Tabs, and the two models](#tabs-and-the-two-models)
 * [Navigation Scopes](#navigation-scopes)
 * [Navigation Results](#navigation-results)
 * [Custom Layouts & Transitions](#custom-layouts--transitions)
@@ -393,6 +394,51 @@ through `copy`, through a new occurrence and through `reuseIfExists` — where t
 incoming `navigate` call wins, because that caller decides how the destination appears.
 
 Key names are yours. Kompass defines none.
+
+## Tabs, and the two models
+
+Two different products hide behind the word "tabs". Decide which one you are building first.
+
+### Reorder model — one controller
+
+Tapping a tab moves its entry to the top. Back then walks the visit history across tabs, so it never
+lies about where the user came from. This is what YouTube and Instagram do. The whole bottom bar is
+one line:
+
+```kotlin
+onClick = { navController.navigate(tab.toBackStackEntry(), reuseIfExists = true) }
+```
+
+`reuseIfExists` retains the occurrence ID, so the moved entry keeps its ViewModel and its
+`rememberSaveable` state. Its limit: it moves **one entry, not a segment**. `Home → Profile →
+ProfileDetail`, then tab Home, then tab Profile lands on `Profile`, not back on `ProfileDetail`. That
+is correct for this model.
+
+### Per-tab model — one controller for each tab
+
+Every tab keeps its own depth. Create each controller outside composition with `createNavController`,
+give each tab **its own host**, and compose only the active one:
+
+```kotlin
+val controllers = remember { tabs.associateWith { createNavController(it) } }
+DisposableEffect(controllers) {
+    // An externally owned controller is released by close(), never by leaving composition.
+    onDispose { controllers.values.forEach { it.close() } }
+}
+
+controllers.forEach { (tab, controller) ->
+    if (tab == active) KompassNavigationHost(controller, graphs)
+}
+```
+
+An inactive tab keeps its stack, its ViewModels and its UI state while its host is unmounted.
+
+> **Do not write one host and swap its `navController`.** That is not the same as unmounting a host.
+> Changing the controller of a mounted host reconciles the outgoing controller's entry owners away
+> and clears its ViewModels. `TabNavigationTest` proves both halves of this.
+
+See [Sample 11](samples/src/commonMain/kotlin/com/tekmoon/samples/NavSample11Tabs.kt), which switches
+between the two models, counts visits per tab, and prints the stack so the Back history is visible.
 
 ## Navigation Scopes
 
