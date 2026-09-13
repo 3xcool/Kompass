@@ -3,7 +3,6 @@ package com.tekmoon.kompass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.toImmutableList
 
 
 /**
@@ -44,7 +43,7 @@ fun KompassNavigationHost(
     val layout = activeGraph.sceneLayout ?: SceneLayoutDefaultAnimatedSinglePane
 
     layout.Render(
-        backStack = navController.state.backStack.toImmutableList(),
+        backStack = navController.backStack,
         resolve = { entry ->
             val resolved = router.resolve(entry)
             resolved.graph to resolved.destination

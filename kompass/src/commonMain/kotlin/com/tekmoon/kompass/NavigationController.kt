@@ -142,8 +142,11 @@ class NavController internal constructor(
      * A snapshot of the current back stack.
      *
      * The last element represents the active destination.
+     *
+     * This is an [ImmutableList], the same type [NavigationState] holds. Compose reads it as a
+     * stable parameter, so a composable that takes the back stack can still skip recomposition.
      */
-    val backStack: List<BackStackEntry>
+    val backStack: ImmutableList<BackStackEntry>
         get() = state.backStack
 
     /**
