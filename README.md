@@ -128,25 +128,27 @@ sealed interface MainDestination : Destination {
     data object Settings : MainDestination {
         override val id: String = "settings"
     }
+
+    companion object {
+        val entries = listOf(Home, Profile, Settings)
+    }
 }
 ```
+
+Each destination is its own type, which is what [typed navigation](#typed-navigation) builds on. An
+`enum class MainDestination(override val id: String)` works the same way and is shorter, when no
+destination carries arguments.
 
 ### 2. Create a Navigation Graph
 
 ```kotlin
-class MainNavigationGraph : NavigationGraph {
-    override fun canResolveDestination(destinationId: String): Boolean =
-        destinationId in setOf("home", "profile", "settings")
+object MainNavigationGraph : NavigationGraph {
 
-    override fun resolveDestination(
-        destinationId: String,
-        args: String?
-    ): Destination = when (destinationId) {
-        "home" -> MainDestination.Home
-        "profile" -> MainDestination.Profile
-        "settings" -> MainDestination.Settings
-        else -> error("Unknown destination: $destinationId")
-    }
+    override fun canResolveDestination(destinationId: String): Boolean =
+        MainDestination.entries.any { it.id == destinationId }
+
+    override fun resolveDestination(destinationId: String, args: String?): Destination =
+        MainDestination.entries.first { it.id == destinationId }
 
     @Composable
     override fun Content(
@@ -154,7 +156,8 @@ class MainNavigationGraph : NavigationGraph {
         destination: Destination,
         navController: NavController
     ) {
-        when (destination) {
+        // Cast once, and the when stays exhaustive: the compiler catches a destination you forgot.
+        when (destination as MainDestination) {
             is MainDestination.Home -> HomeScreen(navController)
             is MainDestination.Profile -> ProfileScreen(navController)
             is MainDestination.Settings -> SettingsScreen(navController)
@@ -162,6 +165,9 @@ class MainNavigationGraph : NavigationGraph {
     }
 }
 ```
+
+Each destination is written twice: once in the sealed hierarchy, once in the `when`. The other two
+overrides read `entries`, so they never change again.
 
 ### 3. Setup Navigation Host
 
@@ -174,7 +180,7 @@ fun AppNavigation() {
 
     KompassNavigationHost(
         navController = navController,
-        graphs = persistentListOf(MainNavigationGraph())
+        graphs = persistentListOf(MainNavigationGraph)
     )
 }
 ```
@@ -185,19 +191,16 @@ fun AppNavigation() {
 @Composable
 fun HomeScreen(navController: NavController) {
     Button(
-        onClick = {
-            navController.navigate(
-                entry = BackStackEntry(
-                    destinationId = "profile",
-                    scopeId = newScope()
-                )
-            )
-        }
+        onClick = { navController.navigate(MainDestination.Profile.toBackStackEntry()) }
     ) {
         Text("Go to Profile")
     }
 }
 ```
+
+`toBackStackEntry` takes the ID from the destination and gives the entry its own scope, so you never
+repeat the string. Build a `BackStackEntry` by hand only when the destination ID arrives at runtime,
+from a server payload or a deep link.
 
 ## Back handling and predictive Back
 
@@ -243,7 +246,7 @@ fun AppNavigation(onDismiss: () -> Unit) {
 
     KompassNavigationHost(
         navController = navController,
-        graphs = persistentListOf(MainNavigationGraph()),
+        graphs = persistentListOf(MainNavigationGraph),
     )
 }
 ```
