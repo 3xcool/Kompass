@@ -583,34 +583,56 @@ override val sceneLayout: SceneLayout = object : SceneLayout {
 
 ## Deep Linking
 
-Resolve deep link URIs to navigation commands:
+A deep link is a URI turned into navigation commands. `PathTemplateDeepLinkHandler` does the parsing:
+
+```kotlin
+val profileLink = PathTemplateDeepLinkHandler("app://profile/{userId}") { match ->
+    listOf(
+        // One command, so a multi-level link applies in one state change and one animation.
+        NavigationCommand.ReplaceStack(
+            listOf(
+                MainDestination.Home.toBackStackEntry(),
+                MainDestination.Profile.toBackStackEntry(args = match.args),
+            )
+        )
+    )
+}
+
+val success = navController.applyDeepLink("app://profile/user123?tab=orders")
+```
+
+`match.args` is a JSON object built from the `{userId}` placeholder and every query parameter, each
+percent-decoded. A path placeholder wins over a query parameter of the same name. The template is
+compared segment by segment: matching is case sensitive, a trailing slash counts, and a fragment is
+ignored.
+
+Never build arguments by joining strings:
+
+```kotlin
+args = """{"userId":"$userId"}"""   // a quote or a backslash in userId breaks the JSON
+```
+
+Use `buildArgs`, which hands the escaping to the serializer and keeps numbers and booleans typed:
+
+```kotlin
+val args = buildArgs {
+    put("userId", userId)
+    put("tab", 2)
+}
+```
+
+`DeepLinkHandler` stays open for anything a template cannot express:
 
 ```kotlin
 interface DeepLinkHandler {
     fun matches(uri: String): Boolean
     fun resolve(uri: String): List<NavigationCommand>
 }
-
-class ProfileDeepLinkHandler : DeepLinkHandler {
-    override fun matches(uri: String): Boolean = uri.startsWith("app://profile/")
-
-    override fun resolve(uri: String): List<NavigationCommand> {
-        val userId = uri.removePrefix("app://profile/")
-        return listOf(
-            NavigationCommand.Navigate(
-                entry = BackStackEntry(
-                    destinationId = "profile",
-                    args = """{"userId":"$userId"}""",
-                    scopeId = newScope()
-                )
-            )
-        )
-    }
-}
-
-// Apply deep link
-val success = navController.applyDeepLink("app://profile/user123")
 ```
+
+Handlers are tried in order and the first match wins, so put the specific templates before the
+general ones. Returning several commands is allowed, but each one publishes its own state and plays
+its own animation — prefer a single `ReplaceStack`.
 
 ## State Serialization
 
