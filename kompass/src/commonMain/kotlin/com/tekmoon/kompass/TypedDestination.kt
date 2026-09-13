@@ -101,12 +101,14 @@ fun <T : Any> TypedDestination<T>.toBackStackEntry(
     json: Json,
     scopeId: NavigationScopeId = defaultScope(),
     pendingResultKey: String? = null,
+    metadata: Map<String, String> = emptyMap(),
 ): BackStackEntry =
     BackStackEntry(
         destinationId = id,
         args = encodeArgs(args, json),
         scopeId = scopeId,
         pendingResultKey = pendingResultKey,
+        metadata = metadata,
     )
 
 // ----------------------------------------------------------------------------

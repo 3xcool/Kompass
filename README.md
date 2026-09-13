@@ -44,6 +44,7 @@ Perfect for applications that need robust, scalable, and testable navigation wit
 * [Quick Start](#quick-start)
 * [Navigation Commands](#navigation-commands)
 * [Back handling and predictive Back](#back-handling-and-predictive-back)
+* [Presentation metadata](#presentation-metadata)
 * [Navigation Scopes](#navigation-scopes)
 * [Navigation Results](#navigation-results)
 * [Custom Layouts & Transitions](#custom-layouts--transitions)
@@ -357,6 +358,41 @@ occurrence at each level, the same as it does for `navigate`. The list must not 
 
 `replaceRoot`, `NavigationCommand.ReplaceRoot` and `replaceRootTo` are deprecated in 2.0.0. Each has
 a `replaceStack` counterpart with the same behaviour, and they come out in a later release.
+
+## Presentation metadata
+
+`args` says **what** the screen receives. `metadata` says **how** the shell shows it. Keep the two
+apart: `args` belongs to the screen, `metadata` belongs to whoever draws around it.
+
+```kotlin
+navController.navigate(
+    Profile.toBackStackEntry(
+        args = """{"userId":"123"}""",
+        metadata = mapOf("presentation" to "sheet"),
+    )
+)
+```
+
+A layout then reads the hint instead of matching on `destinationId`, so the shell never learns the
+names of the destinations a feature module owns:
+
+```kotlin
+override fun Render(backStack, resolve, navController, direction) {
+    val top = backStack.last()
+    when (top.metadata["presentation"]) {
+        "sheet" -> SheetScene(top, resolve, navController)
+        else -> SinglePaneScene(top, resolve, navController)
+    }
+}
+```
+
+Values are strings because the whole entry crosses the wire. A server payload, a multi-level deep
+link and a session restored from `saveNavigationState` can all set a hint, exactly as they set
+`args`. Kompass never reads a hint itself. It carries it, serialises it with the state, and keeps it
+through `copy`, through a new occurrence and through `reuseIfExists` — where the hint of the
+incoming `navigate` call wins, because that caller decides how the destination appears.
+
+Key names are yours. Kompass defines none.
 
 ## Navigation Scopes
 
