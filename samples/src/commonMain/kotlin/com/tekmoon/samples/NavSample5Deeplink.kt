@@ -133,18 +133,19 @@ private object ProfileDeepLinkHandler : DeepLinkHandler {
     override fun resolve(uri: String): List<NavigationCommand> {
         val userId = uri.substringAfter("userId=")
 
+        // One command applies the whole stack, so the deep link does not flash through Home first.
         return listOf(
-            NavigationCommand.ReplaceRoot(
-                BackStackEntry(
-                    destinationId = Sample5Dest.Home.id,
-                    scopeId = newScope()
-                )
-            ),
-            NavigationCommand.Navigate(
-                Sample5Dest.Profile.toBackStackEntry(
-                    args = ProfileArgs(userId),
-                    json = Json,
-                    scopeId = newScope()
+            NavigationCommand.ReplaceStack(
+                listOf(
+                    BackStackEntry(
+                        destinationId = Sample5Dest.Home.id,
+                        scopeId = newScope()
+                    ),
+                    Sample5Dest.Profile.toBackStackEntry(
+                        args = ProfileArgs(userId),
+                        json = Json,
+                        scopeId = newScope()
+                    )
                 )
             )
         )

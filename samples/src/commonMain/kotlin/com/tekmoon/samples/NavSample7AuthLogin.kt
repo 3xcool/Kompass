@@ -99,7 +99,7 @@ fun Sample7_AuthLogin(
 
     val graphs = persistentListOf(
         LoginGraph( onLoginSuccess = {
-            navController.replaceRoot(
+            navController.replaceStack(
                 entry = BackStackEntry(
                     destinationId = AppDestination.Home.id,
                     scopeId = AppDestination.Home.defaultScope()
@@ -143,7 +143,7 @@ private fun LoginPasswordScreen(
         onClick = {
 //            onLoginSuccess() // this way we hoist the logic to Main Nav Host
             // or we can call it directly from this screen like this:
-            navController.replaceRoot(
+            navController.replaceStack(
                 entry = BackStackEntry(
                     destinationId = AppDestination.Home.id,
                     scopeId = AppDestination.Home.defaultScope()

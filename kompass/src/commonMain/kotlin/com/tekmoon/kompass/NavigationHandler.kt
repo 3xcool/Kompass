@@ -35,6 +35,8 @@ class NavigationHandler() {
      * @return A new [NavigationState] representing the result of applying
      * the command.
      */
+    // The reducer must keep handling the deprecated ReplaceRoot until it is removed.
+    @Suppress("DEPRECATION")
     fun reduce(
         state: NavigationState,
         command: NavigationCommand
@@ -136,6 +138,10 @@ class NavigationHandler() {
             is NavigationCommand.ReplaceRoot -> {
                 state.copy(backStack = persistentListOf(command.entry))
             }
+
+            is NavigationCommand.ReplaceStack -> {
+                state.copy(backStack = command.entries.toImmutableList())
+            }
         }
     }
 
@@ -232,7 +238,33 @@ sealed interface NavigationCommand {
      * @param entry The new root [BackStackEntry] that will become
      * the only entry in the back stack.
      */
+    @Deprecated(
+        message = "Use ReplaceStack, which applies one entry or a whole stack.",
+        replaceWith = ReplaceWith("NavigationCommand.ReplaceStack(listOf(entry))"),
+    )
     data class ReplaceRoot(
         val entry: BackStackEntry
     ) : NavigationCommand
+
+    /**
+     * Replace the whole back stack.
+     *
+     * One command applies a whole stack, so a server payload, a multi-level deep link and a
+     * restored session all arrive in a single state change. Applying the same stack as a
+     * `ReplaceStack` followed by several `Navigate` commands would publish every intermediate state
+     * and play one animation per step.
+     *
+     * The first entry becomes the root and the last becomes the active destination. One entry in the
+     * list replaces the whole stack with that entry, which is what `ReplaceRoot` did.
+     *
+     * @param entries The new back stack, from root to top. It must not be empty.
+     */
+    data class ReplaceStack(
+        val entries: List<BackStackEntry>
+    ) : NavigationCommand {
+
+        init {
+            require(entries.isNotEmpty()) { "ReplaceStack requires at least one entry" }
+        }
+    }
 }
