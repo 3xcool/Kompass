@@ -155,12 +155,7 @@ class NavController internal constructor(
     private fun dispatch(command: NavigationCommand) {
         check(!entryOwners.isClosed) { "The navigation controller has been closed" }
         val oldState = navState.value
-        // A caller may navigate with an entry object it already holds. New navigation must
-        // still create a distinct occurrence, including through runNavCommands/deep links.
-        val normalized = if (command is NavigationCommand.Navigate && !command.reuseIfExists &&
-            oldState.backStack.any { it.id == command.entry.id }) {
-            command.copy(entry = command.entry.newOccurrence())
-        } else command
+        val normalized = command.withDistinctOccurrences(oldState.backStack)
         val newState = handler.reduce(oldState, normalized)
         newState.requireValid()
         if (newState == oldState) return
@@ -244,8 +239,36 @@ class NavController internal constructor(
      * @param entry The new root [BackStackEntry] that will become
      * the only entry in the back stack.
      */
+    @Deprecated(
+        message = "Use replaceStack, which applies one entry or a whole stack.",
+        replaceWith = ReplaceWith("replaceStack(entry)"),
+    )
     fun replaceRoot(entry: BackStackEntry) {
-        dispatch(NavigationCommand.ReplaceRoot(entry))
+        replaceStack(entry)
+    }
+
+    /**
+     * Replaces the entire back stack with the given entries, in one state change.
+     *
+     * Use this to apply a stack that arrives whole: a server payload, a multi-level deep link, or a
+     * session restored from [saveNavigationState]. Applying the same stack as several [navigate]
+     * calls publishes every intermediate state and plays one animation per step.
+     *
+     * A repeated entry object becomes a separate occurrence, the same as it does for [navigate].
+     *
+     * @param entries The new back stack, from root to top. It must not be empty.
+     */
+    fun replaceStack(entries: List<BackStackEntry>) {
+        dispatch(NavigationCommand.ReplaceStack(entries))
+    }
+
+    /**
+     * Replaces the entire back stack with a single entry.
+     *
+     * @param entry The entry that becomes the only entry in the back stack.
+     */
+    fun replaceStack(entry: BackStackEntry) {
+        replaceStack(listOf(entry))
     }
 
     /**
@@ -407,4 +430,27 @@ fun rememberNavController(
 ): NavController {
     val initial = remember { defaultNavigationState(startDestination.toBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())) }
     return rememberNavController(initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure)
+}
+
+/**
+ * Gives every repeated entry its own occurrence ID.
+ *
+ * A stack that arrives whole may hold the same entry object at two levels. Each level is a separate
+ * occurrence with its own owner and its own UI state, so a repeat needs a new ID. The first
+ * appearance keeps its ID, which lets a caller rebuild a stack from entries it already holds.
+ */
+private fun distinctOccurrences(entries: List<BackStackEntry>): List<BackStackEntry> {
+    val seen = mutableSetOf<String>()
+    return entries.map { entry ->
+        if (seen.add(entry.id)) entry
+        else entry.newOccurrence().also { seen.add(it.id) }
+    }
+}
+
+/** Normalize at both controller dispatch and initial deep-link boundaries; keep the reducer pure. */
+internal fun NavigationCommand.withDistinctOccurrences(backStack: List<BackStackEntry>): NavigationCommand = when {
+    this is NavigationCommand.Navigate && !reuseIfExists && backStack.any { it.id == entry.id } ->
+        copy(entry = entry.newOccurrence())
+    this is NavigationCommand.ReplaceStack -> copy(entries = distinctOccurrences(entries))
+    else -> this
 }

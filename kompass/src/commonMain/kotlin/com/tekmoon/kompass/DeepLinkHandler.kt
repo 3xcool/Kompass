@@ -117,7 +117,7 @@ fun applyDeepLink(
     handler: NavigationHandler
 ): NavigationState =
     commands.fold(state) { navState, command ->
-        handler.reduce(navState, command)
+        handler.reduce(navState, command.withDistinctOccurrences(navState.backStack))
     }
 
 /**

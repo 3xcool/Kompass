@@ -78,6 +78,8 @@ class NavigationCompatibilityTest {
         assertTrue(restored.id.isNotBlank())
     }
 
+    // Keeps the deprecated ReplaceRoot command covered until it is removed.
+    @Suppress("DEPRECATION")
     @Test fun deep_links_use_first_matching_handler_and_apply_commands_in_order() {
         val a = entry("a"); val b = entry("b")
         val handler = object : DeepLinkHandler {

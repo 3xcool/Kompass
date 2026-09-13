@@ -159,12 +159,28 @@ fun <T : Any> NavController.navigateTo(
  * Replaces the entire back stack with a single [TypedDestination] entry, with
  * strongly-typed [args].
  */
+@Deprecated(
+    message = "Use replaceStackTo, which matches replaceStack.",
+    replaceWith = ReplaceWith("replaceStackTo(destination, args, scopeId)"),
+)
 fun <T : Any> NavController.replaceRootTo(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
 ) {
-    replaceRoot(
+    replaceStackTo(destination, args, scopeId)
+}
+
+/**
+ * Replaces the entire back stack with a single [TypedDestination] entry, with
+ * strongly-typed [args].
+ */
+fun <T : Any> NavController.replaceStackTo(
+    destination: TypedDestination<T>,
+    args: T,
+    scopeId: NavigationScopeId = destination.defaultScope(),
+) {
+    replaceStack(
         destination.toBackStackEntry(
             args = args,
             json = json,
