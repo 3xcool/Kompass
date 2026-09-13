@@ -41,6 +41,25 @@ class KompassHostTest {
         }
     }
 
+    @Test fun an_initial_deep_link_gives_repeated_entries_distinct_occurrences() = runComposeUiTest {
+        val repeated = B.toBackStackEntry()
+        val handler = object : DeepLinkHandler {
+            override fun matches(uri: String) = uri == "app://repeated"
+            override fun resolve(uri: String) = listOf(NavigationCommand.ReplaceStack(listOf(repeated, repeated)))
+        }
+        lateinit var nav: NavController
+        setContent {
+            nav = rememberNavController(A, deepLinkUri = "app://repeated", deepLinkHandlers = persistentListOf(handler))
+            KompassNavigationHost(nav, persistentListOf(Graph { entry, _ -> BasicText(entry.destinationId) }))
+        }
+        runOnIdle {
+            assertEquals(listOf("b", "b"), nav.backStack.map { it.destinationId })
+            assertEquals(2, nav.backStack.map { it.id }.toSet().size)
+            assertEquals(repeated.id, nav.backStack.first().id)
+        }
+        onNodeWithText("b").assertExists()
+    }
+
     @Test fun push_return_reuse_and_new_visit_preserve_the_right_state() = runComposeUiTest {
         lateinit var nav: NavController
         val probes = mutableMapOf<String, Probe>()
@@ -471,7 +490,7 @@ class KompassHostTest {
             }
         }
         setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
-        runOnIdle { nav.replaceRoot(B.toBackStackEntry(args = "new-root")) }
+        runOnIdle { nav.replaceStack(B.toBackStackEntry(args = "new-root")) }
         waitForIdle()
         runOnIdle {
             assertTrue(seen.any { it.from.destinationId == "a" && it.to.args == "new-root" && it.direction == NavDirection.Push })
@@ -512,7 +531,7 @@ class KompassHostTest {
         mainClock.autoAdvance = false
         runOnIdle {
             initial = nav.currentEntry
-            nav.replaceRoot(B.toBackStackEntry(scopeId = newScope(), results = mapOf("pending" to object : NavigationResult {})))
+            nav.replaceStack(B.toBackStackEntry(scopeId = newScope(), results = mapOf("pending" to object : NavigationResult {})))
         }
         mainClock.advanceTimeBy(64)
         runOnIdle { progress = 0.6f }
@@ -549,7 +568,7 @@ class KompassHostTest {
         mainClock.autoAdvance = false
         runOnIdle { nav.navigate(B.toBackStackEntry()) }
         mainClock.advanceTimeBy(64)
-        runOnIdle { nav.replaceRoot(A.toBackStackEntry(scopeId = newScope())); progress = 0.6f }
+        runOnIdle { nav.replaceStack(A.toBackStackEntry(scopeId = newScope())); progress = 0.6f }
         mainClock.advanceTimeBy(64)
         runOnIdle { progress = null }
         mainClock.advanceTimeBy(2000)

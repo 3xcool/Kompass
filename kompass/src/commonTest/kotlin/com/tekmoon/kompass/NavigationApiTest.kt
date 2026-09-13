@@ -18,6 +18,87 @@ class NavigationApiTest {
     @Serializable private data class Other(val value: Int) : NavigationResult
     private val serializers = SerializersModule { polymorphic(NavigationResult::class) { subclass(Answer::class) } }
 
+    @Test fun replacing_the_stack_publishes_one_state_not_one_per_level() {
+        val nav = createNavController(A)
+        val seen = mutableListOf<List<String>>()
+        val collector = CoroutineScope(Dispatchers.Unconfined).launch {
+            nav.stateFlow.collect { seen += it.backStack.map { entry -> entry.destinationId } }
+        }
+        try {
+            seen.clear()
+            nav.replaceStack(listOf(A.toBackStackEntry(), B.toBackStackEntry(), A.toBackStackEntry()))
+
+            // Building the same stack with ReplaceRoot + Navigate + Navigate would publish
+            // [a], [a, b], [a, b, a] and animate three times. One command must publish once.
+            assertEquals(listOf(listOf("a", "b", "a")), seen)
+            assertEquals("a", nav.currentEntry.destinationId)
+        } finally {
+            collector.cancel()
+            nav.close()
+        }
+    }
+
+    @Test fun a_replaced_stack_keeps_every_level_a_separate_occurrence() {
+        val nav = createNavController(A)
+        try {
+            // The same entry object at three levels. Each level owns its own UI state, so the
+            // repeats must not share an occurrence ID.
+            val reused = B.toBackStackEntry()
+            nav.replaceStack(listOf(reused, reused, reused))
+
+            assertEquals(3, nav.backStack.size)
+            assertEquals(3, nav.backStack.map { it.id }.toSet().size)
+            assertEquals(reused.id, nav.backStack.first().id)
+        } finally {
+            nav.close()
+        }
+    }
+
+    @Test fun replacing_the_stack_with_no_entries_fails() {
+        val nav = createNavController(A)
+        try {
+            assertFailsWith<IllegalArgumentException> { nav.replaceStack(emptyList()) }
+            assertEquals(listOf("a"), nav.backStack.map { it.destinationId })
+        } finally {
+            nav.close()
+        }
+    }
+
+    @Test fun replacing_the_stack_with_one_entry_clears_the_rest() {
+        val nav = createNavController(A)
+        try {
+            nav.navigate(B.toBackStackEntry())
+            nav.replaceStack(B.toBackStackEntry())
+
+            assertEquals(listOf("b"), nav.backStack.map { it.destinationId })
+            assertEquals(NavDirection.Push, nav.direction)
+        } finally {
+            nav.close()
+        }
+    }
+
+    @Test fun a_saved_stack_restores_through_one_command() {
+        val source = createNavController(A)
+        val saved: List<BackStackEntry>
+        try {
+            source.navigate(B.toBackStackEntry(args = "opaque"))
+            saved = source.backStack
+        } finally {
+            source.close()
+        }
+
+        val target = createNavController(A)
+        try {
+            target.replaceStack(saved)
+
+            assertEquals(saved.map { it.destinationId }, target.backStack.map { it.destinationId })
+            assertEquals(saved.map { it.id }, target.backStack.map { it.id })
+            assertEquals("opaque", target.currentEntry.args)
+        } finally {
+            target.close()
+        }
+    }
+
     @Test fun consume_is_typed_once_and_targets_the_occurrence() {
         val root = A.toBackStackEntry(results = mapOf("answer" to Answer("root"), "keep" to Answer("keep")))
         val duplicate = A.toBackStackEntry(results = mapOf("answer" to Answer("duplicate")))
@@ -91,7 +172,7 @@ class NavigationApiTest {
             assertEquals(NavDirection.Pop, nav.direction)
             nav.pop()
             assertEquals(NavDirection.Pop, nav.direction)
-            nav.replaceRoot(B.toBackStackEntry())
+            nav.replaceStack(B.toBackStackEntry())
             assertEquals(NavDirection.Push, nav.direction)
             nav.navigate(A.toBackStackEntry())
             nav.navigate(B.toBackStackEntry(), reuseIfExists = true)
@@ -117,6 +198,8 @@ class NavigationApiTest {
         } finally { collector.cancel(); nav.close() }
     }
 
+    // Keeps the deprecated ReplaceRoot command covered until it is removed.
+    @Suppress("DEPRECATION")
     @Test fun external_controller_keeps_deep_links_typed_arguments_and_command_order() {
         val handler = object : DeepLinkHandler {
             override fun matches(uri: String) = uri == "app://b"

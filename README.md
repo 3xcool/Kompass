@@ -234,18 +234,36 @@ navController.pop(count = 2)
 navController.pop(popUntil = "home")
 ```
 
-### Replace Root
+### Replace Stack
 
-Replace the entire back stack with a single entry:
+Replace the entire back stack with one entry:
 
 ```kotlin
-navController.replaceRoot(
-    entry = BackStackEntry(
-        destinationId = "home",
-        scopeId = newScope()
+navController.replaceStack(
+    BackStackEntry(destinationId = "home", scopeId = newScope())
+)
+```
+
+Or with several entries, in one state change. Use this for a stack that arrives whole: a server
+payload, a multi-level deep link, or a session restored from `saveNavigationState`. The first entry
+becomes the root and the last becomes the active destination.
+
+```kotlin
+navController.replaceStack(
+    listOf(
+        BackStackEntry(destinationId = "home", scopeId = newScope()),
+        BackStackEntry(destinationId = "orders", scopeId = newScope()),
+        BackStackEntry(destinationId = "orderDetail", args = orderJson, scopeId = newScope()),
     )
 )
 ```
+
+The same stack built as one `replaceStack` and then two `navigate` calls publishes three states and
+plays three animations. One command publishes one state. A repeated entry object becomes a separate
+occurrence at each level, the same as it does for `navigate`. The list must not be empty.
+
+`replaceRoot`, `NavigationCommand.ReplaceRoot` and `replaceRootTo` are deprecated in 2.0.0. Each has
+a `replaceStack` counterpart with the same behaviour, and they come out in a later release.
 
 ## Navigation Scopes
 
@@ -700,8 +718,8 @@ persistence belong to its owner; close is idempotent, and navigation after close
 
 ## Transition context and controlled progress
 
-Direction now follows the command that changes the active occurrence: Navigate and ReplaceRoot
-are Push, Pop is Pop. Consuming results, updating the current occurrence and no-op commands do
+Direction now follows the command that changes the active occurrence: Navigate and ReplaceStack are
+Push, Pop is Pop. Consuming results, updating the current occurrence and no-op commands do
 not overwrite the last direction. Recomposition no longer changes the direction.
 
 Existing `SceneTransition.transition(direction)` implementations remain supported. Override
