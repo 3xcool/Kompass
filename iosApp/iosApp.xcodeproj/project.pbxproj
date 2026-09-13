@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		C0FFEE0000000000000000C1 /* Config.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Config.xcconfig; sourceTree = "<group>"; };
 		E248D3F71095BEDCAE403003 /* KompassKmp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = KompassKmp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -29,11 +30,6 @@
 			path = iosApp;
 			sourceTree = "<group>";
 		};
-		8F6825E36A29AA4F27990BBD /* Configuration */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = Configuration;
-			sourceTree = "<group>";
-		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -54,6 +50,14 @@
 				2955193DF12BEDED05663D4F /* iosApp */,
 				D6577B8282B76CEC6F0EF95D /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		8F6825E36A29AA4F27990BBD /* Configuration */ = {
+			isa = PBXGroup;
+			children = (
+				C0FFEE0000000000000000C1 /* Config.xcconfig */,
+			);
+			path = Configuration;
 			sourceTree = "<group>";
 		};
 		D6577B8282B76CEC6F0EF95D /* Products */ = {
@@ -169,8 +173,7 @@
 /* Begin XCBuildConfiguration section */
 		471FFD51730B812690820A8C /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 8F6825E36A29AA4F27990BBD /* Configuration */;
-			baseConfigurationReferenceRelativePath = Config.xcconfig;
+			baseConfigurationReference = C0FFEE0000000000000000C1 /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -234,8 +237,7 @@
 		};
 		093141FFA2CDEAA7F3179F5E /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReferenceAnchor = 8F6825E36A29AA4F27990BBD /* Configuration */;
-			baseConfigurationReferenceRelativePath = Config.xcconfig;
+			baseConfigurationReference = C0FFEE0000000000000000C1 /* Config.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;

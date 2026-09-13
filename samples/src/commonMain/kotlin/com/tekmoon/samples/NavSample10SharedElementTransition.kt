@@ -5,7 +5,6 @@
 
 package com.tekmoon.samples
 
-import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -158,7 +157,7 @@ private fun Sample10DetailScreen(navController: NavController): Unit {
                 .sample10SharedElement(Sample10HeroKey),
         )
         Text(
-            text = stringResource(Res.string.sample10_detail_title),
+            text = stringResource(Res.string.sample10_detail_title) + "Detail",
             modifier = Modifier.sample10SharedBounds(Sample10TitleKey),
             style = MaterialTheme.typography.headlineLarge,
             textAlign = TextAlign.Center,
@@ -210,7 +209,6 @@ private fun Modifier.sample10SharedBounds(key: String): Modifier {
         this@sample10SharedBounds.sharedBounds(
             sharedContentState = rememberSharedContentState(key),
             animatedVisibilityScope = animatedVisibilityScope,
-            resizeMode = SharedTransitionScope.ResizeMode.RemeasureToBounds,
         )
     }
 }
