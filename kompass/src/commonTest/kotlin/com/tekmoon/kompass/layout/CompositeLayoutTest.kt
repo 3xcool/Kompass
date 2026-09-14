@@ -1,5 +1,6 @@
 package com.tekmoon.kompass.layout
 
+import androidx.compose.ui.geometry.Offset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -59,6 +60,20 @@ class CompositeLayoutTest {
         assertFalse(state.isEditMode)
         assertEquals(null, state.draggedPaneId)
         assertEquals(null, state.dragTarget)
+    }
+
+    @Test
+    fun cancelling_drag_clears_the_transient_preview_position() {
+        val state = CompositeLayoutState()
+        val position = Offset(120f, 240f)
+
+        state.beginDrag("pane", position)
+
+        assertEquals(position, state.dragPosition)
+
+        state.cancelDrag()
+
+        assertEquals(null, state.dragPosition)
     }
 
     private fun layoutSpec(): CompositeLayoutSpec = CompositeLayoutSpec(

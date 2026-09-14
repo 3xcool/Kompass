@@ -37,7 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -68,6 +71,9 @@ class CompositeLayoutState(
     var draggedPaneId: String? by mutableStateOf(null)
         private set
 
+    internal var dragPosition: Offset? by mutableStateOf(null)
+        private set
+
     var dragTarget: CompositeDropTarget? by mutableStateOf(null)
         private set
 
@@ -96,9 +102,14 @@ class CompositeLayoutState(
     }
 
     /** Starts a transient drag without changing whether persistent edit mode is enabled. */
-    internal fun beginDrag(paneId: String) {
+    internal fun beginDrag(paneId: String, position: Offset) {
         draggedPaneId = paneId
+        dragPosition = position
         dragTarget = null
+    }
+
+    internal fun updateDragPosition(position: Offset) {
+        if (draggedPaneId != null) dragPosition = position
     }
 
     internal fun updateDragTarget(target: CompositeDropTarget?) {
@@ -116,6 +127,7 @@ class CompositeLayoutState(
 
     internal fun cancelDrag() {
         draggedPaneId = null
+        dragPosition = null
         dragTarget = null
     }
 }
@@ -196,6 +208,10 @@ class SceneLayoutComposite(
                     bounds = bounds,
                 )
             }
+            DragPreview(
+                backStack = backStack,
+                bounds = bounds,
+            )
         }
     }
 
@@ -221,7 +237,8 @@ class SceneLayoutComposite(
                             .fillMaxSize()
                             .onGloballyPositioned { coordinates ->
                                 bounds[node.paneId] = coordinates.boundsInRoot()
-                            },
+                            }
+                            .alpha(if (state.draggedPaneId == node.paneId) 0.35f else 1f),
                         entry = entry,
                         graph = graph,
                         destination = destination,
@@ -367,6 +384,60 @@ class SceneLayoutComposite(
     }
 
     @Composable
+    private fun DragPreview(
+        backStack: ImmutableList<BackStackEntry>,
+        bounds: Map<String, Rect>,
+    ) {
+        val draggedPaneId = state.draggedPaneId ?: return
+        val entry = backStack.firstOrNull { paneId(it) == draggedPaneId } ?: return
+        val sourceBounds = bounds[draggedPaneId]
+        val density = LocalDensity.current
+        val minWidthPx = with(density) { 160.dp.toPx() }
+        val maxWidthPx = with(density) { 360.dp.toPx() }
+        val previewWidthPx = (sourceBounds?.width ?: with(density) { 240.dp.toPx() })
+            .coerceIn(minWidthPx, maxWidthPx)
+        val previewWidth = with(density) { previewWidthPx.toDp() }
+        val previewHeight = 96.dp
+        val previewHeightPx = with(density) { previewHeight.toPx() }
+        val title = paneTitleContent?.invoke(entry) ?: paneTitle(entry)
+
+        Box(
+            modifier = Modifier
+                .width(previewWidth)
+                .height(previewHeight)
+                .graphicsLayer {
+                    val position = state.dragPosition ?: Offset.Zero
+                    translationX = position.x - previewWidthPx / 2f
+                    translationY = position.y - previewHeightPx / 3f
+                }
+                .shadow(8.dp, RoundedCornerShape(12.dp))
+                .background(CompositeLayoutDefaults.dragPreviewColor, RoundedCornerShape(12.dp))
+                .border(
+                    width = 1.dp,
+                    color = CompositeLayoutDefaults.dragPreviewBorderColor,
+                    shape = RoundedCornerShape(12.dp),
+                )
+                .padding(12.dp),
+        ) {
+            Column(verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)) {
+                BasicText(title)
+                Spacer(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .background(CompositeLayoutDefaults.dragPreviewLineColor, RoundedCornerShape(4.dp)),
+                )
+                Spacer(
+                    Modifier
+                        .fillMaxWidth(0.65f)
+                        .height(8.dp)
+                        .background(CompositeLayoutDefaults.dragPreviewLineColor, RoundedCornerShape(4.dp)),
+                )
+            }
+        }
+    }
+
+    @Composable
     private fun PaneHeader(
         entry: BackStackEntry,
         handleBounds: androidx.compose.runtime.MutableState<Rect?>,
@@ -384,13 +455,14 @@ class SceneLayoutComposite(
             .pointerInput(entry.id, state.isEditMode) {
                 val onDragStart: (Offset) -> Unit = { offset ->
                     dragPosition = handleBounds.value?.topLeft?.plus(offset) ?: Offset.Zero
-                    state.beginDrag(paneId(entry))
+                    state.beginDrag(paneId(entry), dragPosition)
                     state.updateDragTarget(findDropTarget(bounds, dragPosition, edgeDropThreshold))
                 }
                 val onDrag: (androidx.compose.ui.input.pointer.PointerInputChange, Offset) -> Unit = {
                         change, dragAmount ->
                     change.consume()
                     dragPosition += dragAmount
+                    state.updateDragPosition(dragPosition)
                     updateDragTarget(bounds, dragPosition, edgeDropThreshold)
                 }
                 if (state.isEditMode) {
@@ -609,6 +681,9 @@ private object CompositeLayoutDefaults {
     val dockTargetColor = Color(0x556650A4)
     val activeDockTargetColor = Color(0xCC6650A4)
     val dockTargetBorderColor = Color(0xFF6650A4)
+    val dragPreviewColor = Color(0xFFF9F7FF)
+    val dragPreviewBorderColor = Color(0xFF6650A4)
+    val dragPreviewLineColor = Color(0xFFE3DDF0)
 }
 
 private fun CompositeLayoutNode.fractionAt(path: List<SplitBranch>): Float? = when {
