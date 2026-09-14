@@ -195,9 +195,19 @@ class SceneLayoutComposite(
         val bounds = remember { mutableMapOf<String, Rect>() }
         val visiblePaneIds = backStack.map(paneId)
         val effectiveLayout = state.layout.reconcile(visiblePaneIds)
-        SideEffect { state.reconcile(visiblePaneIds) }
+        var rootPosition by remember { mutableStateOf(Offset.Zero) }
+        SideEffect {
+            state.reconcile(visiblePaneIds)
+            bounds.keys.retainAll(visiblePaneIds)
+        }
 
-        Box(Modifier.fillMaxSize()) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .onGloballyPositioned { coordinates ->
+                    rootPosition = coordinates.boundsInRoot().topLeft
+                },
+        ) {
             effectiveLayout.root?.let { root ->
                 RenderNode(
                     node = root,
@@ -211,6 +221,7 @@ class SceneLayoutComposite(
             DragPreview(
                 backStack = backStack,
                 bounds = bounds,
+                rootPosition = rootPosition,
             )
         }
     }
@@ -387,6 +398,7 @@ class SceneLayoutComposite(
     private fun DragPreview(
         backStack: ImmutableList<BackStackEntry>,
         bounds: Map<String, Rect>,
+        rootPosition: Offset,
     ) {
         val draggedPaneId = state.draggedPaneId ?: return
         val entry = backStack.firstOrNull { paneId(it) == draggedPaneId } ?: return
@@ -407,8 +419,8 @@ class SceneLayoutComposite(
                 .height(previewHeight)
                 .graphicsLayer {
                     val position = state.dragPosition ?: Offset.Zero
-                    translationX = position.x - previewWidthPx / 2f
-                    translationY = position.y - previewHeightPx / 3f
+                    translationX = position.x - rootPosition.x - previewWidthPx / 2f
+                    translationY = position.y - rootPosition.y - previewHeightPx / 3f
                 }
                 .shadow(8.dp, RoundedCornerShape(12.dp))
                 .background(CompositeLayoutDefaults.dragPreviewColor, RoundedCornerShape(12.dp))

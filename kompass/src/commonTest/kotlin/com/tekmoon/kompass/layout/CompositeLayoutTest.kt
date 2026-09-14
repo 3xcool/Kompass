@@ -76,6 +76,22 @@ class CompositeLayoutTest {
         assertEquals(null, state.dragPosition)
     }
 
+    @Test
+    fun updating_drag_position_tracks_the_pointer_until_drag_finishes() {
+        val state = CompositeLayoutState()
+        val initialPosition = Offset(120f, 240f)
+        val updatedPosition = Offset(180f, 300f)
+
+        state.beginDrag("pane", initialPosition)
+        state.updateDragPosition(updatedPosition)
+
+        assertEquals(updatedPosition, state.dragPosition)
+
+        state.finishDrag()
+
+        assertEquals(null, state.dragPosition)
+    }
+
     private fun layoutSpec(): CompositeLayoutSpec = CompositeLayoutSpec(
         root = CompositeLayoutNode.Split(
             orientation = CompositeOrientation.Horizontal,
