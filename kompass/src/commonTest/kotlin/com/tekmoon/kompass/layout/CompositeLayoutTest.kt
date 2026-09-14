@@ -92,6 +92,18 @@ class CompositeLayoutTest {
         assertEquals(null, state.dragPosition)
     }
 
+    @Test
+    fun reconciling_a_removed_dragged_pane_cancels_the_transient_drag() {
+        val state = CompositeLayoutState()
+
+        state.beginDrag("removed", Offset(120f, 240f))
+        state.reconcile(listOf("remaining"))
+
+        assertEquals(null, state.draggedPaneId)
+        assertEquals(null, state.dragPosition)
+        assertEquals(null, state.dragTarget)
+    }
+
     private fun layoutSpec(): CompositeLayoutSpec = CompositeLayoutSpec(
         root = CompositeLayoutNode.Split(
             orientation = CompositeOrientation.Horizontal,

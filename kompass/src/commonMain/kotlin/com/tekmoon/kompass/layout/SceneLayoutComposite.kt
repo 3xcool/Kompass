@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -93,6 +94,7 @@ class CompositeLayoutState(
     }
 
     internal fun reconcile(visiblePaneIds: List<String>) {
+        if (draggedPaneId != null && draggedPaneId !in visiblePaneIds) cancelDrag()
         val reconciled = layout.reconcile(visiblePaneIds)
         if (reconciled != layout) layout = reconciled
     }
@@ -196,6 +198,9 @@ class SceneLayoutComposite(
         val visiblePaneIds = backStack.map(paneId)
         val effectiveLayout = state.layout.reconcile(visiblePaneIds)
         var rootPosition by remember { mutableStateOf(Offset.Zero) }
+        DisposableEffect(Unit) {
+            onDispose { state.cancelDrag() }
+        }
         SideEffect {
             state.reconcile(visiblePaneIds)
             bounds.keys.retainAll(visiblePaneIds)
