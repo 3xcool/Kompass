@@ -1,3 +1,5 @@
+@file:OptIn(com.tekmoon.kompass.layout.ExperimentalKompassCompositeLayoutApi::class)
+
 package com.tekmoon.samples.preview
 
 import androidx.compose.foundation.background
@@ -22,6 +24,8 @@ import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationState
 import com.tekmoon.kompass.SceneLayout
 import com.tekmoon.kompass.defaultScope
+import com.tekmoon.kompass.layout.CompositeLayoutState
+import com.tekmoon.kompass.layout.SceneLayoutComposite
 import com.tekmoon.kompass.rememberNavController
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -154,6 +158,38 @@ private object PreviewNavigationGraph : NavigationGraph {
     }
 }
 
+private object PreviewCompositeNavigationGraph : NavigationGraph {
+
+    override val sceneLayout: SceneLayout = SceneLayoutComposite(
+        state = CompositeLayoutState(),
+        paneTitle = { entry -> entry.destinationId },
+    )
+
+    override fun canResolveDestination(destinationId: String): Boolean =
+        destinationId.startsWith("preview/")
+
+    override fun resolveDestination(
+        destinationId: String,
+        args: String?,
+    ): Destination = when (destinationId) {
+        PreviewHome.id -> PreviewHome
+        PreviewDetails.id -> PreviewDetails
+        else -> error("Unknown preview destination: $destinationId")
+    }
+
+    @Composable
+    override fun Content(
+        entry: BackStackEntry,
+        destination: Destination,
+        navController: NavController,
+    ) {
+        when (destination) {
+            PreviewHome -> TodoListScreen()
+            PreviewDetails -> TodoDetailScreen(destination.id)
+        }
+    }
+}
+
 @Preview(
     name = "📱 Phone – List Only",
     widthDp = 360,
@@ -198,6 +234,20 @@ fun NavigationPreview_MultiPane() {
     KompassNavigationHost(
         navController = navController,
         graphs = persistentListOf(PreviewNavigationGraph)
+    )
+}
+
+@Preview(
+    name = "💻 Tablet – Editable Composite Layout",
+    widthDp = 1000,
+    heightDp = 600,
+)
+@Composable
+fun NavigationPreview_CompositeLayout() {
+    val navController = rememberNavController(DsNavigationPreviewStates.listDetail())
+    KompassNavigationHost(
+        navController = navController,
+        graphs = persistentListOf(PreviewCompositeNavigationGraph),
     )
 }
 

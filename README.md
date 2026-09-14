@@ -49,6 +49,7 @@ Perfect for applications that need robust, scalable, and testable navigation wit
 * [Navigation Scopes](#navigation-scopes)
 * [Navigation Results](#navigation-results)
 * [Custom Layouts & Transitions](#custom-layouts--transitions)
+* [Optional Composite Layouts](#optional-composite-layouts)
 * [Deep Linking](#deep-linking)
 * [State Serialization](#state-serialization)
 * [Testing](#testing)
@@ -580,6 +581,46 @@ override val sceneLayout: SceneLayout = object : SceneLayout {
     }
 }
 ```
+
+## Optional Composite Layouts
+
+Resizable panes and drag-and-drop docking are an advanced, opt-in use case. They live in the
+`com.tekmoon:kompass` artifact under the opt-in `com.tekmoon.kompass.layout` package and are not
+enabled by `KompassNavigationHost`.
+The layout arrangement is independent from the navigation back stack, so moving a pane never
+changes Back behavior or navigation scope ownership.
+
+```kotlin
+val compositeState = CompositeLayoutState()
+
+object MainNavigationGraph : NavigationGraph {
+    override val sceneLayout: SceneLayout = SceneLayoutComposite(
+        state = compositeState,
+        paneTitle = { entry -> entry.destinationId },
+    )
+}
+```
+
+The built-in chrome enters edit mode through its `Edit` action. Edit mode reveals resize handles.
+A long press on a pane handle starts a drag and reveals dock targets. Hosts can provide a custom pane header through
+`CompositePaneHeaderScope`, while keeping the built-in drag gesture on the supplied
+`dragHandleModifier`:
+
+```kotlin
+SceneLayoutComposite(
+    state = compositeState,
+    paneHeaderContent = { header ->
+        Row {
+            BasicText(header.entry.destinationId, Modifier.weight(1f))
+            BasicText("⠿", header.dragHandleModifier)
+        }
+    },
+)
+```
+
+`CompositeLayoutSpec` is `@Serializable`, making it suitable for session persistence or a future
+server-driven arrangement. Serialize only this optional arrangement state; do not put pane
+position or size into `BackStackEntry.metadata`.
 
 ## Deep Linking
 

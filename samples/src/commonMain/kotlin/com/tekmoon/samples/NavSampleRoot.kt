@@ -23,6 +23,7 @@ import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 import kompasskmp.samples.generated.resources.Res
 import kompasskmp.samples.generated.resources.sample_list_auth_login
+import kompasskmp.samples.generated.resources.sample_list_composite_layout
 import kompasskmp.samples.generated.resources.sample_list_deeplink
 import kompasskmp.samples.generated.resources.sample_list_expense_tracker_auth_login
 import kompasskmp.samples.generated.resources.sample_list_inner_graphs
@@ -49,7 +50,8 @@ private enum class KompassSampleDestinations : Destination {
     Sample8ExpenseTrackerAuthLogin,
     Sample9PredictiveBack,
     Sample10SharedElementTransition,
-    Sample11Tabs;
+    Sample11Tabs,
+    Sample12CompositeLayout;
 
     override val id: String
         get() = "kompass/$name"
@@ -182,6 +184,15 @@ private data class KompassNavSampleGraph(
                     }
                 )
             }
+
+            KompassSampleDestinations.Sample12CompositeLayout -> {
+                Sample12_CompositeLayout(
+                    backPressedChannel = backPressedChannel,
+                    onDismiss = {
+                        navController.popIfCan()
+                    }
+                )
+            }
         }
     }
 
@@ -263,6 +274,8 @@ private fun KompassSampleDestinations.label(): String = when (this) {
     KompassSampleDestinations.Sample10SharedElementTransition ->
         stringResource(Res.string.sample_list_shared_element_transition)
     KompassSampleDestinations.Sample11Tabs -> stringResource(Res.string.sample_list_tabs)
+    KompassSampleDestinations.Sample12CompositeLayout ->
+        stringResource(Res.string.sample_list_composite_layout)
 }
 
 
