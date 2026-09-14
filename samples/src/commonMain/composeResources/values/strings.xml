@@ -12,6 +12,7 @@
     <string name="sample_list_predictive_back">Voltar preditivo</string>
     <string name="sample_list_shared_element_transition">Transição de elemento compartilhado</string>
     <string name="sample_list_tabs">Abas</string>
+    <string name="sample_list_composite_layout">Painéis redimensionáveis e docking</string>
     <string name="sample10_home_title">Transição de elemento compartilhado</string>
     <string name="sample10_home_body">Abra o cartão para acompanhar a arte e o título entre as telas.</string>
     <string name="sample10_detail_title">Atlas visual</string>
@@ -30,4 +31,17 @@
     <string name="sample11_stack">Pilha: %1$s</string>
     <string name="sample11_model_reorder">Reordenar</string>
     <string name="sample11_model_per_tab">Pilha por aba</string>
+    <string name="sample12_overview_title">Visão geral</string>
+    <string name="sample12_overview_body">Tela inicial do sample. Edite para redimensionar, mantenha pressionado o cabeçalho para arrastar e role a lista de 100 itens para testar a restauração da posição.</string>
+    <string name="sample12_level_title">Level %1$d</string>
+    <string name="sample12_level_body">Nível %1$d de conteúdo do sample. A posição visual do painel não altera a ordem da navegação.</string>
+    <string name="sample12_list_item">%1$s — item %2$d</string>
+    <string name="sample12_add_pane">Adicionar outro painel de %1$s</string>
+    <string name="sample12_navigation_level">Posição na back stack: %1$d de %2$d</string>
+    <string name="sample12_back_hint">Voltar remove o painel na posição %1$d: %2$s.</string>
+    <string name="sample12_drag_pane">Mover painel %1$s</string>
+    <string name="sample12_enter_edit_mode">Entrar no modo de edição de painéis</string>
+    <string name="sample12_enter_edit_mode_action">Editar</string>
+    <string name="sample12_exit_edit_mode">Sair da edição de painéis</string>
+    <string name="sample12_exit_edit_mode_action">Concluir</string>
 </resources>
