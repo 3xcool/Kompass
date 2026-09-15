@@ -174,8 +174,9 @@ val localProps = Properties().apply {
 
 // Resolution order (highest priority first):
 //   1. -PkompassVersion=... passed on the Gradle command line (used by CI publish workflow)
-//   2. kompassVersion=... in local.properties (used for local dev / publishToMavenLocal)
-//   3. literal "1.0.0" fallback (should never be hit in practice)
+//   2. kompassVersion=... in gradle.properties (versioned release default)
+//   3. kompassVersion=... in local.properties (legacy fallback)
+//   4. literal "1.0.0" fallback
 val kompassVersion: String =
     (project.findProperty("kompassVersion") as? String)?.takeIf { it.isNotBlank() }
         ?: localProps.getProperty("kompassVersion")

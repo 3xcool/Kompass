@@ -19,8 +19,9 @@ plugins {
 // Set version first.
 // Resolution order (highest priority first):
 //   1. -PkompassVersion=... passed on the Gradle command line (used by CI publish workflow)
-//   2. kompassVersion=... in local.properties (used for local dev / publishToMavenLocal)
-//   3. literal "1.0.0" fallback (should never be hit in practice)
+//   2. kompassVersion=... in gradle.properties (versioned release default)
+//   3. kompassVersion=... in local.properties (legacy fallback)
+//   4. literal "1.0.0" fallback
 val localProps = Properties().apply {
     val f = rootProject.file("local.properties")
     if (f.exists()) f.inputStream().use { load(it) }
