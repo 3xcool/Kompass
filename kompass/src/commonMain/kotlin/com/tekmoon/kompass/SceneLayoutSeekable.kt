@@ -5,7 +5,7 @@ import kotlinx.collections.immutable.ImmutableList
 
 /**
  * Single-pane animation with externally controlled visual progress (0..1), or automatic
- * completion when progress is null. Assign this to NavigationGraph.sceneLayout.
+ * completion when progress is null. Assign this to KompassNavigationGraph.sceneLayout.
  *
  * Progress controls an already committed navigation transition, not the back stack. Moving
  * back to zero does not undo navigation. Gesture handling is separate. For the system Back
@@ -21,9 +21,9 @@ data class SceneLayoutSeekable(
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection,
     ) {
         SeekableScene(

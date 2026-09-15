@@ -15,18 +15,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.NavDirection
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationState
 import com.tekmoon.kompass.SceneLayout
 import com.tekmoon.kompass.defaultScope
 import com.tekmoon.kompass.layout.CompositeLayoutState
 import com.tekmoon.kompass.layout.SceneLayoutComposite
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
@@ -51,7 +51,7 @@ object DsNavigationPreviewStates {
     fun listOnly(): NavigationState =
         NavigationState(
             backStack = persistentListOf(
-                BackStackEntry(
+                KompassEntry(
                     destinationId = PreviewHome.id,
                     scopeId = PreviewHome.defaultScope()
                 )
@@ -61,15 +61,15 @@ object DsNavigationPreviewStates {
     fun listDetail(): NavigationState =
         NavigationState(
             backStack = persistentListOf(
-                BackStackEntry(
+                KompassEntry(
                     destinationId = PreviewHome.id,
                     scopeId = PreviewHome.defaultScope()
                 ),
-                BackStackEntry(
+                KompassEntry(
                     destinationId = PreviewDetails.id,
                     scopeId = PreviewDetails.defaultScope()
                 ),
-                BackStackEntry(
+                KompassEntry(
                     destinationId = PreviewDetails.id,
                     scopeId = PreviewDetails.defaultScope()
                 )
@@ -84,9 +84,9 @@ private object PreviewMultiPaneSceneLayout : SceneLayout {
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     ) {
         BoxWithConstraints {
@@ -128,7 +128,7 @@ private object PreviewMultiPaneSceneLayout : SceneLayout {
 }
 
 
-private object PreviewNavigationGraph : NavigationGraph {
+private object PreviewNavigationGraph : KompassNavigationGraph {
 
     override val sceneLayout: SceneLayout = PreviewMultiPaneSceneLayout
 
@@ -147,9 +147,9 @@ private object PreviewNavigationGraph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController,
+        navController: KompassNavController,
     ) {
         when (destination) {
             PreviewHome -> TodoListScreen()
@@ -158,7 +158,7 @@ private object PreviewNavigationGraph : NavigationGraph {
     }
 }
 
-private object PreviewCompositeNavigationGraph : NavigationGraph {
+private object PreviewCompositeNavigationGraph : KompassNavigationGraph {
 
     override val sceneLayout: SceneLayout = SceneLayoutComposite(
         state = CompositeLayoutState(),
@@ -179,9 +179,9 @@ private object PreviewCompositeNavigationGraph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController,
+        navController: KompassNavController,
     ) {
         when (destination) {
             PreviewHome -> TodoListScreen()
@@ -204,9 +204,9 @@ private object PreviewCompositeNavigationGraph : NavigationGraph {
 fun NavigationPreview_ListOnly() {
 //    val state = DsNavigationPreviewStates.listOnly()
 //    val navController = remember(state) {
-//        NavController(state, {})
+//        KompassNavController(state, {})
 //    }
-    val navController = rememberNavController(DsNavigationPreviewStates.listOnly())
+    val navController = rememberKompassNavController(DsNavigationPreviewStates.listOnly())
     KompassNavigationHost(
         navController = navController,
         graphs = persistentListOf(PreviewNavigationGraph),
@@ -228,9 +228,9 @@ fun NavigationPreview_ListOnly() {
 fun NavigationPreview_MultiPane() {
 //    val state = DsNavigationPreviewStates.listDetail()
 //    val navController = remember(state) {
-//        NavController(state, {})
+//        KompassNavController(state, {})
 //    }
-    val navController = rememberNavController(DsNavigationPreviewStates.listDetail())
+    val navController = rememberKompassNavController(DsNavigationPreviewStates.listDetail())
     KompassNavigationHost(
         navController = navController,
         graphs = persistentListOf(PreviewNavigationGraph)
@@ -244,7 +244,7 @@ fun NavigationPreview_MultiPane() {
 )
 @Composable
 fun NavigationPreview_CompositeLayout() {
-    val navController = rememberNavController(DsNavigationPreviewStates.listDetail())
+    val navController = rememberKompassNavController(DsNavigationPreviewStates.listDetail())
     KompassNavigationHost(
         navController = navController,
         graphs = persistentListOf(PreviewCompositeNavigationGraph),

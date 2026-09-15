@@ -9,7 +9,7 @@ import kotlinx.serialization.json.Json
  *
  * Use this when a screen needs structured input. The [argsSerializer] is the
  * single source of truth for how arguments are encoded into the opaque
- * [BackStackEntry.args] string and decoded back when the screen reads them.
+ * [KompassEntry.args] string and decoded back when the screen reads them.
  *
  * ### Defining a typed destination
  *
@@ -39,7 +39,7 @@ import kotlinx.serialization.json.Json
  *
  * ```
  * @Composable
- * fun ProductDetailsScreen(entry: BackStackEntry, navController: NavController) {
+ * fun ProductDetailsScreen(entry: KompassEntry, navController: KompassNavController) {
  *     val args: ProductDetailsArgs = navController.requireArgs(ProductDetailsDestination, entry)
  *     // ...
  * }
@@ -67,55 +67,55 @@ interface TypedDestination<T : Any> : Destination {
 
 /**
  * Encodes typed [args] into the opaque [ArgsJson] string stored on
- * [BackStackEntry.args].
+ * [KompassEntry.args].
  */
 fun <T : Any> TypedDestination<T>.encodeArgs(args: T, json: Json): ArgsJson =
     json.encodeToString(argsSerializer, args)
 
 /**
- * Decodes args from a [BackStackEntry] for this typed destination.
+ * Decodes args from a [KompassEntry] for this typed destination.
  *
  * Returns `null` if the entry has no args attached.
  *
  * Throws [IllegalArgumentException] if the entry belongs to another destination.
  */
-fun <T : Any> TypedDestination<T>.argsOrNull(entry: BackStackEntry, json: Json): T? =
+fun <T : Any> TypedDestination<T>.argsOrNull(entry: KompassEntry, json: Json): T? =
     entry.args?.let {
         entry.requireDestination(this)
         json.decodeFromString(argsSerializer, it)
     }
 
-private fun <T : Any> BackStackEntry.requireDestination(destination: TypedDestination<T>) {
+private fun <T : Any> KompassEntry.requireDestination(destination: TypedDestination<T>) {
     require(destinationId == destination.id) {
         "Entry destination '$destinationId' does not match typed destination '${destination.id}'."
     }
 }
 
 /**
- * Decodes args from a [BackStackEntry] for this typed destination.
+ * Decodes args from a [KompassEntry] for this typed destination.
  *
  * Throws [IllegalStateException] if no args are attached. Prefer this when the
  * destination contractually requires arguments (the common case).
  * Throws [IllegalArgumentException] if the entry belongs to another destination.
  */
-fun <T : Any> TypedDestination<T>.argsFrom(entry: BackStackEntry, json: Json): T =
+fun <T : Any> TypedDestination<T>.argsFrom(entry: KompassEntry, json: Json): T =
     argsOrNull(entry, json)
         ?: error("Missing typed args for destination '$id'. Did you forget to pass them when navigating?")
 
 /**
- * Builds a [BackStackEntry] for this typed destination from typed [args].
+ * Builds a [KompassEntry] for this typed destination from typed [args].
  *
  * Use this when constructing a back stack manually (e.g., for deep links
- * or initial state). For ordinary navigation prefer [NavController.navigateTo].
+ * or initial state). For ordinary navigation prefer [KompassNavController.navigateTo].
  */
-fun <T : Any> TypedDestination<T>.toBackStackEntry(
+fun <T : Any> TypedDestination<T>.toKompassEntry(
     args: T,
     json: Json,
     scopeId: NavigationScopeId = defaultScope(),
     pendingResultKey: String? = null,
     metadata: Map<String, String> = emptyMap(),
-): BackStackEntry =
-    BackStackEntry(
+): KompassEntry =
+    KompassEntry(
         destinationId = id,
         args = encodeArgs(args, json),
         scopeId = scopeId,
@@ -124,15 +124,15 @@ fun <T : Any> TypedDestination<T>.toBackStackEntry(
     )
 
 // ----------------------------------------------------------------------------
-// Helpers — NavController-side
+// Helpers — KompassNavController-side
 // ----------------------------------------------------------------------------
 
 /**
  * Navigates to a [TypedDestination] with strongly-typed [args].
  *
- * Equivalent to building a [BackStackEntry] via [TypedDestination.toBackStackEntry]
- * and dispatching [NavController.navigate], but in one call. The controller's
- * [NavController.json] is used to encode the args.
+ * Equivalent to building a [KompassEntry] via [TypedDestination.toKompassEntry]
+ * and dispatching [KompassNavController.navigate], but in one call. The controller's
+ * [KompassNavController.json] is used to encode the args.
  *
  * @param destination The typed destination to navigate to.
  * @param args Typed arguments for the destination.
@@ -145,7 +145,7 @@ fun <T : Any> TypedDestination<T>.toBackStackEntry(
  * @param popUpToInclusive Whether to also remove [popUpTo] itself.
  * @param reuseIfExists Replace an existing matching entry rather than pushing a new one.
  */
-fun <T : Any> NavController.navigateTo(
+fun <T : Any> KompassNavController.navigateTo(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
@@ -156,7 +156,7 @@ fun <T : Any> NavController.navigateTo(
     reuseIfExists: Boolean = false,
     metadata: Map<String, String> = emptyMap(),
 ) {
-    val entry = destination.toBackStackEntry(
+    val entry = destination.toKompassEntry(
         args = args,
         json = json,
         scopeId = scopeId,
@@ -177,29 +177,29 @@ fun <T : Any> NavController.navigateTo(
  * strongly-typed [args].
  */
 @Deprecated(
-    message = "Use replaceStackTo, which matches replaceStack.",
-    replaceWith = ReplaceWith("replaceStackTo(destination, args, scopeId)"),
+    message = "Use replaceStack, which matches replaceStack.",
+    replaceWith = ReplaceWith("replaceStack(destination, args, scopeId)"),
 )
-fun <T : Any> NavController.replaceRootTo(
+fun <T : Any> KompassNavController.replaceRoot(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
 ) {
-    replaceStackTo(destination, args, scopeId)
+    replaceStack(destination, args, scopeId)
 }
 
 /**
  * Replaces the entire back stack with a single [TypedDestination] entry, with
  * strongly-typed [args].
  */
-fun <T : Any> NavController.replaceStackTo(
+fun <T : Any> KompassNavController.replaceStack(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
     metadata: Map<String, String> = emptyMap(),
 ) {
     replaceStack(
-        destination.toBackStackEntry(
+        destination.toKompassEntry(
             args = args,
             json = json,
             scopeId = scopeId,
@@ -209,8 +209,8 @@ fun <T : Any> NavController.replaceStackTo(
 }
 
 /**
- * Reads typed args for [destination] from a [BackStackEntry] (defaults to the
- * controller's [NavController.currentEntry]). Throws if the entry has no args.
+ * Reads typed args for [destination] from a [KompassEntry] (defaults to the
+ * controller's [KompassNavController.currentEntry]). Throws if the entry has no args.
  *
  * Common usage inside a screen:
  *
@@ -218,18 +218,18 @@ fun <T : Any> NavController.replaceStackTo(
  * val args = navController.requireArgs(ProductDetailsDestination, entry)
  * ```
  */
-fun <T : Any> NavController.requireArgs(
+fun <T : Any> KompassNavController.requireArgs(
     destination: TypedDestination<T>,
-    entry: BackStackEntry = currentEntry,
+    entry: KompassEntry = currentEntry,
 ): T = destination.argsFrom(entry, json)
 
 /**
- * Reads typed args for [destination] from a [BackStackEntry], or `null` if
+ * Reads typed args for [destination] from a [KompassEntry], or `null` if
  * none are attached.
  */
-fun <T : Any> NavController.argsOrNull(
+fun <T : Any> KompassNavController.argsOrNull(
     destination: TypedDestination<T>,
-    entry: BackStackEntry = currentEntry,
+    entry: KompassEntry = currentEntry,
 ): T? = destination.argsOrNull(entry, json)
 
 /**
@@ -238,15 +238,15 @@ fun <T : Any> NavController.argsOrNull(
  *
  * Use this when external code needs a raw encoded string — e.g., when a
  * custom [DeepLinkHandler] or test fixture builds [NavigationCommand]s by
- * hand. Prefer [navigateTo] / [replaceRootTo] for ordinary navigation.
+ * hand. Prefer [navigateTo] / [replaceRoot] for ordinary navigation.
  */
-fun <T : Any> NavController.encodeArgs(
+fun <T : Any> KompassNavController.encodeArgs(
     destination: TypedDestination<T>,
     args: T,
 ): ArgsJson = destination.encodeArgs(args, json)
 
 /**
- * Builds a [BackStackEntry] for [destination] with typed [args], using this
+ * Builds a [KompassEntry] for [destination] with typed [args], using this
  * controller's [Json] for encoding.
  *
  * Useful when constructing entries for a [NavigationCommand] list that will
@@ -259,13 +259,13 @@ fun <T : Any> NavController.encodeArgs(
  * @param pendingResultKey Optional key for [NavigationResult] return when this
  * entry is later popped.
  */
-fun <T : Any> NavController.toBackStackEntry(
+fun <T : Any> KompassNavController.toKompassEntry(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
     pendingResultKey: String? = null,
     metadata: Map<String, String> = emptyMap(),
-): BackStackEntry = destination.toBackStackEntry(
+): KompassEntry = destination.toKompassEntry(
     args = args,
     json = json,
     scopeId = scopeId,

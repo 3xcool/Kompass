@@ -44,7 +44,7 @@ internal class KompassOwnerStores(restored: SavedState? = null) : ViewModel() {
 }
 
 @Composable
-internal fun rememberKompassOwnerStore(entries: List<BackStackEntry>): KompassOwnerStore {
+internal fun rememberKompassOwnerStore(entries: List<KompassEntry>): KompassOwnerStore {
     val id = rememberSaveable { randomUUID() }
     val parentRegistry = LocalSaveableStateRegistry.current
     val parentOwner = LocalViewModelStoreOwner.current

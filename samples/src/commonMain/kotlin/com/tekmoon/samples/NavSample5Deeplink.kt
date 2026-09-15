@@ -1,6 +1,6 @@
 package com.tekmoon.samples
 
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.NavigationCommand
 import com.tekmoon.kompass.newScope
 import com.tekmoon.kompass.PathTemplateDeepLinkHandler
@@ -12,15 +12,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import com.tekmoon.kompass.DeepLinkChannel
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.TypedDestination
 import com.tekmoon.kompass.navigateTo
 import com.tekmoon.kompass.requireArgs
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -120,9 +120,9 @@ private data class ProfileArgs(
  * Deep link
  *
  * PathTemplateDeepLinkHandler parses the URI and gives us the path values. A
- * deep-link handler runs without a NavController, so it can't call
+ * deep-link handler runs without a KompassNavController, so it can't call
  * navController.navigateTo. Instead we build entries with the destination's
- * own toBackStackEntry helper, passing a Json instance ourselves.
+ * own toKompassEntry helper, passing a Json instance ourselves.
  * Json.Default works fine for plain @Serializable args; if you need polymorphic
  * args, configure a SerializersModule and pass it here.
  * ------------------------------------------- */
@@ -134,11 +134,11 @@ private val profileDeepLinkHandler = PathTemplateDeepLinkHandler("myapp://profil
     listOf(
         NavigationCommand.ReplaceStack(
             listOf(
-                BackStackEntry(
+                KompassEntry(
                     destinationId = Sample5Dest.Home.id,
                     scopeId = newScope()
                 ),
-                Sample5Dest.Profile.toBackStackEntry(
+                Sample5Dest.Profile.toKompassEntry(
                     args = ProfileArgs(userId),
                     json = Json,
                     scopeId = newScope()
@@ -152,7 +152,7 @@ private val profileDeepLinkHandler = PathTemplateDeepLinkHandler("myapp://profil
  * Graph
  * ------------------------------------------- */
 
-private object Sample5Graph : NavigationGraph {
+private object Sample5Graph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         destinationId == Sample5Dest.Home.id ||
@@ -170,9 +170,9 @@ private object Sample5Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             Sample5Dest.Home ->
@@ -196,7 +196,7 @@ fun Sample5_DeepLink(
     onDismiss: () -> Unit = {}
 ) {
     val navController =
-        rememberNavController(
+        rememberKompassNavController(
             startDestination = Sample5Dest.Home,
             deepLinkUri = deepLinkUri,
             deepLinkHandlers = persistentListOf(profileDeepLinkHandler)
@@ -229,7 +229,7 @@ fun Sample5_DeepLink(
 
 @Composable
 private fun HomeScreen(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Column {
         Text("🏠 Home")
@@ -248,8 +248,8 @@ private fun HomeScreen(
 
 @Composable
 private fun ProfileScreen(
-    entry: BackStackEntry,
-    navController: NavController
+    entry: KompassEntry,
+    navController: KompassNavController
 ) {
     val args = navController.requireArgs(Sample5Dest.Profile, entry)
 

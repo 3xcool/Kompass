@@ -1,9 +1,9 @@
 package com.tekmoon.samples
 
 import androidx.compose.runtime.Composable
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.Arrangement
@@ -20,13 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.tekmoon.kompass.NavDirection
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationScopeId
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.SceneTransition
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.rememberScoped
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -74,7 +74,7 @@ private enum class Sample4Dest : Destination {
  * Graph with per-graph transition
  * ------------------------------------------- */
 
-private object Sample4Graph : NavigationGraph {
+private object Sample4Graph : KompassNavigationGraph {
 
     override val sceneTransition: SceneTransition = SlideGraphTransition
 
@@ -89,9 +89,9 @@ private object Sample4Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         val sharedState = rememberScoped(
             scopeId = NavigationScopeId("flow:sample4"),
@@ -144,7 +144,7 @@ fun Sample4_PerGraphTransitions(
     onDismiss: () -> Unit = {}
 ) {
 
-    val navController = rememberNavController(Sample4Dest.Home)
+    val navController = rememberKompassNavController(Sample4Dest.Home)
 
     // Track previous state for direction
     val previousState =
@@ -174,8 +174,8 @@ fun Sample4_PerGraphTransitions(
 
 @Composable
 private fun HomeScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: Sample4SharedState
 ) {
     val screenState = rememberScoped(
@@ -204,7 +204,7 @@ private fun HomeScreen(
 
         Button(onClick = {
             navController.navigate(
-                entry = Sample4Dest.Details.toBackStackEntry()
+                entry = Sample4Dest.Details.toKompassEntry()
             )
         }) {
             Text("Go to Details →")
@@ -214,8 +214,8 @@ private fun HomeScreen(
 
 @Composable
 private fun DetailsScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: Sample4SharedState
 ) {
     val screenState = rememberScoped(

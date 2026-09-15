@@ -26,15 +26,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
-import com.tekmoon.kompass.NavigationGraph
-import com.tekmoon.kompass.createNavController
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.KompassNavController
+import com.tekmoon.kompass.KompassNavigationGraph
+import com.tekmoon.kompass.createKompassNavController
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kompasskmp.samples.generated.resources.Res
 import kompasskmp.samples.generated.resources.sample11_back
@@ -94,7 +94,7 @@ private class Sample11Visits : ViewModel() {
  * Graph
  * ------------------------------------------- */
 
-private object Sample11Graph : NavigationGraph {
+private object Sample11Graph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         Sample11Dest.entries.any { it.id == destinationId }
@@ -103,7 +103,7 @@ private object Sample11Graph : NavigationGraph {
         Sample11Dest.entries.first { it.id == destinationId }
 
     @Composable
-    override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+    override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
         when (destination) {
             Sample11Dest.Detail -> Sample11DetailScreen(navController)
             else -> Sample11TabScreen(entry, destination, navController)
@@ -116,7 +116,7 @@ private object Sample11Graph : NavigationGraph {
  * ------------------------------------------- */
 
 @Composable
-private fun Sample11TabScreen(entry: BackStackEntry, destination: Destination, navController: NavController) {
+private fun Sample11TabScreen(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
     // Keyed by the occurrence, so each visit of each tab owns its counter.
     val visits = viewModel(key = entry.id) { Sample11Visits() }
     DisposableEffect(entry.id) {
@@ -136,14 +136,14 @@ private fun Sample11TabScreen(entry: BackStackEntry, destination: Destination, n
             text = stringResource(Res.string.sample11_visits, visits.value),
             style = MaterialTheme.typography.bodyLarge,
         )
-        Button(onClick = { navController.navigate(Sample11Dest.Detail.toBackStackEntry()) }) {
+        Button(onClick = { navController.navigate(Sample11Dest.Detail.toKompassEntry()) }) {
             Text(stringResource(Res.string.sample11_open_detail))
         }
     }
 }
 
 @Composable
-private fun Sample11DetailScreen(navController: NavController) {
+private fun Sample11DetailScreen(navController: KompassNavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -210,7 +210,7 @@ fun Sample11_Tabs(
 /** One controller. A tab tap moves the entry to the top and keeps everything it owns. */
 @Composable
 private fun Sample11ReorderModel(backPressedChannel: BackPressedChannel?, onDismiss: () -> Unit) {
-    val navController = rememberNavController(Sample11Dest.Home)
+    val navController = rememberKompassNavController(Sample11Dest.Home)
 
     KompassBackHandler(backPressedChannel = backPressedChannel) {
         navController.popIfCan(onFailure = onDismiss)
@@ -226,7 +226,7 @@ private fun Sample11ReorderModel(backPressedChannel: BackPressedChannel?, onDism
                 NavigationBarItem(
                     selected = navController.currentEntry.destinationId == tab.id,
                     // The whole bottom bar is this one line.
-                    onClick = { navController.navigate(tab.toBackStackEntry(), reuseIfExists = true) },
+                    onClick = { navController.navigate(tab.toKompassEntry(), reuseIfExists = true) },
                     icon = { Text(tabLabel(tab).take(1)) },
                     label = { Text(tabLabel(tab)) },
                 )
@@ -244,7 +244,7 @@ private fun Sample11ReorderModel(backPressedChannel: BackPressedChannel?, onDism
 @Composable
 private fun Sample11PerTabModel(backPressedChannel: BackPressedChannel?, onDismiss: () -> Unit) {
     val controllers = remember {
-        Sample11Tabs.associateWith { createNavController(it) }
+        Sample11Tabs.associateWith { createKompassNavController(it) }
     }
     DisposableEffect(controllers) {
         // An externally owned controller is released by close(), never by leaving composition.
@@ -283,7 +283,7 @@ private fun Sample11PerTabModel(backPressedChannel: BackPressedChannel?, onDismi
 
 /** Shows the stack, so the cross-tab Back history is obvious instead of being described. */
 @Composable
-private fun Sample11StackReadout(navController: NavController) {
+private fun Sample11StackReadout(navController: KompassNavController) {
     Card(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         Text(
             text = stringResource(

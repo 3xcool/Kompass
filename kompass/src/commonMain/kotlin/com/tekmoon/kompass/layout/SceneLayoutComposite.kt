@@ -49,20 +49,20 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavDirection
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.SceneLayout
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.serialization.json.Json
 
 /** Resolves an entry into the graph that draws it, as [SceneLayout.Render] supplies it. */
-private typealias Resolver = (BackStackEntry) -> Pair<NavigationGraph, Destination>
+private typealias Resolver = (KompassEntry) -> Pair<KompassNavigationGraph, Destination>
 
 /** A pane whose composition, and therefore its UI state, follows the pane through a dock move. */
-private typealias MovablePane = @Composable (BackStackEntry, Resolver) -> Unit
+private typealias MovablePane = @Composable (KompassEntry, Resolver) -> Unit
 
 /** Mutable UI holder for [CompositeLayoutSpec] and transient edit gestures. */
 @Stable
@@ -175,7 +175,7 @@ data class CompositeLayoutLabels(
 
 /** Scope supplied to a custom pane header. Apply [dragHandleModifier] to its drag affordance. */
 class CompositePaneHeaderScope internal constructor(
-    val entry: BackStackEntry,
+    val entry: KompassEntry,
     val isEditMode: Boolean,
     val dragHandleModifier: Modifier,
     val enterEditMode: () -> Unit,
@@ -186,18 +186,18 @@ class CompositePaneHeaderScope internal constructor(
 @ExperimentalKompassCompositeLayoutApi
 class SceneLayoutComposite(
     private val state: CompositeLayoutState = CompositeLayoutState(),
-    val paneId: (BackStackEntry) -> String = { it.id },
-    private val paneTitle: (BackStackEntry) -> String = { it.destinationId },
-    private val paneTitleContent: (@Composable (BackStackEntry) -> String)? = null,
+    val paneId: (KompassEntry) -> String = { it.id },
+    private val paneTitle: (KompassEntry) -> String = { it.destinationId },
+    private val paneTitleContent: (@Composable (KompassEntry) -> String)? = null,
     private val labels: CompositeLayoutLabels = CompositeLayoutLabels(),
     private val paneHeaderContent: (@Composable (CompositePaneHeaderScope) -> Unit)? = null,
 ) : SceneLayout {
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection,
     ) {
         val bounds = remember { mutableMapOf<String, Rect>() }
@@ -246,9 +246,9 @@ class SceneLayoutComposite(
     private fun RenderNode(
         node: CompositeLayoutNode,
         path: List<SplitBranch>,
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         bounds: MutableMap<String, Rect>,
         panes: MutableMap<String, MovablePane>,
     ) {
@@ -259,7 +259,7 @@ class SceneLayoutComposite(
                 // A drag-and-drop move changes the tree position; the pane's UI state and its
                 // ViewModel move with it instead of being recreated for the new slot.
                 val pane = panes.getOrPut(node.paneId) {
-                    movableContentOf { movedEntry: BackStackEntry, resolver: Resolver ->
+                    movableContentOf { movedEntry: KompassEntry, resolver: Resolver ->
                         val (graph, destination) = remember(movedEntry, resolver) { resolver(movedEntry) }
                         PaneHost(
                             modifier = Modifier
@@ -379,10 +379,10 @@ class SceneLayoutComposite(
     @Composable
     private fun PaneHost(
         modifier: Modifier,
-        entry: BackStackEntry,
-        graph: NavigationGraph,
+        entry: KompassEntry,
+        graph: KompassNavigationGraph,
         destination: Destination,
-        navController: NavController,
+        navController: KompassNavController,
         bounds: MutableMap<String, Rect>,
     ) {
         val handleBounds = remember(entry.id) { mutableStateOf<Rect?>(null) }
@@ -416,7 +416,7 @@ class SceneLayoutComposite(
 
     @Composable
     private fun DragPreview(
-        backStack: ImmutableList<BackStackEntry>,
+        backStack: ImmutableList<KompassEntry>,
         bounds: Map<String, Rect>,
         rootPosition: Offset,
     ) {
@@ -471,7 +471,7 @@ class SceneLayoutComposite(
 
     @Composable
     private fun PaneHeader(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         handleBounds: androidx.compose.runtime.MutableState<Rect?>,
         bounds: Map<String, Rect>,
     ) {

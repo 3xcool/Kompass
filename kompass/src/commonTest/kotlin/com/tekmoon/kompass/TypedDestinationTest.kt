@@ -45,7 +45,7 @@ class TypedDestinationTest {
 
     @Test fun args_survive_the_round_trip_through_the_opaque_string() {
         val args = ProfileArgs(userId = "42", tab = 3)
-        val entry = Profile.toBackStackEntry(args, json)
+        val entry = Profile.toKompassEntry(args, json)
 
         // The wire format stays a plain string. Nothing about the type leaks into the entry.
         assertEquals("profile", entry.destinationId)
@@ -56,13 +56,13 @@ class TypedDestinationTest {
 
     @Test fun encode_args_produces_exactly_what_the_entry_carries() {
         val args = OrderArgs(orderId = 7L)
-        assertEquals(Order.encodeArgs(args, json), Order.toBackStackEntry(args, json).args)
+        assertEquals(Order.encodeArgs(args, json), Order.toKompassEntry(args, json).args)
     }
 
     @Test fun an_entry_with_no_args_returns_null_or_fails_naming_the_destination() {
         // Both helpers read entry.args and nothing else. The destinationId is here only so the entry
         // looks like a real one: a deep link that forgot to attach the arguments.
-        val noArgs = BackStackEntry(destinationId = Profile.id, scopeId = Profile.defaultScope())
+        val noArgs = KompassEntry(destinationId = Profile.id, scopeId = Profile.defaultScope())
 
         // Optional arguments: null is an answer.
         assertNull(Profile.argsOrNull(noArgs, json))
@@ -77,29 +77,29 @@ class TypedDestinationTest {
     }
 
     @Test fun reading_args_with_the_wrong_destination_fails_even_when_the_payload_shape_matches() {
-        val entry = Profile.toBackStackEntry(ProfileArgs("42"), json)
+        val entry = Profile.toKompassEntry(ProfileArgs("42"), json)
         // A serializer alone cannot detect this: SameShape accepts the exact same payload shape.
         assertFailsWith<IllegalArgumentException> { SameShape.argsOrNull(entry, json) }
         assertFailsWith<IllegalArgumentException> { SameShape.argsFrom(entry, json) }
     }
 
     @Test fun a_typed_entry_takes_the_default_scope_of_its_destination() {
-        val entry = Profile.toBackStackEntry(ProfileArgs("42"), json)
+        val entry = Profile.toKompassEntry(ProfileArgs("42"), json)
         assertEquals(Profile.defaultScope(), entry.scopeId)
 
         val custom = NavigationScopeId("checkout")
-        assertEquals(custom, Profile.toBackStackEntry(ProfileArgs("42"), json, scopeId = custom).scopeId)
+        assertEquals(custom, Profile.toKompassEntry(ProfileArgs("42"), json, scopeId = custom).scopeId)
     }
 
     @Test fun a_typed_entry_carries_presentation_metadata() {
-        val entry = Profile.toBackStackEntry(ProfileArgs("42"), json, metadata = mapOf("presentation" to "sheet"))
+        val entry = Profile.toKompassEntry(ProfileArgs("42"), json, metadata = mapOf("presentation" to "sheet"))
         assertEquals("sheet", entry.metadata["presentation"])
     }
 
     // ---------------------------------------------------------------- controller side
 
     @Test fun navigate_to_pushes_a_typed_entry_that_require_args_reads_back() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Profile, ProfileArgs(userId = "7", tab = 2))
 
@@ -112,7 +112,7 @@ class TypedDestinationTest {
     }
 
     @Test fun require_args_on_an_untyped_entry_fails_and_args_or_null_does_not() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             assertNull(nav.argsOrNull(Profile))
             assertFailsWith<IllegalStateException> { nav.requireArgs(Profile) }
@@ -122,7 +122,7 @@ class TypedDestinationTest {
     }
 
     @Test fun navigate_to_honours_reuse_and_updates_the_payload_without_a_new_occurrence() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Profile, ProfileArgs("7"))
             val firstId = nav.currentEntry.id
@@ -138,7 +138,7 @@ class TypedDestinationTest {
     }
 
     @Test fun navigate_to_forwards_pop_up_to_and_clear_back_stack() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Order, OrderArgs(1L))
             nav.navigateTo(Profile, ProfileArgs("7"), popUpTo = "home", popUpToInclusive = false)
@@ -152,7 +152,7 @@ class TypedDestinationTest {
     }
 
     @Test fun navigate_to_keeps_the_existing_positional_parameter_order() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Order, OrderArgs(1L), Order.defaultScope(), null, true)
 
@@ -163,10 +163,10 @@ class TypedDestinationTest {
     }
 
     @Test fun replace_stack_to_leaves_a_single_typed_entry() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Order, OrderArgs(1L))
-            nav.replaceStackTo(Profile, ProfileArgs("7"), metadata = mapOf("presentation" to "pane"))
+            nav.replaceStack(Profile, ProfileArgs("7"), metadata = mapOf("presentation" to "pane"))
 
             assertEquals(listOf("profile"), nav.backStack.map { it.destinationId })
             assertEquals(ProfileArgs("7"), nav.requireArgs(Profile))
@@ -178,10 +178,10 @@ class TypedDestinationTest {
 
     @Suppress("DEPRECATION")
     @Test fun the_deprecated_replace_root_to_still_behaves_the_same() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Order, OrderArgs(1L))
-            nav.replaceRootTo(Profile, ProfileArgs("7"))
+            nav.replaceRoot(Profile, ProfileArgs("7"))
 
             assertEquals(listOf("profile"), nav.backStack.map { it.destinationId })
             assertEquals(ProfileArgs("7"), nav.requireArgs(Profile))
@@ -191,10 +191,10 @@ class TypedDestinationTest {
     }
 
     @Test fun the_controller_helpers_build_the_same_entry_as_the_destination_helpers() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             val args = ProfileArgs("7", 1)
-            val built = nav.toBackStackEntry(Profile, args)
+            val built = nav.toKompassEntry(Profile, args)
 
             assertEquals(nav.encodeArgs(Profile, args), built.args)
             assertEquals(Profile.encodeArgs(args, json), built.args)
@@ -205,7 +205,7 @@ class TypedDestinationTest {
     }
 
     @Test fun typed_args_survive_a_save_and_a_restore() {
-        val source = createNavController(Home)
+        val source = createKompassNavController(Home)
         val saved: String
         try {
             source.navigateTo(Profile, ProfileArgs("7", 2))
@@ -214,7 +214,7 @@ class TypedDestinationTest {
             source.close()
         }
 
-        val restored = createNavController(Home, savedNavigationState = saved)
+        val restored = createKompassNavController(Home, savedNavigationState = saved)
         try {
             assertNull(restored.restorationFailure)
             assertEquals(ProfileArgs("7", 2), restored.requireArgs(Profile))
@@ -224,7 +224,7 @@ class TypedDestinationTest {
     }
 
     @Test fun two_typed_entries_of_the_same_destination_are_separate_occurrences() {
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Profile, ProfileArgs("7"))
             nav.navigateTo(Profile, ProfileArgs("9"))

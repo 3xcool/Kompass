@@ -25,16 +25,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.KompassSharedTransitionHost
 import com.tekmoon.kompass.LocalKompassAnimatedVisibilityScope
 import com.tekmoon.kompass.LocalKompassSharedTransitionScope
-import com.tekmoon.kompass.NavController
-import com.tekmoon.kompass.NavigationGraph
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.KompassNavController
+import com.tekmoon.kompass.KompassNavigationGraph
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kompasskmp.samples.generated.resources.Res
 import kompasskmp.samples.generated.resources.sample10_back
@@ -55,7 +55,7 @@ private enum class Sample10Destination : Destination {
     override val id: String = "kompass/sample10/$name"
 }
 
-private object Sample10Graph : NavigationGraph {
+private object Sample10Graph : KompassNavigationGraph {
     override fun canResolveDestination(destinationId: String): Boolean =
         Sample10Destination.entries.any { it.id == destinationId }
 
@@ -64,9 +64,9 @@ private object Sample10Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController,
+        navController: KompassNavController,
     ) {
         when (destination) {
             Sample10Destination.List -> Sample10ListScreen(navController)
@@ -80,7 +80,7 @@ fun Sample10_SharedElementTransition(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {},
 ): Unit {
-    val navController = rememberNavController(Sample10Destination.List)
+    val navController = rememberKompassNavController(Sample10Destination.List)
 
     KompassBackHandler(backPressedChannel = backPressedChannel) {
         navController.popIfCan(onFailure = onDismiss)
@@ -93,7 +93,7 @@ fun Sample10_SharedElementTransition(
 }
 
 @Composable
-private fun Sample10ListScreen(navController: NavController): Unit {
+private fun Sample10ListScreen(navController: KompassNavController): Unit {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -110,7 +110,7 @@ private fun Sample10ListScreen(navController: NavController): Unit {
             style = MaterialTheme.typography.bodyMedium,
         )
         Card(
-            onClick = { navController.navigate(Sample10Destination.Detail.toBackStackEntry()) },
+            onClick = { navController.navigate(Sample10Destination.Detail.toKompassEntry()) },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Row(
@@ -143,7 +143,7 @@ private fun Sample10ListScreen(navController: NavController): Unit {
 }
 
 @Composable
-private fun Sample10DetailScreen(navController: NavController): Unit {
+private fun Sample10DetailScreen(navController: KompassNavController): Unit {
     Column(
         modifier = Modifier
             .fillMaxSize()

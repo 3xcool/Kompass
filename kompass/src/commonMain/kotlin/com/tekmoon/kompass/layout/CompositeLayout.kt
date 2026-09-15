@@ -66,7 +66,7 @@ sealed interface CompositeLayoutNode {
 /**
  * Persistable arrangement state for the optional composite layout.
  *
- * Pane IDs are application-owned. The default layout uses [BackStackEntry.id], while a server
+ * Pane IDs are application-owned. The default layout uses [KompassEntry.id], while a server
  * driven shell can provide deterministic IDs through [SceneLayoutComposite.paneId].
  */
 @Serializable

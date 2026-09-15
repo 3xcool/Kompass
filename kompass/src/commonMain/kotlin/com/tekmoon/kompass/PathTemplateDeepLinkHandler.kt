@@ -11,7 +11,7 @@ import kotlinx.serialization.json.put
  * @param uri The original URI, unchanged.
  * @param path Values captured by the `{name}` placeholders of the template, percent-decoded.
  * @param query Query parameters, percent-decoded. A repeated key keeps its last value.
- * @param args [path] and [query] merged into one JSON object, ready for [BackStackEntry.args]. A
+ * @param args [path] and [query] merged into one JSON object, ready for [KompassEntry.args]. A
  * query parameter never overwrites a path placeholder of the same name.
  */
 class DeepLinkMatch internal constructor(
@@ -39,8 +39,8 @@ class DeepLinkMatch internal constructor(
  *     listOf(
  *         NavigationCommand.ReplaceStack(
  *             listOf(
- *                 Home.toBackStackEntry(),
- *                 Profile.toBackStackEntry(args = match.args),
+ *                 Home.toKompassEntry(),
+ *                 Profile.toKompassEntry(args = match.args),
  *             )
  *         )
  *     )

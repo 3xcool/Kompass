@@ -17,18 +17,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.KompassPredictiveBackHandler
-import com.tekmoon.kompass.NavController
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavController
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.SceneLayout
 import com.tekmoon.kompass.SceneLayoutPredictive
 import com.tekmoon.kompass.SceneTransition
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -59,7 +59,7 @@ private enum class Sample9Dest : Destination {
  * Graph
  * ------------------------------------------- */
 
-private object Sample9Graph : NavigationGraph {
+private object Sample9Graph : KompassNavigationGraph {
 
     // The layout reads the gesture from the controller, so the graph stays an object with no state.
     // A slide transition makes the drag easy to see. Without a seekable layout the gesture still
@@ -79,9 +79,9 @@ private object Sample9Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             Sample9Dest.Level1 -> Sample9Screen(
@@ -114,7 +114,7 @@ fun Sample9_PredictiveBack(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {}
 ) {
-    val navController = rememberNavController(Sample9Dest.Level1)
+    val navController = rememberKompassNavController(Sample9Dest.Level1)
 
     // This handler replaces KompassBackHandler for the pop. Do not install both for the same
     // controller, because enabled handlers compete for the same event.
@@ -143,7 +143,7 @@ fun Sample9_PredictiveBack(
 private fun Sample9Screen(
     title: String,
     body: String,
-    navController: NavController
+    navController: KompassNavController
 ) {
     val depth = navController.backStack.size
 
@@ -169,7 +169,7 @@ private fun Sample9Screen(
             enabled = depth < 3,
             onClick = {
                 val next = Sample9Dest.entries[depth]
-                navController.navigate(entry = next.toBackStackEntry())
+                navController.navigate(entry = next.toKompassEntry())
             }
         ) {
             Text("Push next level")
@@ -187,12 +187,12 @@ private fun Sample9Screen(
 /**
  * Live readout of the gesture.
  *
- * [com.tekmoon.kompass.NavController.predictiveBack] is plain Compose state, so this recomposes on
+ * [com.tekmoon.kompass.KompassNavController.predictiveBack] is plain Compose state, so this recomposes on
  * every drag step. Read it to drive your own motion beside the scene, such as a dim layer or a
  * shrinking card.
  */
 @Composable
-private fun GestureReadout(navController: NavController) {
+private fun GestureReadout(navController: KompassNavController) {
     val gesture = navController.predictiveBack
     val progress = gesture.progress
 

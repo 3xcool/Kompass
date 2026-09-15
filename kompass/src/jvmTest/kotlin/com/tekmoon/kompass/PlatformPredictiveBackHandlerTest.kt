@@ -78,15 +78,15 @@ class PlatformPredictiveBackHandlerTest {
     @Test fun root_back_takes_over_only_after_the_predictive_pop() = runComposeUiTest {
         val window = WindowEvents()
         var dismisses = 0
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         setContent {
             window.Content {
-                nav = rememberNavController(TestDestination.A)
+                nav = rememberKompassNavController(TestDestination.A)
                 KompassPredictiveBackHandler(nav)
                 KompassBackHandler(enabled = !nav.canGoBack()) { dismisses++ }
             }
         }
-        runOnIdle { nav.navigate(TestDestination.B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(TestDestination.B.toKompassEntry()) }
         runOnIdle { window.input.start(); window.input.progress(0.6f) }
         runOnIdle {
             assertEquals(2, nav.backStack.size)
@@ -166,15 +166,15 @@ class PlatformPredictiveBackHandlerTest {
 
     @Test fun a_commit_does_not_pop_a_stack_that_changed_under_the_gesture() = runComposeUiTest {
         val window = WindowEvents()
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         setContent {
             window.Content {
-                nav = rememberNavController(TestDestination.A)
+                nav = rememberKompassNavController(TestDestination.A)
                 KompassPredictiveBackHandler(nav)
             }
         }
-        runOnIdle { nav.navigate(TestDestination.B.toBackStackEntry()) }
-        runOnIdle { nav.navigate(TestDestination.C.toBackStackEntry()) }
+        runOnIdle { nav.navigate(TestDestination.B.toKompassEntry()) }
+        runOnIdle { nav.navigate(TestDestination.C.toKompassEntry()) }
 
         // The drag starts on [A, B, C], so the preview targets B.
         runOnIdle { window.input.start(); window.input.progress(0.6f) }
@@ -196,19 +196,19 @@ class PlatformPredictiveBackHandlerTest {
 
     @Test fun a_gesture_does_not_pop_a_replacement_with_the_same_predecessor() = runComposeUiTest {
         val window = WindowEvents()
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         setContent {
             window.Content {
-                nav = rememberNavController(TestDestination.A)
+                nav = rememberKompassNavController(TestDestination.A)
                 KompassPredictiveBackHandler(nav)
             }
         }
-        runOnIdle { nav.navigate(TestDestination.B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(TestDestination.B.toKompassEntry()) }
         runOnIdle { window.input.start(); window.input.progress(0.6f) }
         runOnIdle {
             // Keep A as the predecessor, but replace the screen the gesture started on.
             nav.pop()
-            nav.navigate(TestDestination.C.toBackStackEntry())
+            nav.navigate(TestDestination.C.toKompassEntry())
         }
         runOnIdle { window.input.commit() }
         runOnIdle {

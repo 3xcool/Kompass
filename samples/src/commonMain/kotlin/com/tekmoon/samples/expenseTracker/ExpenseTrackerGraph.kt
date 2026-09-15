@@ -157,7 +157,7 @@ object MockData {
  * Navigation Graph
  * ------------------------------------------- */
 
-object ExpenseTrackerGraph : NavigationGraph {
+object ExpenseTrackerGraph : KompassNavigationGraph {
 
     override val sceneLayout = SceneLayoutListDetail(
         compactWidthThreshold = 700.dp,
@@ -182,9 +182,9 @@ object ExpenseTrackerGraph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             ExpenseTrackerDest.ClientsList ->
@@ -208,7 +208,7 @@ fun ExpenseTrackerApp(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {}
 ) {
-    val navController = rememberNavController(ExpenseTrackerDest.ClientsList)
+    val navController = rememberKompassNavController(ExpenseTrackerDest.ClientsList)
 
     KompassBackHandler(backPressedChannel = backPressedChannel) {
         navController.popIfCan { onDismiss() }
@@ -225,7 +225,7 @@ fun ExpenseTrackerApp(
  * ------------------------------------------- */
 
 @Composable
-private fun ClientsListScreen(navController: NavController) {
+private fun ClientsListScreen(navController: KompassNavController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -327,8 +327,8 @@ private fun ClientCard(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ClientDetailScreen(
-    entry: BackStackEntry,
-    navController: NavController
+    entry: KompassEntry,
+    navController: KompassNavController
 ) {
     val args = navController.requireArgs(ExpenseTrackerDest.ClientDetail, entry)
 
@@ -504,8 +504,8 @@ private fun ExpenseListItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExpenseDetailScreen(
-    entry: BackStackEntry,
-    navController: NavController
+    entry: KompassEntry,
+    navController: KompassNavController
 ) {
     val args = navController.requireArgs(ExpenseTrackerDest.ExpenseDetail, entry)
 

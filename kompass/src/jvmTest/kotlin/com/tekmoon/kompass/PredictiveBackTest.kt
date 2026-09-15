@@ -30,10 +30,10 @@ class PredictiveBackTest {
     private class Graph(
         val probes: MutableMap<String, Probe>,
         override val sceneLayout: SceneLayout,
-    ) : NavigationGraph {
+    ) : KompassNavigationGraph {
         override fun canResolveDestination(destinationId: String) = true
         override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
-        @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+        @Composable override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
             probes[entry.id] = viewModel { Probe() }
             Box(Modifier.size(100.dp)) { BasicText("screen:${entry.destinationId}") }
         }
@@ -43,14 +43,14 @@ class PredictiveBackTest {
         scope.onNodeWithText(text).fetchSemanticsNode().positionInRoot.x
 
     @Test fun a_gesture_moves_the_previous_screen_in_without_touching_the_back_stack() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
-        lateinit var root: BackStackEntry
+        lateinit var root: KompassEntry
         mainClock.autoAdvance = false
-        runOnIdle { root = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { root = nav.currentEntry; nav.navigate(B.toKompassEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         waitForIdle()
 
@@ -75,7 +75,7 @@ class PredictiveBackTest {
     }
 
     @Test fun an_abandoned_gesture_restores_the_top_screen_and_clears_nothing() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val segments = mutableListOf<SceneTransitionContext>()
         val recordedMotion = object : SceneTransition {
@@ -85,11 +85,11 @@ class PredictiveBackTest {
             }
         }
         val graph = Graph(probes, SceneLayoutPredictive(recordedMotion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
-        lateinit var root: BackStackEntry
+        lateinit var root: KompassEntry
         mainClock.autoAdvance = false
-        runOnIdle { root = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { root = nav.currentEntry; nav.navigate(B.toKompassEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         waitForIdle()
 
@@ -126,17 +126,17 @@ class PredictiveBackTest {
     }
 
     @Test fun the_predictive_layout_wires_edge_drags_to_the_controller() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         var sceneWidth = 0f
         val graph = Graph(mutableMapOf(), SceneLayoutPredictive(motion))
         setContent {
             sceneWidth = with(LocalDensity.current) { 100.dp.toPx() }
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             KompassPredictiveBackHandler(nav)
             KompassNavigationHost(nav, persistentListOf(graph))
         }
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         mainClock.advanceTimeBy(2000)
         // Skiko test injection runs on the caller thread; real window events arrive on the UI thread.
         runOnUiThread {
@@ -168,12 +168,12 @@ class PredictiveBackTest {
     }
 
     @Test fun a_fully_previewed_gesture_can_still_rewind_before_commit() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { nav.navigate(B.toKompassEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         runOnIdle { nav.predictiveBack.start(nav.backStack.first().id); nav.predictiveBack.update(1f) }
         mainClock.advanceTimeBy(64)
@@ -188,15 +188,15 @@ class PredictiveBackTest {
     }
 
     @Test fun a_completed_gesture_pops_once_and_clears_the_outgoing_owner() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
-        lateinit var root: BackStackEntry
-        lateinit var top: BackStackEntry
+        lateinit var root: KompassEntry
+        lateinit var top: KompassEntry
         mainClock.autoAdvance = false
-        runOnIdle { root = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { root = nav.currentEntry; nav.navigate(B.toKompassEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         waitForIdle()
         runOnIdle { top = nav.currentEntry }
@@ -221,13 +221,13 @@ class PredictiveBackTest {
     }
 
     @Test fun the_layout_animates_ordinary_navigation_when_no_gesture_runs() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { nav.navigate(B.toKompassEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(64)
         // A push with no gesture keeps the ordinary direction: the new screen comes in from the right.
         assertTrue(xOf(this, "screen:b") > 0f, "A push must bring the new screen in from the right")

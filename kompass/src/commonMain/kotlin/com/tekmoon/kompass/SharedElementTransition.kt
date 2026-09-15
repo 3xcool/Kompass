@@ -39,7 +39,7 @@ val LocalKompassSharedTransitionScope: ProvidableCompositionLocal<SharedTransiti
  * Visibility scope of the built-in animated [SceneLayout] currently rendering destination content.
  *
  * Static layouts provide no scope. Custom animated layouts can provide their own scope around
- * [NavigationGraph.Content] with [CompositionLocalProvider].
+ * [KompassNavigationGraph.Content] with [CompositionLocalProvider].
  */
 @ExperimentalKompassSharedTransitionApi
 val LocalKompassAnimatedVisibilityScope: ProvidableCompositionLocal<AnimatedVisibilityScope?> =
@@ -55,8 +55,8 @@ val LocalKompassAnimatedVisibilityScope: ProvidableCompositionLocal<AnimatedVisi
 @ExperimentalKompassSharedTransitionApi
 @Composable
 fun KompassSharedTransitionHost(
-    navController: NavController,
-    graphs: ImmutableList<NavigationGraph>,
+    navController: KompassNavController,
+    graphs: ImmutableList<KompassNavigationGraph>,
 ): Unit {
     SharedTransitionLayout {
         CompositionLocalProvider(LocalKompassSharedTransitionScope provides this) {

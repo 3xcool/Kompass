@@ -23,7 +23,7 @@ import kotlinx.serialization.modules.SerializersModule
 /**
  * Central navigation API exposed to consumers of the Kompass navigation system.
  *
- * [NavController] acts as a thin, state-aware facade over:
+ * [KompassNavController] acts as a thin, state-aware facade over:
  * - [NavigationState], which represents the current back stack
  * - [NavigationHandler], which applies [NavigationCommand]s through a reducer
  *
@@ -33,11 +33,11 @@ import kotlinx.serialization.modules.SerializersModule
  * - Cleaning up navigation scopes when entries are removed
  * - Coordinating deep link application
  *
- * [NavController] itself does not contain navigation rules.
+ * [KompassNavController] itself does not contain navigation rules.
  * All rules are delegated to the reducer to ensure consistency,
  * testability, and predictability.
  *
- * Use [rememberNavController] in composition or [createNavController] for external ownership.
+ * Use [rememberKompassNavController] in composition or [createKompassNavController] for external ownership.
  * Mutation, saving and disposal are confined to the UI thread. StateFlow observation may
  * occur on any dispatcher.
  *
@@ -51,7 +51,7 @@ import kotlinx.serialization.modules.SerializersModule
  * deep link URIs applied at runtime.
  */
 @Stable
-class NavController internal constructor(
+class KompassNavController internal constructor(
     private val navState: MutableState<NavigationState>,
     private val handler: NavigationHandler,
     /**
@@ -60,10 +60,10 @@ class NavController internal constructor(
      *
      * `internal` so the typed-args extensions defined in this module can use it,
      * while preventing external consumers from poking at the raw [Json].
-     * Configured with the [SerializersModule] passed to [rememberNavController].
+     * Configured with the [SerializersModule] passed to [rememberKompassNavController].
      *
      * If a consumer ever needs raw encode/decode, the right pattern is a public
-     * extension on [NavController] that wraps the encoding — not direct access
+     * extension on [KompassNavController] that wraps the encoding — not direct access
      * to this property.
      */
     internal val json: Json,
@@ -95,7 +95,7 @@ class NavController internal constructor(
     }
 
     /** Save navigation payloads. Register NavigationResult subtypes in serializersModule. */
-    fun saveNavigationState(): String = json.encodeToString(NavigationState.serializer(BackStackEntry.serializer()), state)
+    fun saveNavigationState(): String = json.encodeToString(NavigationState.serializer(KompassEntry.serializer()), state)
 
     /** Release an externally owned controller. Idempotent; do not call for a temporary host unmount. */
     fun close() {
@@ -132,11 +132,11 @@ class NavController internal constructor(
         get() = navState.value
 
     /**
-     * The current top-most [BackStackEntry].
+     * The current top-most [KompassEntry].
      *
      * This represents the active destination.
      */
-    val currentEntry: BackStackEntry
+    val currentEntry: KompassEntry
         get() = state.backStack.last()
 
     /**
@@ -147,7 +147,7 @@ class NavController internal constructor(
      * This is an [ImmutableList], the same type [NavigationState] holds. Compose reads it as a
      * stable parameter, so a composable that takes the back stack can still skip recomposition.
      */
-    val backStack: ImmutableList<BackStackEntry>
+    val backStack: ImmutableList<KompassEntry>
         get() = state.backStack
 
     /**
@@ -186,7 +186,7 @@ class NavController internal constructor(
     }
 
     /**
-     * Navigates to the given [BackStackEntry].
+     * Navigates to the given [KompassEntry].
      *
      * This method is a convenience wrapper over [NavigationCommand.Navigate].
      *
@@ -206,7 +206,7 @@ class NavController internal constructor(
      * preserves entry ownership and UI state; a different scope requests fresh ownership.
      */
     fun navigate(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         clearBackStack: Boolean = false,
         popUpTo: String? = null,
         popUpToInclusive: Boolean = false,
@@ -249,14 +249,14 @@ class NavController internal constructor(
     /**
      * Replaces the entire back stack with a single root entry.
      *
-     * @param entry The new root [BackStackEntry] that will become
+     * @param entry The new root [KompassEntry] that will become
      * the only entry in the back stack.
      */
     @Deprecated(
         message = "Use replaceStack, which applies one entry or a whole stack.",
         replaceWith = ReplaceWith("replaceStack(entry)"),
     )
-    fun replaceRoot(entry: BackStackEntry) {
+    fun replaceRoot(entry: KompassEntry) {
         replaceStack(entry)
     }
 
@@ -271,7 +271,7 @@ class NavController internal constructor(
      *
      * @param entries The new back stack, from root to top. It must not be empty.
      */
-    fun replaceStack(entries: List<BackStackEntry>) {
+    fun replaceStack(entries: List<KompassEntry>) {
         dispatch(NavigationCommand.ReplaceStack(entries))
     }
 
@@ -280,7 +280,7 @@ class NavController internal constructor(
      *
      * @param entry The entry that becomes the only entry in the back stack.
      */
-    fun replaceStack(entry: BackStackEntry) {
+    fun replaceStack(entry: KompassEntry) {
         replaceStack(listOf(entry))
     }
 
@@ -360,7 +360,7 @@ private fun restoreNavigation(
     initialState.requireValid()
     if (saved == null) return NavigationRestoration(mutableStateOf(initialState))
     return try {
-        NavigationRestoration(mutableStateOf(json.decodeFromString(NavigationState.serializer(BackStackEntry.serializer()), saved)))
+        NavigationRestoration(mutableStateOf(json.decodeFromString(NavigationState.serializer(KompassEntry.serializer()), saved)))
     } catch (cause: Exception) {
         if (cause is CancellationException || policy == NavigationRestorePolicy.Throw) throw cause
         NavigationRestoration(mutableStateOf(initialState), cause)
@@ -372,22 +372,22 @@ private fun restoreNavigation(
  * savedNavigationState restores navigation only; it does not serialize live ViewModels or UI.
  * Recovery reports the failure and uses initialState unless Throw is selected.
  */
-fun createNavController(
+fun createKompassNavController(
     initialState: NavigationState,
     serializersModule: SerializersModule = SerializersModule {},
     deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
     savedNavigationState: String? = null,
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
-): NavController {
+): KompassNavController {
     val json = navigationJson(serializersModule)
     val restored = restoreNavigation(savedNavigationState, initialState, json, restorePolicy)
     restored.failure?.let(onRestoreFailure)
-    return NavController(restored.state, NavigationHandler(), json, deepLinkHandlers, restorationFailure = restored.failure)
+    return KompassNavController(restored.state, NavigationHandler(), json, deepLinkHandlers, restorationFailure = restored.failure)
 }
 
 /** External-ownership convenience overload starting at a destination. */
-fun createNavController(
+fun createKompassNavController(
     startDestination: Destination,
     serializersModule: SerializersModule = SerializersModule {},
     scopeId: NavigationScopeId? = null,
@@ -395,21 +395,21 @@ fun createNavController(
     savedNavigationState: String? = null,
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
-): NavController = createNavController(
-    defaultNavigationState(startDestination.toBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())),
+): KompassNavController = createKompassNavController(
+    defaultNavigationState(startDestination.toKompassEntry(scopeId = scopeId ?: startDestination.defaultScope())),
     serializersModule, deepLinkHandlers, savedNavigationState, restorePolicy, onRestoreFailure,
 )
 
 /** Remember a controller with automatic owner retention and saved navigation recovery. */
 @Composable
-fun rememberNavController(
+fun rememberKompassNavController(
     initialState: NavigationState,
     serializersModule: SerializersModule = SerializersModule {},
     deepLinkUri: String? = null,
     deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
-): NavController {
+): KompassNavController {
     val json = remember(serializersModule) { navigationJson(serializersModule) }
     val initial = remember {
         initialState.requireValid()
@@ -418,7 +418,7 @@ fun rememberNavController(
     }
     val restored = rememberSaveable(saver = remember(json, initial, restorePolicy) {
         Saver<NavigationRestoration, String>(
-            save = { json.encodeToString(NavigationState.serializer(BackStackEntry.serializer()), it.state.value) },
+            save = { json.encodeToString(NavigationState.serializer(KompassEntry.serializer()), it.state.value) },
             restore = { restoreNavigation(it, initial, json, restorePolicy) },
         )
     }) { NavigationRestoration(mutableStateOf(initial)) }
@@ -426,13 +426,13 @@ fun rememberNavController(
     LaunchedEffect(restored) { restored.failure?.let(reportFailure) }
     val owners = rememberKompassOwnerStore(restored.state.value.backStack)
     return remember(owners) {
-        NavController(restored.state, NavigationHandler(), json, deepLinkHandlers, owners, restored.failure)
+        KompassNavController(restored.state, NavigationHandler(), json, deepLinkHandlers, owners, restored.failure)
     }
 }
 
 /** Remember a controller starting at one destination. */
 @Composable
-fun rememberNavController(
+fun rememberKompassNavController(
     startDestination: Destination,
     serializersModule: SerializersModule = SerializersModule {},
     scopeId: NavigationScopeId? = null,
@@ -440,9 +440,9 @@ fun rememberNavController(
     deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
-): NavController {
-    val initial = remember { defaultNavigationState(startDestination.toBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())) }
-    return rememberNavController(initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure)
+): KompassNavController {
+    val initial = remember { defaultNavigationState(startDestination.toKompassEntry(scopeId = scopeId ?: startDestination.defaultScope())) }
+    return rememberKompassNavController(initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure)
 }
 
 /**
@@ -452,7 +452,7 @@ fun rememberNavController(
  * occurrence with its own owner and its own UI state, so a repeat needs a new ID. The first
  * appearance keeps its ID, which lets a caller rebuild a stack from entries it already holds.
  */
-private fun distinctOccurrences(entries: List<BackStackEntry>): List<BackStackEntry> {
+private fun distinctOccurrences(entries: List<KompassEntry>): List<KompassEntry> {
     val seen = mutableSetOf<String>()
     return entries.map { entry ->
         if (seen.add(entry.id)) entry
@@ -461,7 +461,7 @@ private fun distinctOccurrences(entries: List<BackStackEntry>): List<BackStackEn
 }
 
 /** Normalize at both controller dispatch and initial deep-link boundaries; keep the reducer pure. */
-internal fun NavigationCommand.withDistinctOccurrences(backStack: List<BackStackEntry>): NavigationCommand = when {
+internal fun NavigationCommand.withDistinctOccurrences(backStack: List<KompassEntry>): NavigationCommand = when {
     this is NavigationCommand.Navigate && !reuseIfExists && backStack.any { it.id == entry.id } ->
         copy(entry = entry.newOccurrence())
     this is NavigationCommand.ReplaceStack -> copy(entries = distinctOccurrences(entries))

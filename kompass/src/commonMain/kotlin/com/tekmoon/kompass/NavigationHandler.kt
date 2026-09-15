@@ -45,7 +45,7 @@ class NavigationHandler() {
 
             is NavigationCommand.Navigate -> {
                 val baseStack = when {
-                    command.clearBackStack -> persistentListOf<BackStackEntry>()
+                    command.clearBackStack -> persistentListOf<KompassEntry>()
                     command.popUpTo != null -> popUpToDestination(
                         state.backStack,
                         command.popUpTo,
@@ -79,7 +79,7 @@ class NavigationHandler() {
                 val stack = state.backStack
                 if (stack.size <= 1) return state
 
-                val newStack: List<BackStackEntry> =
+                val newStack: List<KompassEntry> =
                     when {
                         // Pop multiple entries (go back N steps)
                         command.count > 1 -> {
@@ -158,10 +158,10 @@ class NavigationHandler() {
      * @return The resulting back stack after applying the pop operation.
      */
     private fun popUpToDestination(
-        backStack: ImmutableList<BackStackEntry>,
+        backStack: ImmutableList<KompassEntry>,
         destinationId: String,
         inclusive: Boolean
-    ): ImmutableList<BackStackEntry> {
+    ): ImmutableList<KompassEntry> {
         val index = backStack.indexOfLast { it.destinationId == destinationId }
         return if (index >= 0) {
             if (inclusive) {
@@ -208,7 +208,7 @@ sealed interface NavigationCommand {
      * explicitly supplying a different scope starts new ownership.
      */
     data class Navigate(
-        val entry: BackStackEntry,
+        val entry: KompassEntry,
         val clearBackStack: Boolean = false,
         val popUpTo: String? = null,
         val popUpToInclusive: Boolean = false,
@@ -235,7 +235,7 @@ sealed interface NavigationCommand {
     /**
      * Replace the root of the back stack.
      *
-     * @param entry The new root [BackStackEntry] that will become
+     * @param entry The new root [KompassEntry] that will become
      * the only entry in the back stack.
      */
     @Deprecated(
@@ -243,7 +243,7 @@ sealed interface NavigationCommand {
         replaceWith = ReplaceWith("NavigationCommand.ReplaceStack(listOf(entry))"),
     )
     data class ReplaceRoot(
-        val entry: BackStackEntry
+        val entry: KompassEntry
     ) : NavigationCommand
 
     /**
@@ -260,7 +260,7 @@ sealed interface NavigationCommand {
      * @param entries The new back stack, from root to top. It must not be empty.
      */
     data class ReplaceStack(
-        val entries: List<BackStackEntry>
+        val entries: List<KompassEntry>
     ) : NavigationCommand {
 
         init {

@@ -4,13 +4,13 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.tekmoon.kompass.KompassBackHandler
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationScopeId
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -19,7 +19,7 @@ private sealed interface MainDestination : Destination {
     data object Feature : MainDestination { override val id = "kompass/sample2/main/feature" }
 }
 
-private object MainGraph : NavigationGraph {
+private object MainGraph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         destinationId.startsWith("kompass/sample2/main/")
@@ -36,9 +36,9 @@ private object MainGraph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             is MainDestination.Home -> MainHome(navController)
@@ -53,7 +53,7 @@ private sealed interface FeatureDestination : Destination {
     data object StepTwo : FeatureDestination { override val id = "feature/two" }
 }
 
-private object FeatureGraph : NavigationGraph {
+private object FeatureGraph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         destinationId.startsWith("feature/")
@@ -80,9 +80,9 @@ private object FeatureGraph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             is FeatureDestination.StepOne -> StepOne(navController)
@@ -97,7 +97,7 @@ fun Sample2_InnerGraphs_SameScopeId(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {}
 ) {
-    val navController = rememberNavController(startDestination = MainDestination.Home)
+    val navController = rememberKompassNavController(startDestination = MainDestination.Home)
 
     // Always enabled to avoid closing the app
     KompassBackHandler(
@@ -121,11 +121,11 @@ fun Sample2_InnerGraphs_SameScopeId(
 
 @Composable
 private fun MainHome(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Button(onClick = {
         navController.navigate(
-            entry = BackStackEntry(
+            entry = KompassEntry(
                 destinationId = MainDestination.Feature.id,
                 scopeId = NavigationScopeId("flow:feature")
             )
@@ -137,11 +137,11 @@ private fun MainHome(
 
 @Composable
 private fun MainFeature(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Button(onClick = {
         navController.navigate(
-            entry = BackStackEntry(
+            entry = KompassEntry(
                 destinationId = FeatureDestination.StepOne.id,
                 scopeId = NavigationScopeId("flow:feature")
             )
@@ -153,11 +153,11 @@ private fun MainFeature(
 
 @Composable
 private fun StepOne(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Button(onClick = {
         navController.navigate(
-            entry = BackStackEntry(
+            entry = KompassEntry(
                 destinationId = FeatureDestination.StepTwo.id,
                 scopeId = NavigationScopeId("flow:feature")
             )
@@ -169,7 +169,7 @@ private fun StepOne(
 
 @Composable
 private fun StepTwo(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Button(onClick = {
         navController.pop()

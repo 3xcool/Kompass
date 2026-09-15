@@ -17,8 +17,8 @@ import kotlin.test.*
 class NestedNavHostTest {
     @Test fun nested_navhost_can_rebind_store_during_outer_pop_animation() {
         val store = KompassOwnerStore()
-        val root = BackStackEntry("root", scopeId = newScope())
-        val video = BackStackEntry("video", scopeId = newScope())
+        val root = KompassEntry("root", scopeId = newScope())
+        val video = KompassEntry("video", scopeId = newScope())
         store.reconcile(listOf(root, video))
         store.updateHostLifecycle(Lifecycle.State.RESUMED)
         val owner = store.owner(video)
@@ -45,13 +45,13 @@ class NestedNavHostTest {
     class HandleViewModel(val handle: androidx.lifecycle.SavedStateHandle) : androidx.lifecycle.ViewModel()
 
     @Test fun default_android_factory_restores_saved_state_after_parcel_round_trip() {
-        val entry = BackStackEntry("a", scopeId = newScope())
+        val entry = KompassEntry("a", scopeId = newScope())
         val store = KompassOwnerStore()
         store.reconcile(listOf(entry))
         val owner = store.owner(entry)
         val original = androidx.lifecycle.ViewModelProvider.create(owner)[HandleViewModel::class]
         original.handle["counter"] = 42
-        val nextEntry = BackStackEntry("b", scopeId = entry.scopeId)
+        val nextEntry = KompassEntry("b", scopeId = entry.scopeId)
         store.reconcile(listOf(entry, nextEntry))
         val shared = androidx.lifecycle.ViewModelProvider.create(store.owner(nextEntry))[HandleViewModel::class]
         assertSame(original, shared)

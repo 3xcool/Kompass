@@ -44,11 +44,11 @@ interface SceneLayout {
     /**
      * Renders the visible portion of the navigation back stack.
      *
-     * @param backStack Immutable list of current [BackStackEntry] instances.
+     * @param backStack Immutable list of current [KompassEntry] instances.
      * The last entry represents the active destination.
      *
-     * @param resolve Function used to resolve a [BackStackEntry] into
-     * its owning [NavigationGraph] and [Destination].
+     * @param resolve Function used to resolve a [KompassEntry] into
+     * its owning [KompassNavigationGraph] and [Destination].
      *
      * @param navController Controller used to perform navigation actions
      * from rendered destinations.
@@ -57,9 +57,9 @@ interface SceneLayout {
      */
     @Composable
     fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     )
 }
@@ -73,9 +73,9 @@ object SceneLayoutSinglePane : SceneLayout {
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     ) {
         val entry = backStack.last()
@@ -99,9 +99,9 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     ) {
         val entry = backStack.last()
@@ -143,9 +143,9 @@ data class SceneLayoutListDetail(
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     ) {
         BoxWithConstraints {
