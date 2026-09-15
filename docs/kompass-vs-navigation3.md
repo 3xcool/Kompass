@@ -41,6 +41,7 @@ The two libraries make different packaging choices.
 | Concern | Navigation 3 | Kompass |
 |---|---|---|
 | Core model | Developer-owned list of navigation keys | Immutable state plus reducer and commands |
+| Back stack control | App can add, remove, reorder, or replace keys directly | App controls the complete stack through commands such as `navigate`, `pop`, and `replaceStack` |
 | Rendering | `NavDisplay` resolves keys into `NavEntry` content | `KompassNavigationHost` resolves entries through navigation graphs |
 | Layout | `SceneStrategy` and `Scene` | Pluggable `SceneLayout` implementations |
 | State persistence | Serializable keys through platform saved state | Serializable navigation document and composition-owned restoration |
@@ -81,7 +82,8 @@ NavDisplay(
 )
 ```
 
-The application owns the back stack and adds or removes keys. `NavDisplay` renders it, while entry
+The application owns the back stack and can add, remove, reorder, or replace keys directly.
+`NavDisplay` renders it, while entry
 decorators and scene strategies provide lifecycle and layout behavior.
 
 ### Kompass
@@ -127,8 +129,9 @@ This enables:
 8. **Portable shell configuration** — persist a composite pane arrangement as serializable data.
 
 Navigation 3 can model many of these behaviors, but applications must build the surrounding state,
-serialization, and migration conventions themselves. Its official model is optimized for owning a
-back stack in the application UI.
+serialization, and migration conventions themselves. Both libraries give the application control
+over the complete back stack; Kompass expresses that control through immutable state and reducer
+commands, while Navigation 3 exposes direct mutation of the developer-owned list.
 
 ### Typing is not the real dividing line
 
@@ -147,7 +150,7 @@ Rating: **K** Kompass advantage, **N3** Navigation 3 advantage, **=** practical 
 
 | Dimension | Navigation 3 | Kompass | Better |
 |---|---|---|---|
-| Back stack | Mutable developer-owned key list | Immutable state and pure reducer | **K** |
+| Back stack control | Directly mutate the developer-owned key list | Control the complete stack through immutable state and commands such as `replaceStack` | **=** |
 | Portable navigation snapshot | Application-defined | Built-in serialized navigation state | **K** |
 | Dynamic or server-driven destinations | Possible with custom keys | Native destination ID and JSON argument model | **K** |
 | Typed arguments | Native key model | `TypedDestination<T>` projection | **=** |
