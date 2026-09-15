@@ -91,10 +91,12 @@ compose.desktop {
     application {
         mainClass = "com.tekmoon.kompasskmp.MainKt"
 
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.tekmoon.kompasskmp"
-            packageVersion = rootProject.version.toString()
+        if (!rootProject.version.toString().contains("SNAPSHOT", ignoreCase = true)) {
+            nativeDistributions {
+                targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+                packageName = "com.tekmoon.kompasskmp"
+                packageVersion = rootProject.version.toString()
+            }
         }
     }
 }
