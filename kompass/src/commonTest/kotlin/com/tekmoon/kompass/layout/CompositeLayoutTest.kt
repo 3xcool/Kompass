@@ -3,6 +3,7 @@ package com.tekmoon.kompass.layout
 import androidx.compose.ui.geometry.Offset
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
@@ -102,6 +103,74 @@ class CompositeLayoutTest {
         assertEquals(null, state.draggedPaneId)
         assertEquals(null, state.dragPosition)
         assertEquals(null, state.dragTarget)
+    }
+
+    @Test
+    fun restoring_an_arrangement_during_a_drag_fails_instead_of_losing_the_gesture() {
+        val state = CompositeLayoutState()
+        state.beginDrag("pane", Offset(10f, 10f))
+
+        assertFailsWith<IllegalStateException> { state.restore(CompositeLayoutSpec()) }
+    }
+
+    @Test
+    fun a_restored_arrangement_replaces_the_current_one() {
+        val state = CompositeLayoutState()
+        val restored = layoutSpec()
+
+        state.restore(restored)
+
+        assertEquals(restored, state.layout)
+    }
+
+    @Test
+    fun an_arrangement_rejects_a_duplicated_pane() {
+        assertFailsWith<IllegalArgumentException> {
+            CompositeLayoutSpec(
+                root = CompositeLayoutNode.Split(
+                    orientation = CompositeOrientation.Horizontal,
+                    first = CompositeLayoutNode.Pane("a"),
+                    second = CompositeLayoutNode.Pane("a"),
+                ),
+            )
+        }
+        assertFailsWith<IllegalArgumentException> { CompositeLayoutNode.Pane("") }
+        assertFailsWith<IllegalArgumentException> {
+            CompositeLayoutNode.Split(
+                orientation = CompositeOrientation.Horizontal,
+                first = CompositeLayoutNode.Pane("a"),
+                second = CompositeLayoutNode.Pane("b"),
+                firstFraction = 0.95f,
+            )
+        }
+    }
+
+    @Test
+    fun moving_a_pane_that_is_not_on_screen_keeps_the_arrangement() {
+        val subject = layoutSpec()
+
+        assertEquals(subject, subject.movePane("missing", "a", CompositeDockEdge.Left))
+        assertEquals(subject, subject.movePane("a", "missing", CompositeDockEdge.Left))
+        assertFailsWith<IllegalArgumentException> {
+            subject.movePane("a", "a", CompositeDockEdge.Left)
+        }
+        assertEquals(
+            CompositeLayoutSpec(),
+            CompositeLayoutSpec().movePane("a", "b", CompositeDockEdge.Left),
+        )
+    }
+
+    @Test
+    fun reconciliation_rejects_a_repeated_occurrence() {
+        assertFailsWith<IllegalArgumentException> { layoutSpec().reconcile(listOf("a", "a")) }
+    }
+
+    @Test
+    fun an_empty_arrangement_reports_no_panes() {
+        val empty = CompositeLayoutSpec()
+
+        assertEquals(emptyList(), empty.paneIds())
+        assertEquals(listOf("a"), empty.reconcile(listOf("a")).paneIds())
     }
 
     private fun layoutSpec(): CompositeLayoutSpec = CompositeLayoutSpec(

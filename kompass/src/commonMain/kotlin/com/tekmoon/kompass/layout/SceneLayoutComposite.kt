@@ -28,7 +28,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
+import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
@@ -57,6 +57,12 @@ import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.SceneLayout
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.serialization.json.Json
+
+/** Resolves an entry into the graph that draws it, as [SceneLayout.Render] supplies it. */
+private typealias Resolver = (BackStackEntry) -> Pair<NavigationGraph, Destination>
+
+/** A pane whose composition, and therefore its UI state, follows the pane through a dock move. */
+private typealias MovablePane = @Composable (BackStackEntry, Resolver) -> Unit
 
 /** Mutable UI holder for [CompositeLayoutSpec] and transient edit gestures. */
 @Stable
@@ -198,12 +204,16 @@ class SceneLayoutComposite(
         val visiblePaneIds = backStack.map(paneId)
         val effectiveLayout = state.layout.reconcile(visiblePaneIds)
         var rootPosition by remember { mutableStateOf(Offset.Zero) }
+        // Movable content keeps a pane's composition, and therefore its UI state, while a dock
+        // move changes the slot the pane is drawn in.
+        val panes = remember(navController) { mutableMapOf<String, MovablePane>() }
         DisposableEffect(Unit) {
             onDispose { state.cancelDrag() }
         }
         SideEffect {
             state.reconcile(visiblePaneIds)
             bounds.keys.retainAll(visiblePaneIds)
+            panes.keys.retainAll(visiblePaneIds)
         }
 
         Box(
@@ -221,6 +231,7 @@ class SceneLayoutComposite(
                     resolve = resolve,
                     navController = navController,
                     bounds = bounds,
+                    panes = panes,
                 )
             }
             DragPreview(
@@ -239,29 +250,33 @@ class SceneLayoutComposite(
         resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
         navController: NavController,
         bounds: MutableMap<String, Rect>,
+        panes: MutableMap<String, MovablePane>,
     ) {
         when (node) {
             is CompositeLayoutNode.Pane -> {
                 val entry = backStack.firstOrNull { paneId(it) == node.paneId } ?: return
                 // Keep the pane's composition identity attached to its entry, not its visual slot.
-                // A drag-and-drop move changes the tree position; the list/ViewModel state must move
-                // with the pane instead of being recreated for the new slot.
-                key(node.paneId) {
-                    val (graph, destination) = remember(entry, resolve) { resolve(entry) }
-                    PaneHost(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .onGloballyPositioned { coordinates ->
-                                bounds[node.paneId] = coordinates.boundsInRoot()
-                            }
-                            .alpha(if (state.draggedPaneId == node.paneId) 0.35f else 1f),
-                        entry = entry,
-                        graph = graph,
-                        destination = destination,
-                        navController = navController,
-                        bounds = bounds,
-                    )
+                // A drag-and-drop move changes the tree position; the pane's UI state and its
+                // ViewModel move with it instead of being recreated for the new slot.
+                val pane = panes.getOrPut(node.paneId) {
+                    movableContentOf { movedEntry: BackStackEntry, resolver: Resolver ->
+                        val (graph, destination) = remember(movedEntry, resolver) { resolver(movedEntry) }
+                        PaneHost(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .onGloballyPositioned { coordinates ->
+                                    bounds[node.paneId] = coordinates.boundsInRoot()
+                                }
+                                .alpha(if (state.draggedPaneId == node.paneId) 0.35f else 1f),
+                            entry = movedEntry,
+                            graph = graph,
+                            destination = destination,
+                            navController = navController,
+                            bounds = bounds,
+                        )
+                    }
                 }
+                pane(entry, resolve)
             }
 
             is CompositeLayoutNode.Split -> {
@@ -273,27 +288,27 @@ class SceneLayoutComposite(
                 when (node.orientation) {
                     CompositeOrientation.Horizontal -> Row(splitModifier) {
                         Box(Modifier.weight(node.firstFraction).fillMaxHeight()) {
-                            RenderNode(node.first, path + SplitBranch.First, backStack, resolve, navController, bounds)
+                            RenderNode(node.first, path + SplitBranch.First, backStack, resolve, navController, bounds, panes)
                         }
                         ResizeHandle(
                             path = path,
                             orientation = CompositeOrientation.Horizontal,
                         )
                         Box(Modifier.weight(1f - node.firstFraction).fillMaxHeight()) {
-                            RenderNode(node.second, path + SplitBranch.Second, backStack, resolve, navController, bounds)
+                            RenderNode(node.second, path + SplitBranch.Second, backStack, resolve, navController, bounds, panes)
                         }
                     }
 
                     CompositeOrientation.Vertical -> Column(splitModifier) {
                         Box(Modifier.weight(node.firstFraction).fillMaxWidth()) {
-                            RenderNode(node.first, path + SplitBranch.First, backStack, resolve, navController, bounds)
+                            RenderNode(node.first, path + SplitBranch.First, backStack, resolve, navController, bounds, panes)
                         }
                         ResizeHandle(
                             path = path,
                             orientation = CompositeOrientation.Vertical,
                         )
                         Box(Modifier.weight(1f - node.firstFraction).fillMaxWidth()) {
-                            RenderNode(node.second, path + SplitBranch.Second, backStack, resolve, navController, bounds)
+                            RenderNode(node.second, path + SplitBranch.Second, backStack, resolve, navController, bounds, panes)
                         }
                     }
                 }
