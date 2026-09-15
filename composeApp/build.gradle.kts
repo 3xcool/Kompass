@@ -91,11 +91,12 @@ compose.desktop {
     application {
         mainClass = "com.tekmoon.kompasskmp.MainKt"
 
-        nativeDistributions {
-            targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
-            packageName = "com.tekmoon.kompasskmp"
-            // Native installers accept numeric versions only; keep Maven's snapshot suffix out.
-            packageVersion = rootProject.version.toString().substringBefore("-")
+        if (!rootProject.version.toString().contains("SNAPSHOT", ignoreCase = true)) {
+            nativeDistributions {
+                targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
+                packageName = "com.tekmoon.kompasskmp"
+                packageVersion = rootProject.version.toString()
+            }
         }
     }
 }
