@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="sample_list_title">Kompass samples</string>
+    <string name="sample_list_returning_result">Returning result</string>
+    <string name="sample_list_inner_graphs">Inner graphs</string>
+    <string name="sample_list_scope">Scopes</string>
+    <string name="sample_list_transitions">Transitions</string>
+    <string name="sample_list_deeplink">Deep link</string>
+    <string name="sample_list_scene">Scene</string>
+    <string name="sample_list_auth_login">Auth login</string>
+    <string name="sample_list_expense_tracker_auth_login">Expense tracker auth login</string>
+    <string name="sample_list_predictive_back">Predictive back</string>
+    <string name="sample_list_shared_element_transition">Shared element transition</string>
+    <string name="sample_list_tabs">Tabs</string>
+    <string name="sample_list_composite_layout">Resizable panes and docking</string>
+    <string name="sample10_home_title">Shared element transition</string>
+    <string name="sample10_home_body">Open the card to follow the artwork and title between screens.</string>
+    <string name="sample10_detail_title">Visual atlas</string>
+    <string name="sample10_detail_heading">Visual atlas — detail</string>
+    <string name="sample10_detail_body">The content changes while shared elements preserve spatial continuity.</string>
+    <string name="sample10_open">Open details</string>
+    <string name="sample10_back">Back</string>
+    <string name="sample10_monogram">K</string>
+    <string name="sample11_tab_home">Home</string>
+    <string name="sample11_tab_search">Search</string>
+    <string name="sample11_tab_profile">Profile</string>
+    <string name="sample11_visits">Visits to this tab: %1$d</string>
+    <string name="sample11_open_detail">Open detail</string>
+    <string name="sample11_back">Back</string>
+    <string name="sample11_detail">Detail inside the tab</string>
+    <string name="sample11_stack">Stack: %1$s</string>
+    <string name="sample11_model_reorder">Reorder</string>
+    <string name="sample11_model_per_tab">Stack per tab</string>
+    <string name="sample12_overview_title">Overview</string>
+    <string name="sample12_overview_body">The sample's starting screen. Edit to resize, long-press a header to drag, and scroll the 100-item list to test position restoration.</string>
+    <string name="sample12_level_title">Level %1$d</string>
+    <string name="sample12_level_body">Content level %1$d of the sample. A pane's visual position does not change navigation order.</string>
+    <string name="sample12_list_item">%1$s — item %2$d</string>
+    <string name="sample12_add_pane">Add another %1$s pane</string>
+    <string name="sample12_navigation_level">Back stack position: %1$d of %2$d</string>
+    <string name="sample12_back_hint">Back removes the pane at position %1$d: %2$s.</string>
+    <string name="sample12_drag_pane">Move pane %1$s</string>
+    <string name="sample12_enter_edit_mode">Enter pane editing</string>
+    <string name="sample12_enter_edit_mode_action">Edit</string>
+    <string name="sample12_exit_edit_mode">Exit pane editing</string>
+    <string name="sample12_exit_edit_mode_action">Done</string>
+</resources>

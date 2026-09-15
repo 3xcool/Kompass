@@ -7,17 +7,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.SceneLayoutListDetail
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.TypedDestination
 import com.tekmoon.kompass.navigateTo
 import com.tekmoon.kompass.newScope
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.requireArgs
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
@@ -57,7 +57,7 @@ private data class Sample6ProfileArgs(
  * Graph
  * ------------------------------------------- */
 
-object Sample6Graph : NavigationGraph {
+object Sample6Graph : KompassNavigationGraph {
 
     override val sceneLayout = SceneLayoutListDetail() // magic is here
 
@@ -77,9 +77,9 @@ object Sample6Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             Sample6Dest.List ->
@@ -101,9 +101,9 @@ fun Sample6_ListDetail(
     onDismiss: () -> Unit = {}
 ) {
 
-    val navController = rememberNavController(Sample6Dest.List)
+    val navController = rememberKompassNavController(Sample6Dest.List)
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan {
@@ -123,7 +123,7 @@ fun Sample6_ListDetail(
 
 @Composable
 private fun ProfileListScreen(
-    navController: NavController
+    navController: KompassNavController
 ) {
     val profiles = remember {
         listOf("A", "B", "C", "D")
@@ -154,8 +154,8 @@ private fun ProfileListScreen(
 
 @Composable
 private fun ProfileDetailScreen(
-    entry: BackStackEntry,
-    navController: NavController
+    entry: KompassEntry,
+    navController: KompassNavController
 ) {
     val args = navController.requireArgs(Sample6Dest.Profile, entry)
 

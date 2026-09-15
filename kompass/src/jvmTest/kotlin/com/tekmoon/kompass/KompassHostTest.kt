@@ -31,18 +31,37 @@ class KompassHostTest {
 
     private class Graph(
         override val sceneLayout: SceneLayout = SceneLayoutSinglePane,
-        val content: @Composable (BackStackEntry, NavController) -> Unit,
-    ) : NavigationGraph {
+        val content: @Composable (KompassEntry, KompassNavController) -> Unit,
+    ) : KompassNavigationGraph {
         override fun canResolveDestination(destinationId: String) = true
         override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
-        @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+        @Composable override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
             assertEquals(entry.destinationId, destination.id)
             content(entry, navController)
         }
     }
 
+    @Test fun an_initial_deep_link_gives_repeated_entries_distinct_occurrences() = runComposeUiTest {
+        val repeated = B.toKompassEntry()
+        val handler = object : DeepLinkHandler {
+            override fun matches(uri: String) = uri == "app://repeated"
+            override fun resolve(uri: String) = listOf(NavigationCommand.ReplaceStack(listOf(repeated, repeated)))
+        }
+        lateinit var nav: KompassNavController
+        setContent {
+            nav = rememberKompassNavController(A, deepLinkUri = "app://repeated", deepLinkHandlers = persistentListOf(handler))
+            KompassNavigationHost(nav, persistentListOf(Graph { entry, _ -> BasicText(entry.destinationId) }))
+        }
+        runOnIdle {
+            assertEquals(listOf("b", "b"), nav.backStack.map { it.destinationId })
+            assertEquals(2, nav.backStack.map { it.id }.toSet().size)
+            assertEquals(repeated.id, nav.backStack.first().id)
+        }
+        onNodeWithText("b").assertExists()
+    }
+
     @Test fun push_return_reuse_and_new_visit_preserve_the_right_state() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         var increment: () -> Unit = {}
         val graph = Graph { entry, _ ->
@@ -53,24 +72,24 @@ class KompassHostTest {
             BasicText("${entry.destinationId}:$count")
         }
         setContent {
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             KompassNavigationHost(nav, persistentListOf(graph))
         }
-        lateinit var first: BackStackEntry
+        lateinit var first: KompassEntry
         runOnIdle { first = nav.currentEntry; increment() }
         onNodeWithText("a:1").assertExists()
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         onNodeWithText("b:0").assertExists()
-        runOnIdle { nav.navigate(A.toBackStackEntry(args = "updated"), reuseIfExists = true) }
+        runOnIdle { nav.navigate(A.toKompassEntry(args = "updated"), reuseIfExists = true) }
         onNodeWithText("a:1").assertExists()
         runOnIdle { assertEquals(first.id, nav.currentEntry.id); assertEquals(0, probes[first.id]!!.clears) }
         runOnIdle { nav.pop() }
-        runOnIdle { assertEquals(1, probes[first.id]!!.clears); nav.navigate(A.toBackStackEntry()) }
+        runOnIdle { assertEquals(1, probes[first.id]!!.clears); nav.navigate(A.toKompassEntry()) }
         onNodeWithText("a:0").assertExists()
     }
 
     @Test fun animated_pop_keeps_owner_and_scope_until_screen_disposal() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val disposal = mutableListOf<String>()
         var scopeClears = 0
@@ -83,10 +102,10 @@ class KompassHostTest {
             }
             Box(Modifier.size(100.dp)) { BasicText(entry.destinationId) }
         }
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        runOnIdle { nav.navigate(B.toKompassEntry(scopeId = newScope())) }
         waitForIdle()
-        lateinit var popped: BackStackEntry
+        lateinit var popped: KompassEntry
         runOnIdle { popped = nav.currentEntry }
         mainClock.autoAdvance = false
         runOnIdle { nav.pop() }
@@ -98,11 +117,11 @@ class KompassHostTest {
     }
 
     @Test fun custom_layout_gets_distinct_owners_without_new_wrappers() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val owners = mutableMapOf<String, Any>()
         val layout = object : SceneLayout {
-            @Composable override fun Render(backStack: kotlinx.collections.immutable.ImmutableList<BackStackEntry>,
-                resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>, navController: NavController, direction: NavDirection) {
+            @Composable override fun Render(backStack: kotlinx.collections.immutable.ImmutableList<KompassEntry>,
+                resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>, navController: KompassNavController, direction: NavDirection) {
                 backStack.forEach { entry -> key(entry.id) {
                     val (graph, destination) = resolve(entry)
                     graph.Content(entry, destination, navController)
@@ -110,8 +129,8 @@ class KompassHostTest {
             }
         }
         val graph = Graph(layout) { entry, _ -> owners[entry.id] = LocalViewModelStoreOwner.current!! }
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
-        runOnIdle { nav.navigate(A.toBackStackEntry()) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        runOnIdle { nav.navigate(A.toKompassEntry()) }
         runOnIdle { assertEquals(2, owners.size); assertNotSame(owners.values.first(), owners.values.last()) }
     }
 
@@ -119,7 +138,7 @@ class KompassHostTest {
         var visible by mutableStateOf(true)
         lateinit var probe: Probe
         val graph = Graph { _, _ -> probe = viewModel { Probe() } }
-        setContent { if (visible) KompassNavigationHost(rememberNavController(A), persistentListOf(graph)) }
+        setContent { if (visible) KompassNavigationHost(rememberKompassNavController(A), persistentListOf(graph)) }
         runOnIdle { visible = false }
         runOnIdle { assertEquals(1, probe.clears) }
     }
@@ -128,7 +147,7 @@ class KompassHostTest {
     @Test fun restore_recovers_stack_ids_ui_and_handles_including_covered_entries() = runComposeUiTest {
         var registry by mutableStateOf(SaveableStateRegistry(null) { true })
         var mounted by mutableStateOf(true)
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val handles = mutableMapOf<String, HandleProbe>()
         var editText: (String) -> Unit = {}
         val graph = Graph { entry, _ ->
@@ -140,7 +159,7 @@ class KompassHostTest {
         }
         setContent {
             if (mounted) CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
-                nav = rememberNavController(A)
+                nav = rememberKompassNavController(A)
                 KompassNavigationHost(nav, persistentListOf(graph))
             }
         }
@@ -151,7 +170,7 @@ class KompassHostTest {
             firstId = nav.currentEntry.id
             original = handles[firstId]!!
             editText("first")
-            nav.navigate(B.toBackStackEntry())
+            nav.navigate(B.toKompassEntry())
         }
         runOnIdle {
             secondId = nav.currentEntry.id
@@ -179,15 +198,15 @@ class KompassHostTest {
         val leftGraph = Graph { _, _ -> left = viewModel { Probe() } }
         val rightGraph = Graph { _, _ -> right = viewModel { Probe() } }
         setContent {
-            KompassNavigationHost(rememberNavController(A), persistentListOf(leftGraph))
-            KompassNavigationHost(rememberNavController(A), persistentListOf(rightGraph))
+            KompassNavigationHost(rememberKompassNavController(A), persistentListOf(leftGraph))
+            KompassNavigationHost(rememberKompassNavController(A), persistentListOf(rightGraph))
         }
         runOnIdle { assertNotSame(left, right) }
     }
 
     @Test fun nested_host_is_saved_with_its_parent_and_disposed_when_parent_is_popped() = runComposeUiTest {
-        lateinit var outer: NavController
-        lateinit var inner: NavController
+        lateinit var outer: KompassNavController
+        lateinit var inner: KompassNavController
         lateinit var innerProbe: Probe
         var editInner: () -> Unit = {}
         val innerGraph = Graph { _, _ ->
@@ -198,12 +217,12 @@ class KompassHostTest {
         }
         val outerGraph = Graph { entry, _ ->
             if (entry.destinationId == "b") {
-                inner = rememberNavController(A)
+                inner = rememberKompassNavController(A)
                 KompassNavigationHost(inner, persistentListOf(innerGraph))
             } else BasicText("outer")
         }
-        setContent { outer = rememberNavController(A); KompassNavigationHost(outer, persistentListOf(outerGraph)) }
-        runOnIdle { outer.navigate(B.toBackStackEntry()) }
+        setContent { outer = rememberKompassNavController(A); KompassNavigationHost(outer, persistentListOf(outerGraph)) }
+        runOnIdle { outer.navigate(B.toKompassEntry()) }
         runOnIdle { editInner() }
         onNodeWithText("nested:1").assertExists()
         runOnIdle { outer.pop() }
@@ -219,14 +238,14 @@ class KompassHostTest {
         val graph = Graph { _, _ -> probe = org.koin.compose.viewmodel.koinViewModel<HandleProbe>() }
         setContent {
             org.koin.compose.KoinApplication(application = { modules(module) }) {
-                KompassNavigationHost(rememberNavController(A), persistentListOf(graph))
+                KompassNavigationHost(rememberKompassNavController(A), persistentListOf(graph))
             }
         }
         runOnIdle { probe.handle["answer"] = "ok"; assertEquals("ok", probe.handle.get<String>("answer")) }
     }
 
     @Test fun changing_list_detail_width_preserves_each_entry_state() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         var wide by mutableStateOf(false)
         val probes = mutableMapOf<String, Probe>()
         val firstSeen = mutableMapOf<String, Probe>()
@@ -237,12 +256,12 @@ class KompassHostTest {
             BasicText("pane:${entry.id}")
         }
         setContent {
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             Box(Modifier.size(if (wide) 400.dp else 100.dp)) {
                 KompassNavigationHost(nav, persistentListOf(graph))
             }
         }
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         waitForIdle()
         runOnIdle { wide = true }
         waitForIdle()
@@ -252,7 +271,7 @@ class KompassHostTest {
     }
 
     @Test fun covering_parent_preserves_nested_controller_viewmodels_and_ui_state() = runComposeUiTest {
-        lateinit var outer: NavController
+        lateinit var outer: KompassNavController
         lateinit var nestedProbe: Probe
         var editNested: () -> Unit = {}
         val childGraph = Graph { _, _ ->
@@ -263,13 +282,13 @@ class KompassHostTest {
         }
         val outerGraph = Graph { entry, _ ->
             if (entry.destinationId == "a") {
-                KompassNavigationHost(rememberNavController(B), persistentListOf(childGraph))
+                KompassNavigationHost(rememberKompassNavController(B), persistentListOf(childGraph))
             } else BasicText("cover")
         }
-        setContent { outer = rememberNavController(A); KompassNavigationHost(outer, persistentListOf(outerGraph)) }
+        setContent { outer = rememberKompassNavController(A); KompassNavigationHost(outer, persistentListOf(outerGraph)) }
         lateinit var original: Probe
         runOnIdle { original = nestedProbe; editNested() }
-        runOnIdle { outer.navigate(B.toBackStackEntry()) }
+        runOnIdle { outer.navigate(B.toKompassEntry()) }
         onNodeWithText("cover").assertExists()
         runOnIdle { assertEquals(0, original.clears); outer.pop() }
         onNodeWithText("child:edited").assertExists()
@@ -279,23 +298,23 @@ class KompassHostTest {
     @Test fun saved_parent_includes_latest_handles_of_covered_nested_controller() = runComposeUiTest {
         var registry by mutableStateOf(SaveableStateRegistry(null) { true })
         var mounted by mutableStateOf(true)
-        lateinit var outer: NavController
+        lateinit var outer: KompassNavController
         lateinit var child: HandleProbe
         val childGraph = Graph { _, _ ->
             child = viewModel { HandleProbe(createSavedStateHandle()) }
             BasicText("child-handle:${child.handle.get<String>("value")}")
         }
         val parentGraph = Graph { entry, _ ->
-            if (entry.destinationId == "a") KompassNavigationHost(rememberNavController(B), persistentListOf(childGraph))
+            if (entry.destinationId == "a") KompassNavigationHost(rememberKompassNavController(B), persistentListOf(childGraph))
             else BasicText("covered")
         }
         setContent {
             if (mounted) CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
-                outer = rememberNavController(A)
+                outer = rememberKompassNavController(A)
                 KompassNavigationHost(outer, persistentListOf(parentGraph))
             }
         }
-        runOnIdle { outer.navigate(B.toBackStackEntry()) }
+        runOnIdle { outer.navigate(B.toKompassEntry()) }
         onNodeWithText("covered").assertExists()
         lateinit var saved: Map<String, List<Any?>>
         runOnIdle { child.handle["value"] = "changed-while-covered"; saved = registry.performSave(); mounted = false }
@@ -307,7 +326,7 @@ class KompassHostTest {
     }
 
     @Test fun shared_scope_reuses_viewmodel_but_keeps_each_occurrence_ui_and_lifecycle() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val owners = mutableMapOf<String, androidx.lifecycle.LifecycleOwner>()
         var increment: () -> Unit = {}
@@ -318,11 +337,11 @@ class KompassHostTest {
             increment = { count++ }
             BasicText("${entry.destinationId}:$count")
         }
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
-        lateinit var first: BackStackEntry
-        lateinit var second: BackStackEntry
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        lateinit var first: KompassEntry
+        lateinit var second: KompassEntry
         runOnIdle { first = nav.currentEntry; increment() }
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = first.scopeId)) }
+        runOnIdle { nav.navigate(B.toKompassEntry(scopeId = first.scopeId)) }
         onNodeWithText("b:0").assertExists()
         runOnIdle {
             second = nav.currentEntry
@@ -330,21 +349,21 @@ class KompassHostTest {
             assertNotSame(owners[first.id], owners[second.id])
             assertEquals(androidx.lifecycle.Lifecycle.State.CREATED, owners[first.id]!!.lifecycle.currentState)
             increment()
-            nav.navigate(A.toBackStackEntry(scopeId = first.scopeId))
+            nav.navigate(A.toKompassEntry(scopeId = first.scopeId))
         }
         onNodeWithText("a:0").assertExists()
         runOnIdle { assertSame(probes[first.id], probes[nav.currentEntry.id]); nav.pop() }
         onNodeWithText("b:1").assertExists()
         runOnIdle { assertEquals(0, probes[first.id]!!.clears); nav.pop() }
         onNodeWithText("a:1").assertExists()
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope()), clearBackStack = true) }
+        runOnIdle { nav.navigate(B.toKompassEntry(scopeId = newScope()), clearBackStack = true) }
         runOnIdle { assertEquals(1, probes[first.id]!!.clears); assertNotSame(probes[first.id], probes[nav.currentEntry.id]) }
     }
 
     @Test fun koin_shared_handle_survives_creator_removal_and_restoration() = runComposeUiTest {
         var registry by mutableStateOf(SaveableStateRegistry(null) { true })
         var mounted by mutableStateOf(true)
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         lateinit var current: HandleProbe
         val module = org.koin.dsl.module { viewModel { HandleProbe(get()) } }
         val graph = Graph { _, _ ->
@@ -354,7 +373,7 @@ class KompassHostTest {
         setContent {
             org.koin.compose.KoinApplication(application = { modules(module) }) {
                 if (mounted) CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
-                    nav = rememberNavController(A)
+                    nav = rememberKompassNavController(A)
                     KompassNavigationHost(nav, persistentListOf(graph))
                 }
             }
@@ -363,11 +382,11 @@ class KompassHostTest {
         runOnIdle {
             original = current
             current.handle["answer"] = "shared"
-            nav.navigate(B.toBackStackEntry(scopeId = A.defaultScope()))
+            nav.navigate(B.toKompassEntry(scopeId = A.defaultScope()))
         }
         runOnIdle {
             assertSame(original, current)
-            nav.navigate(A.toBackStackEntry(), reuseIfExists = true)
+            nav.navigate(A.toKompassEntry(), reuseIfExists = true)
         }
         runOnIdle { nav.pop() }
         runOnIdle { assertSame(original, current); current.handle["answer"] = "after-creator-pop" }
@@ -380,27 +399,27 @@ class KompassHostTest {
         runOnIdle {
             assertNotSame(original, current)
             recreated = current
-            nav.navigate(A.toBackStackEntry())
+            nav.navigate(A.toKompassEntry())
         }
         runOnIdle { assertSame(recreated, current) }
     }
 
     @Test fun final_shared_entry_clears_viewmodel_only_after_its_exit_animation() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(SceneLayoutDefaultAnimatedSinglePane) { entry, _ ->
             probes[entry.id] = viewModel { Probe() }
             Box(Modifier.size(100.dp)) { BasicText(entry.destinationId) }
         }
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
-        lateinit var first: BackStackEntry
-        runOnIdle { first = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = first.scopeId)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        lateinit var first: KompassEntry
+        runOnIdle { first = nav.currentEntry; nav.navigate(B.toKompassEntry(scopeId = first.scopeId)) }
         waitForIdle()
         runOnIdle { assertSame(probes[first.id], probes[nav.currentEntry.id]); nav.pop() }
         waitForIdle()
         runOnIdle { assertEquals(0, probes[first.id]!!.clears) }
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope()), clearBackStack = true) }
+        runOnIdle { nav.navigate(B.toKompassEntry(scopeId = newScope()), clearBackStack = true) }
         mainClock.advanceTimeBy(100)
         runOnIdle { assertEquals(0, probes[first.id]!!.clears) }
         mainClock.advanceTimeBy(1000)
@@ -412,15 +431,15 @@ class KompassHostTest {
         var registry by mutableStateOf(SaveableStateRegistry(null) { true })
         var mounted by mutableStateOf(true)
         var reports = 0
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val graph = Graph { entry, _ -> BasicText("restored:${entry.destinationId}") }
         setContent {
             if (mounted) CompositionLocalProvider(LocalSaveableStateRegistry provides registry) {
-                nav = rememberNavController(A, onRestoreFailure = { reports++ })
+                nav = rememberKompassNavController(A, onRestoreFailure = { reports++ })
                 KompassNavigationHost(nav, persistentListOf(graph))
             }
         }
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         lateinit var saved: Map<String, List<Any?>>
         runOnIdle {
             saved = registry.performSave().mapValues { (_, values) -> values.map {
@@ -431,18 +450,18 @@ class KompassHostTest {
         waitForIdle()
         runOnIdle { registry = SaveableStateRegistry(saved) { true }; mounted = true }
         onNodeWithText("restored:a").assertExists()
-        runOnIdle { assertEquals(1, reports); assertNotNull(nav.restorationFailure); nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { assertEquals(1, reports); assertNotNull(nav.restorationFailure); nav.navigate(B.toKompassEntry()) }
         onNodeWithText("restored:b").assertExists()
         runOnIdle { assertEquals(1, reports) }
     }
 
     @Test fun externally_created_controller_renders_and_survives_host_unmount_until_closed() = runComposeUiTest {
         var mounted by mutableStateOf(true)
-        val nav = createNavController(A)
+        val nav = createKompassNavController(A)
         lateinit var probe: Probe
         val graph = Graph { entry, _ -> probe = viewModel { Probe() }; BasicText("external:${entry.destinationId}") }
         try {
-            nav.navigate(B.toBackStackEntry())
+            nav.navigate(B.toKompassEntry())
             setContent { if (mounted) KompassNavigationHost(nav, persistentListOf(graph)) }
             onNodeWithText("external:b").assertExists()
             lateinit var original: Probe
@@ -454,7 +473,7 @@ class KompassHostTest {
     }
 
     @Test fun transition_context_observes_command_direction_and_legacy_specs_still_work() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val seen = mutableListOf<SceneTransitionContext>()
         val contextual = object : SceneTransition {
             override fun transition(context: SceneTransitionContext): androidx.compose.animation.ContentTransform {
@@ -462,20 +481,20 @@ class KompassHostTest {
                 return SceneTransitionDefault().transition(context.direction)
             }
         }
-        val graph = object : NavigationGraph {
+        val graph = object : KompassNavigationGraph {
             override fun canResolveDestination(destinationId: String) = true
             override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
             override val sceneTransition = contextual
-            @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+            @Composable override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
                 Box(Modifier.size(100.dp)) { BasicText(entry.destinationId) }
             }
         }
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
-        runOnIdle { nav.replaceRoot(B.toBackStackEntry(args = "new-root")) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        runOnIdle { nav.replaceStack(B.toKompassEntry(args = "new-root")) }
         waitForIdle()
         runOnIdle {
             assertTrue(seen.any { it.from.destinationId == "a" && it.to.args == "new-root" && it.direction == NavDirection.Push })
-            nav.navigate(A.toBackStackEntry())
+            nav.navigate(A.toKompassEntry())
         }
         waitForIdle()
         runOnIdle { nav.pop() }
@@ -489,30 +508,82 @@ class KompassHostTest {
             }
         }
         runOnIdle {
-            legacy.transition(SceneTransitionContext(A.toBackStackEntry(), B.toBackStackEntry(), NavDirection.Push))
+            legacy.transition(SceneTransitionContext(A.toKompassEntry(), B.toKompassEntry(), NavDirection.Push))
             assertEquals(NavDirection.Push, legacyDirection)
         }
     }
 
+    @Test fun list_detail_uses_the_graph_transition_when_the_layout_has_no_override() = runComposeUiTest {
+        val nav = createKompassNavController(
+            NavigationState(persistentListOf(A.toKompassEntry(), B.toKompassEntry()))
+        )
+        val seen = mutableListOf<SceneTransitionContext>()
+        val contextual = object : SceneTransition {
+            override fun transition(context: SceneTransitionContext): androidx.compose.animation.ContentTransform {
+                seen += context
+                return SceneTransitionStatic.transition(context.direction)
+            }
+        }
+        val graph = object : KompassNavigationGraph {
+            override val sceneLayout: SceneLayout = SceneLayoutListDetail()
+            override val sceneTransition: SceneTransition = contextual
+            override fun canResolveDestination(destinationId: String) = true
+            override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
+            @Composable override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
+                Box(Modifier.size(100.dp)) { BasicText(entry.destinationId) }
+            }
+        }
+        try {
+            setContent { KompassNavigationHost(nav, persistentListOf(graph)) }
+
+            runOnIdle { nav.navigate(A.toKompassEntry()) }
+            waitForIdle()
+            onAllNodesWithText("a").assertCountEquals(2)
+
+            runOnIdle { nav.pop() }
+            waitForIdle()
+            onNodeWithText("b").assertExists()
+
+            runOnIdle {
+                assertTrue(
+                    seen.any {
+                        it.from.destinationId == "b" && it.to.destinationId == "a" &&
+                            it.direction == NavDirection.Push
+                    },
+                    "SceneLayoutListDetail must use the graph transition on forward navigation",
+                )
+                assertTrue(
+                    seen.any {
+                        it.from.destinationId == "a" && it.to.destinationId == "b" &&
+                            it.direction == NavDirection.Pop
+                    },
+                    "SceneLayoutListDetail must use the graph transition on pop",
+                )
+            }
+        } finally {
+            runOnIdle { nav.close() }
+        }
+    }
+
     @Test fun seekable_progress_moves_both_ways_and_keeps_outgoing_owner_until_completion() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         var progress by mutableStateOf<Float?>(0f)
         val probes = mutableMapOf<String, Probe>()
-        val graph = object : NavigationGraph {
+        val graph = object : KompassNavigationGraph {
             override fun canResolveDestination(destinationId: String) = true
             override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
             override val sceneLayout get() = SceneLayoutSeekable(progress, SceneTransitionDefault(durationMs = 1000, fadeEnabled = false))
-            @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+            @Composable override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
                 probes[entry.id] = viewModel { Probe() }
                 Box(Modifier.size(100.dp)) { BasicText("seek:${entry.destinationId}") }
             }
         }
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
-        lateinit var initial: BackStackEntry
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        lateinit var initial: KompassEntry
         mainClock.autoAdvance = false
         runOnIdle {
             initial = nav.currentEntry
-            nav.replaceRoot(B.toBackStackEntry(scopeId = newScope(), results = mapOf("pending" to object : NavigationResult {})))
+            nav.replaceStack(B.toKompassEntry(scopeId = newScope(), results = mapOf("pending" to object : NavigationResult {})))
         }
         mainClock.advanceTimeBy(64)
         runOnIdle { progress = 0.6f }
@@ -533,23 +604,23 @@ class KompassHostTest {
     }
 
     @Test fun seekable_survives_interruption_and_can_resume_automatically() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         var progress by mutableStateOf<Float?>(0.3f)
         val probes = mutableMapOf<String, Probe>()
-        val graph = object : NavigationGraph {
+        val graph = object : KompassNavigationGraph {
             override fun canResolveDestination(destinationId: String) = true
             override fun resolveDestination(destinationId: String, args: String?) = if (destinationId == "a") A else B
             override val sceneLayout get() = SceneLayoutSeekable(progress)
-            @Composable override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+            @Composable override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
                 probes[entry.id] = viewModel { Probe() }
                 Box(Modifier.size(100.dp)) { BasicText(entry.id) }
             }
         }
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         mainClock.advanceTimeBy(64)
-        runOnIdle { nav.replaceRoot(A.toBackStackEntry(scopeId = newScope())); progress = 0.6f }
+        runOnIdle { nav.replaceStack(A.toKompassEntry(scopeId = newScope())); progress = 0.6f }
         mainClock.advanceTimeBy(64)
         runOnIdle { progress = null }
         mainClock.advanceTimeBy(2000)

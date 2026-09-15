@@ -14,11 +14,11 @@ import androidx.savedstate.compose.LocalSavedStateRegistryOwner
 
 /** Wrap graphs, rather than changing SceneLayout: existing custom layouts get owners automatically. */
 internal class OwnedNavigationGraph(
-    private val graph: NavigationGraph,
+    private val graph: KompassNavigationGraph,
     private val stateHolder: SaveableStateHolder,
-) : NavigationGraph by graph {
+) : KompassNavigationGraph by graph {
     @Composable
-    override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) {
+    override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
         val owner = remember(navController, entry.id) { navController.entryOwners.owner(entry) }
         // Declared outside the saveable island: release follows its children's disposal.
         DisposableEffect(navController, entry.id, entry.scopeId) {
@@ -41,7 +41,7 @@ internal class OwnedNavigationGraph(
 }
 
 @Composable
-internal fun rememberOwnedGraphs(navController: NavController, graphs: List<NavigationGraph>): List<NavigationGraph> {
+internal fun rememberOwnedGraphs(navController: KompassNavController, graphs: List<KompassNavigationGraph>): List<KompassNavigationGraph> {
     navController.entryOwners.platformExtras = kompassPlatformCreationExtras()
     val holder = rememberSaveableStateHolder()
     val knownIds = remember(navController) { navController.backStack.map { it.id }.toMutableSet() }

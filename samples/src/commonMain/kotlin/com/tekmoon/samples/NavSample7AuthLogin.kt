@@ -1,17 +1,17 @@
 package com.tekmoon.samples
 
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
-import com.tekmoon.kompass.NavigationGraph
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassNavController
+import com.tekmoon.kompass.KompassNavigationGraph
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -26,7 +26,7 @@ private sealed interface AppDestination : Destination {
 
 private class LoginGraph(
     private val onLoginSuccess: () -> Unit
-) : NavigationGraph {
+) : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         destinationId.startsWith("kompass/sample7/login/")
@@ -43,9 +43,9 @@ private class LoginGraph(
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             LoginDestination.Email -> LoginEmailScreen(navController)
@@ -54,7 +54,7 @@ private class LoginGraph(
     }
 }
 
-private object AppGraph : NavigationGraph {
+private object AppGraph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         destinationId.startsWith("kompass/sample7/app/")
@@ -70,9 +70,9 @@ private object AppGraph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             AppDestination.Home -> MockedAppScreen()
@@ -85,11 +85,11 @@ fun Sample7_AuthLogin(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {}
 ) {
-    val navController = rememberNavController(
+    val navController = rememberKompassNavController(
         startDestination = LoginDestination.Email
     )
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel
     ) {
         navController.popIfCan {
@@ -99,8 +99,8 @@ fun Sample7_AuthLogin(
 
     val graphs = persistentListOf(
         LoginGraph( onLoginSuccess = {
-            navController.replaceRoot(
-                entry = BackStackEntry(
+            navController.replaceStack(
+                entry = KompassEntry(
                     destinationId = AppDestination.Home.id,
                     scopeId = AppDestination.Home.defaultScope()
                 )
@@ -121,42 +121,42 @@ fun Sample7_AuthLogin(
 // ======= Screens =======
 @Composable
 private fun LoginEmailScreen(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Button(
         onClick = {
             navController.navigate(
-                entry = LoginDestination.Password.toBackStackEntry()
+                entry = LoginDestination.Password.toKompassEntry()
             )
         }
     ) {
-        BasicText("Next (Email)")
+        Text("Next (Email)")
     }
 }
 
 @Composable
 private fun LoginPasswordScreen(
-    navController: NavController,
+    navController: KompassNavController,
     onLoginSuccess: () -> Unit
 ) {
     Button(
         onClick = {
 //            onLoginSuccess() // this way we hoist the logic to Main Nav Host
             // or we can call it directly from this screen like this:
-            navController.replaceRoot(
-                entry = BackStackEntry(
+            navController.replaceStack(
+                entry = KompassEntry(
                     destinationId = AppDestination.Home.id,
                     scopeId = AppDestination.Home.defaultScope()
                 )
             )
         }
     ) {
-        BasicText("Login")
+        Text("Login")
     }
 }
 
 
 @Composable
 private fun MockedAppScreen() {
-    BasicText("🏠 App Home")
+    Text("🏠 App Home")
 }

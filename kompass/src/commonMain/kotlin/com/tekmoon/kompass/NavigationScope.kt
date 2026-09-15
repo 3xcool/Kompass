@@ -30,7 +30,7 @@ value class NavigationScopeId(val value: String)
  *
  * Example:
  * ```
- * val entry = BackStackEntry(
+ * val entry = KompassEntry(
  *     destinationId = "profile",
  *     scopeId = Destination.defaultScope()  // Reuses same scope
  * )
@@ -51,7 +51,7 @@ fun Destination.defaultScope(): NavigationScopeId =
  *
  * Example:
  * ```
- * val entry = BackStackEntry(
+ * val entry = KompassEntry(
  *     destinationId = "profile",
  *     args = """{"userId":"123"}""",
  *     scopeId = newScope()  // Creates unique scope

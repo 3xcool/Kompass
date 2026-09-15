@@ -1,21 +1,21 @@
 package com.tekmoon.samples
 
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationScopeId
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.rememberScoped
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
@@ -34,7 +34,7 @@ private enum class Sample3Dest : Destination {
  * Navigation Graph
  * ------------------------------------------- */
 
-private object Sample3Graph : NavigationGraph {
+private object Sample3Graph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         Sample3Dest.entries.any { it.id == destinationId }
@@ -48,9 +48,9 @@ private object Sample3Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         // Flow-scoped (shared across screens)
         val sharedState = rememberScoped(
@@ -104,9 +104,9 @@ fun Sample3_WithScope(
     onDismiss: () -> Unit = {}
 ) {
 
-    val navController = rememberNavController(Sample3Dest.First)
+    val navController = rememberKompassNavController(Sample3Dest.First)
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan{
@@ -126,8 +126,8 @@ fun Sample3_WithScope(
 
 @Composable
 private fun FirstScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: SharedState
 ) {
     // Screen-scoped (cleared on pop)
@@ -141,34 +141,34 @@ private fun FirstScreen(
     }
 
     Column {
-        BasicText("First screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("First screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen counter")
+            Text("Inc screen counter")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared counter")
+            Text("Inc shared counter")
         }
 
         Button(onClick = {
             navController.navigate(
-                entry = BackStackEntry(
+                entry = KompassEntry(
                     destinationId = Sample3Dest.Second.id,
                     scopeId = Sample3Dest.Second.defaultScope()
                 )
             )
         }) {
-            BasicText("Go to Second")
+            Text("Go to Second")
         }
     }
 }
 
 @Composable
 private fun SecondScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: SharedState
 ) {
     val screenState = rememberScoped(
@@ -179,19 +179,19 @@ private fun SecondScreen(
     }
 
     Column {
-        BasicText("Second screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("Second screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen counter")
+            Text("Inc screen counter")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared counter")
+            Text("Inc shared counter")
         }
 
         Button(onClick = { navController.pop() }) {
-            BasicText("Pop")
+            Text("Pop")
         }
     }
 }

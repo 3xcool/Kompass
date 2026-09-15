@@ -1,6 +1,6 @@
 package com.tekmoon.samples
 
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.NavigationCommand
 import com.tekmoon.kompass.NavigationHandler
@@ -17,7 +17,7 @@ class NavigationHandlerTestRobot(
     var state: NavigationState =
         NavigationState(
             backStack = persistentListOf(
-                BackStackEntry(
+                KompassEntry(
                     destinationId = start.id,
                     scopeId = start.defaultScope()
                 )
@@ -31,7 +31,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = BackStackEntry(
+                entry = KompassEntry(
                     destinationId = destination.id,
                     scopeId = destination.defaultScope()
                 )
@@ -72,7 +72,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = BackStackEntry(
+                entry = KompassEntry(
                     destinationId = destination.id,
                     scopeId = destination.defaultScope()
                 ),
@@ -88,7 +88,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = BackStackEntry(
+                entry = KompassEntry(
                     destinationId = destination.id,
                     scopeId = destination.defaultScope()
                 ),
@@ -103,7 +103,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = BackStackEntry(
+                entry = KompassEntry(
                     destinationId = destination.id,
                     scopeId = destination.defaultScope()
                 ),
@@ -122,7 +122,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = BackStackEntry(
+                entry = KompassEntry(
                     destinationId = destination.id,
                     scopeId = destination.defaultScope()
                 ),

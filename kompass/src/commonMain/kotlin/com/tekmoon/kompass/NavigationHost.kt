@@ -3,7 +3,6 @@ package com.tekmoon.kompass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.toImmutableList
 
 
 /**
@@ -13,7 +12,7 @@ import kotlinx.collections.immutable.toImmutableList
  * [KompassNavigationHost] does not implement navigation rules or UI itself.
  * Its responsibility is limited to:
  * - Observing the current [NavigationState]
- * - Resolving destinations through [NavigationGraph]s
+ * - Resolving destinations through [KompassNavigationGraph]s
  * - Delegating rendering to the active [SceneLayout]
  *
  * This separation ensures that:
@@ -21,15 +20,15 @@ import kotlinx.collections.immutable.toImmutableList
  * - Layout and animation strategies are pluggable
  * - Screen content remains unaware of navigation orchestration
  *
- * @param navController The [NavController] driving navigation state and commands.
+ * @param navController The [KompassNavController] driving navigation state and commands.
  *
- * @param graphs List of [NavigationGraph]s responsible for resolving and rendering
+ * @param graphs List of [KompassNavigationGraph]s responsible for resolving and rendering
  * destinations present in the back stack.
  */
 @Composable
 fun KompassNavigationHost(
-    navController: NavController,
-    graphs: ImmutableList<NavigationGraph>
+    navController: KompassNavController,
+    graphs: ImmutableList<KompassNavigationGraph>
 ) {
     val ownedGraphs = rememberOwnedGraphs(navController, graphs)
     val router = remember(ownedGraphs) {
@@ -44,7 +43,7 @@ fun KompassNavigationHost(
     val layout = activeGraph.sceneLayout ?: SceneLayoutDefaultAnimatedSinglePane
 
     layout.Render(
-        backStack = navController.state.backStack.toImmutableList(),
+        backStack = navController.backStack,
         resolve = { entry ->
             val resolved = router.resolve(entry)
             resolved.graph to resolved.destination
@@ -77,8 +76,8 @@ fun KompassNavigationHost(
 
 
 /**
- * Internal router responsible for mapping [BackStackEntry] instances
- * to their owning [NavigationGraph] and resolved [Destination].
+ * Internal router responsible for mapping [KompassEntry] instances
+ * to their owning [KompassNavigationGraph] and resolved [Destination].
  *
  * This class encapsulates graph lookup logic and ensures that:
  * - Each back stack entry is resolved by exactly one graph
@@ -88,26 +87,26 @@ fun KompassNavigationHost(
  * resolution logic into consumer-facing APIs.
  */
 private class NavigationGraphRouter(
-    private val graphs: List<NavigationGraph>
+    private val graphs: List<KompassNavigationGraph>
 ) {
 
     /**
-     * Represents the result of resolving a [BackStackEntry].
+     * Represents the result of resolving a [KompassEntry].
      *
      * @param entry The original back stack entry being resolved.
      *
-     * @param graph The [NavigationGraph] responsible for the entry.
+     * @param graph The [KompassNavigationGraph] responsible for the entry.
      *
      * @param destination The resolved [Destination] instance.
      */
     data class Resolved(
-        val entry: BackStackEntry,
-        val graph: NavigationGraph,
+        val entry: KompassEntry,
+        val graph: KompassNavigationGraph,
         val destination: Destination
     )
 
     /**
-     * Resolves a [BackStackEntry] to its owning graph and destination.
+     * Resolves a [KompassEntry] to its owning graph and destination.
      *
      * @param entry The back stack entry to resolve.
      *
@@ -115,7 +114,7 @@ private class NavigationGraphRouter(
      *
      * @throws IllegalStateException if no graph can resolve the destination ID.
      */
-    fun resolve(entry: BackStackEntry): Resolved {
+    fun resolve(entry: KompassEntry): Resolved {
         val graph = graphs.firstOrNull { it.canResolveDestination(entry.destinationId) }
             ?: error("No graph can resolve ${entry.destinationId}")
 

@@ -1,16 +1,16 @@
 package com.tekmoon.samples
 
 import androidx.compose.runtime.Composable
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -20,13 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.tekmoon.kompass.NavDirection
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationScopeId
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.SceneTransition
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.rememberScoped
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -74,7 +74,7 @@ private enum class Sample4Dest : Destination {
  * Graph with per-graph transition
  * ------------------------------------------- */
 
-private object Sample4Graph : NavigationGraph {
+private object Sample4Graph : KompassNavigationGraph {
 
     override val sceneTransition: SceneTransition = SlideGraphTransition
 
@@ -89,9 +89,9 @@ private object Sample4Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         val sharedState = rememberScoped(
             scopeId = NavigationScopeId("flow:sample4"),
@@ -144,7 +144,7 @@ fun Sample4_PerGraphTransitions(
     onDismiss: () -> Unit = {}
 ) {
 
-    val navController = rememberNavController(Sample4Dest.Home)
+    val navController = rememberKompassNavController(Sample4Dest.Home)
 
     // Track previous state for direction
     val previousState =
@@ -154,7 +154,7 @@ fun Sample4_PerGraphTransitions(
         previousState.value = navController.state
     }
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan{
@@ -174,8 +174,8 @@ fun Sample4_PerGraphTransitions(
 
 @Composable
 private fun HomeScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: Sample4SharedState
 ) {
     val screenState = rememberScoped(
@@ -190,32 +190,32 @@ private fun HomeScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        BasicText("🏠 Home")
-        BasicText("Screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("🏠 Home")
+        Text("Screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen")
+            Text("Inc screen")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared")
+            Text("Inc shared")
         }
 
         Button(onClick = {
             navController.navigate(
-                entry = Sample4Dest.Details.toBackStackEntry()
+                entry = Sample4Dest.Details.toKompassEntry()
             )
         }) {
-            BasicText("Go to Details →")
+            Text("Go to Details →")
         }
     }
 }
 
 @Composable
 private fun DetailsScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: Sample4SharedState
 ) {
     val screenState = rememberScoped(
@@ -230,22 +230,22 @@ private fun DetailsScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        BasicText("📄 Details")
-        BasicText("Screen counter: ${screenState.counter}")
-        BasicText("Shared counter: ${sharedState.counter}")
+        Text("📄 Details")
+        Text("Screen counter: ${screenState.counter}")
+        Text("Shared counter: ${sharedState.counter}")
 
         Button(onClick = { screenState.counter++ }) {
-            BasicText("Inc screen")
+            Text("Inc screen")
         }
 
         Button(onClick = { sharedState.counter++ }) {
-            BasicText("Inc shared")
+            Text("Inc shared")
         }
 
         Button(onClick = {
             navController.pop()
         }) {
-            BasicText("← Back")
+            Text("← Back")
         }
     }
 }

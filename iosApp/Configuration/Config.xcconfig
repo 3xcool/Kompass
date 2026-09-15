@@ -1,3 +1,13 @@
+// Build configuration for the iosApp target. Keep this file in version control.
+//
+// The iOS Simulator needs no Apple Developer Team ID, so a fresh clone builds with no setup.
+// To build for a device, create Config.local.xcconfig next to this file with one line:
+//
+//     TEAM_ID=YOURTEAMID
+//
+// That file is ignored by git, because the Team ID is personal to each machine. Find it in Xcode,
+// under Settings > Accounts, or at developer.apple.com > Membership.
+
 TEAM_ID=
 
 PRODUCT_NAME=KompassKmp
@@ -5,3 +15,6 @@ PRODUCT_BUNDLE_IDENTIFIER=com.tekmoon.kompasskmp.KompassKmp$(TEAM_ID)
 
 CURRENT_PROJECT_VERSION=1
 MARKETING_VERSION=1.0
+
+// Optional, and read last so it wins. Xcode skips it when the file is absent.
+#include? "Config.local.xcconfig"

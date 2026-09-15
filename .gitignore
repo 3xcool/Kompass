@@ -17,3 +17,7 @@ captures
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
 node_modules/
+
+# Holds the local Apple Team ID, which is personal to each machine.
+# Config.xcconfig includes it when it exists, and builds without it for the simulator.
+iosApp/Configuration/Config.local.xcconfig

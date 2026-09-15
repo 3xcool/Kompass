@@ -1,26 +1,26 @@
 package com.tekmoon.samples
 
-import com.tekmoon.kompass.BackStackEntry
-import com.tekmoon.kompass.DeepLinkHandler
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.NavigationCommand
 import com.tekmoon.kompass.newScope
+import com.tekmoon.kompass.PathTemplateDeepLinkHandler
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.text.BasicText
 import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import com.tekmoon.kompass.DeepLinkChannel
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
-import com.tekmoon.kompass.PlatformBackHandler
+import com.tekmoon.kompass.KompassNavController
+import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.TypedDestination
 import com.tekmoon.kompass.navigateTo
 import com.tekmoon.kompass.requireArgs
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -30,17 +30,17 @@ import kotlinx.collections.immutable.persistentListOf
  * Android:
  * adb shell am start \
  *   -a android.intent.action.VIEW \
- *   -d "myapp://profile?userId=42" \
+ *   -d "myapp://profile/42" \
  *   com.tekmoon.soccos
  *
  * Desktop:
  * For Desktop:
- * ./gradlew :composeApp:run --args="myapp://profile?userId=42"
+ * ./gradlew :composeApp:run --args="myapp://profile/42"
  *
  * On iOS
- * open safari and go to  myapp://profile?userId=42
+ * open safari and go to  myapp://profile/42
  * or via terminal
- * xcrun simctl openurl booted "myapp://profile?userId=42"
+ * xcrun simctl openurl booted "myapp://profile/42"
  */
 
 
@@ -48,11 +48,11 @@ import kotlinx.collections.immutable.persistentListOf
  * Mimic deeplink
  *
  * URI
- * myapp://profile?userId=42
+ * myapp://profile/42
  *
  * adb shell am start \
  *   -a android.intent.action.VIEW \
- *   -d "myapp://profile?userId=42" \
+ *   -d "myapp://profile/42" \
  *   com.tekmoon.soccos
  *
  * What this does:
@@ -61,7 +61,7 @@ import kotlinx.collections.immutable.persistentListOf
  *
  * Passes the URI to the Activity
  *
- * Your app extracts the URI and feeds it into DsDeepLinkRegistry
+ * Your app extracts the URI and feeds it into the Kompass deep-link handler
  *
  * For Android:
  * override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +79,7 @@ import kotlinx.collections.immutable.persistentListOf
  * }
  *
  * For Desktop:
- * ./gradlew :composeApp:run --args="myapp://profile?userId=42"
+ * ./gradlew :composeApp:run --args="myapp://profile/42"
  * fun main(args: Array<String>) {
  *     val deepLinkUri = args.firstOrNull()
  *     launchApp(deepLinkUri)
@@ -119,43 +119,40 @@ private data class ProfileArgs(
 /* -------------------------------------------
  * Deep link
  *
- * Note: a DeepLinkHandler runs without a NavController, so it can't call
+ * PathTemplateDeepLinkHandler parses the URI and gives us the path values. A
+ * deep-link handler runs without a KompassNavController, so it can't call
  * navController.navigateTo. Instead we build entries with the destination's
- * own toBackStackEntry helper, passing a Json instance ourselves.
+ * own toKompassEntry helper, passing a Json instance ourselves.
  * Json.Default works fine for plain @Serializable args; if you need polymorphic
  * args, configure a SerializersModule and pass it here.
  * ------------------------------------------- */
 
-private object ProfileDeepLinkHandler : DeepLinkHandler {
+private val profileDeepLinkHandler = PathTemplateDeepLinkHandler("myapp://profile/{userId}") { match ->
+    val userId = match["userId"] ?: error("Missing userId in deep link")
 
-    override fun matches(uri: String): Boolean = uri.startsWith("myapp://profile")
-
-    override fun resolve(uri: String): List<NavigationCommand> {
-        val userId = uri.substringAfter("userId=")
-
-        return listOf(
-            NavigationCommand.ReplaceRoot(
-                BackStackEntry(
+    // One command applies the whole stack, so the deep link does not flash through Home first.
+    listOf(
+        NavigationCommand.ReplaceStack(
+            listOf(
+                KompassEntry(
                     destinationId = Sample5Dest.Home.id,
                     scopeId = newScope()
-                )
-            ),
-            NavigationCommand.Navigate(
-                Sample5Dest.Profile.toBackStackEntry(
+                ),
+                Sample5Dest.Profile.toKompassEntry(
                     args = ProfileArgs(userId),
                     json = Json,
                     scopeId = newScope()
                 )
             )
         )
-    }
+    )
 }
 
 /* -------------------------------------------
  * Graph
  * ------------------------------------------- */
 
-private object Sample5Graph : NavigationGraph {
+private object Sample5Graph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         destinationId == Sample5Dest.Home.id ||
@@ -173,9 +170,9 @@ private object Sample5Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             Sample5Dest.Home ->
@@ -199,10 +196,10 @@ fun Sample5_DeepLink(
     onDismiss: () -> Unit = {}
 ) {
     val navController =
-        rememberNavController(
+        rememberKompassNavController(
             startDestination = Sample5Dest.Home,
             deepLinkUri = deepLinkUri,
-            deepLinkHandlers = persistentListOf(ProfileDeepLinkHandler)
+            deepLinkHandlers = persistentListOf(profileDeepLinkHandler)
         )
 
     LaunchedEffect(navController) {
@@ -211,7 +208,7 @@ fun Sample5_DeepLink(
         }
     }
 
-    PlatformBackHandler(
+    KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
         navController.popIfCan{
@@ -232,10 +229,10 @@ fun Sample5_DeepLink(
 
 @Composable
 private fun HomeScreen(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Column {
-        BasicText("🏠 Home")
+        Text("🏠 Home")
 
         Button(onClick = {
             navController.navigateTo(
@@ -244,26 +241,26 @@ private fun HomeScreen(
                 scopeId = newScope()
             )
         }) {
-            BasicText("Go to Profile (manual)")
+            Text("Go to Profile (manual)")
         }
     }
 }
 
 @Composable
 private fun ProfileScreen(
-    entry: BackStackEntry,
-    navController: NavController
+    entry: KompassEntry,
+    navController: KompassNavController
 ) {
     val args = navController.requireArgs(Sample5Dest.Profile, entry)
 
     Column {
-        BasicText("👤 Profile")
-        BasicText("UserId = ${args.userId}")
+        Text("👤 Profile")
+        Text("UserId = ${args.userId}")
 
         Button(onClick = {
             navController.pop()
         }) {
-            BasicText("Back")
+            Text("Back")
         }
     }
 }

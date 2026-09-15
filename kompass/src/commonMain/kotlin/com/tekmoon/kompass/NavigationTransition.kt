@@ -37,8 +37,8 @@ enum class NavDirection {
 
 /** Entries include destination IDs and arguments so transitions can depend on either endpoint. */
 data class SceneTransitionContext(
-    val from: BackStackEntry,
-    val to: BackStackEntry,
+    val from: KompassEntry,
+    val to: KompassEntry,
     val direction: NavDirection,
 )
 
@@ -213,6 +213,22 @@ data object SceneTransitionStatic : SceneTransition {
 fun entryTransition(
     direction: NavDirection,
     transition: SceneTransition = SceneTransitionDefault(),
-): AnimatedContentTransitionScope<BackStackEntry>.() -> ContentTransform = {
+): AnimatedContentTransitionScope<KompassEntry>.() -> ContentTransform = {
     transition.transition(SceneTransitionContext(initialState, targetState, direction))
+}
+
+/**
+ * Adapts a destination-aware transition selection to [AnimatedContent].
+ *
+ * The selected transition is still responsible for both enter and exit motion. The resolver only
+ * decides which transition describes the current source/target pair.
+ */
+fun entryTransition(
+    direction: NavDirection,
+    resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+    transition: SceneTransition? = null,
+): AnimatedContentTransitionScope<KompassEntry>.() -> ContentTransform = {
+    val context = SceneTransitionContext(initialState, targetState, direction)
+    (transition ?: resolve(targetState).first.sceneTransition ?: SceneTransitionDefault())
+        .transition(context)
 }

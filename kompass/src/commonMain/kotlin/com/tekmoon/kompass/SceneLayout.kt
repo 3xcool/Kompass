@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalKompassSharedTransitionApi::class)
+
 package com.tekmoon.kompass
 
 import androidx.compose.animation.AnimatedContent
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
@@ -41,11 +44,11 @@ interface SceneLayout {
     /**
      * Renders the visible portion of the navigation back stack.
      *
-     * @param backStack Immutable list of current [BackStackEntry] instances.
+     * @param backStack Immutable list of current [KompassEntry] instances.
      * The last entry represents the active destination.
      *
-     * @param resolve Function used to resolve a [BackStackEntry] into
-     * its owning [NavigationGraph] and [Destination].
+     * @param resolve Function used to resolve a [KompassEntry] into
+     * its owning [KompassNavigationGraph] and [Destination].
      *
      * @param navController Controller used to perform navigation actions
      * from rendered destinations.
@@ -54,9 +57,9 @@ interface SceneLayout {
      */
     @Composable
     fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     )
 }
@@ -70,9 +73,9 @@ object SceneLayoutSinglePane : SceneLayout {
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     ) {
         val entry = backStack.last()
@@ -96,9 +99,9 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     ) {
         val entry = backStack.last()
@@ -113,11 +116,13 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
             label = "SinglePane"
         ) { animatedEntry ->
             val (graph, destination) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
-            graph.Content(
-                entry = animatedEntry,
-                destination = destination,
-                navController = navController
-            )
+            CompositionLocalProvider(LocalKompassAnimatedVisibilityScope provides this) {
+                graph.Content(
+                    entry = animatedEntry,
+                    destination = destination,
+                    navController = navController
+                )
+            }
         }
     }
 }
@@ -133,14 +138,14 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
  */
 data class SceneLayoutListDetail(
     val compactWidthThreshold: Dp = 600.dp,
-    val transition: SceneTransition = SceneTransitionDefault(300)
+    val transition: SceneTransition? = null
 ) : SceneLayout {
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection
     ) {
         BoxWithConstraints {
@@ -155,17 +160,20 @@ data class SceneLayoutListDetail(
                     contentKey = { it.id },
                     transitionSpec = entryTransition(
                         direction = direction,
-                        transition = transition
+                        resolve = resolve,
+                        transition = transition,
                     ),
                     label = "DetailOnly",
 //                    contentKey = { it to it.destinationId }
                 ) { animatedEntry ->
                     val (graph, destination) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
-                    graph.Content(
-                        entry = animatedEntry,
-                        destination = destination,
-                        navController = navController
-                    )
+                    CompositionLocalProvider(LocalKompassAnimatedVisibilityScope provides this) {
+                        graph.Content(
+                            entry = animatedEntry,
+                            destination = destination,
+                            navController = navController
+                        )
+                    }
                 }
             } else {
                 val master = backStack.first()
@@ -193,7 +201,8 @@ data class SceneLayoutListDetail(
                             contentKey = { it.id },
                             transitionSpec = entryTransition(
                                 direction = direction,
-                                transition = transition
+                                resolve = resolve,
+                                transition = transition,
                             ),
                             label = "DetailPane",
 //                            contentKey = { it.destinationId}
@@ -201,11 +210,13 @@ data class SceneLayoutListDetail(
 //                          // Important
                             // We must use animatedEntry, cause we need to render the new screen after the animation is finished
                             val (detailGraph, detailDest) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
-                            detailGraph.Content(
-                                entry = animatedEntry,
-                                destination = detailDest,
-                                navController = navController
-                            )
+                            CompositionLocalProvider(LocalKompassAnimatedVisibilityScope provides this) {
+                                detailGraph.Content(
+                                    entry = animatedEntry,
+                                    destination = detailDest,
+                                    navController = navController
+                                )
+                            }
                         }
                     }
                 }
