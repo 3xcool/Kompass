@@ -61,25 +61,6 @@ These helper names remain unchanged: `newScope`, `defaultScope`, `buildArgs`, `a
 - Composite pane arrangements are serializable; use the saveable composite state helper for process
   death restoration.
 
-## Renamed APIs
-
-| Kompass 1.x | Kompass 2.0 |
-|---|---|
-| `rememberNavController` | `rememberKompassNavController` |
-| `createNavController` | `createKompassNavController` |
-| `toBackStackEntry` | `toKompassEntry` |
-| `newScope` | `newScope` |
-| `defaultScope` | `defaultScope` |
-| `buildArgs` | `buildArgs` |
-| `applyDeepLink` | `applyDeepLink` |
-| `encodeArgs` | `encodeArgs` |
-| `argsFrom` | `argsFrom` |
-| `argsOrNull` | `argsOrNull` |
-| `requireArgs` | `requireArgs` |
-| `navigateTo` | `navigateTo` |
-| `replaceRootTo` | `replaceRoot` |
-| `replaceStackTo` | `replaceStack` |
-
 ## Example
 
 Before:
