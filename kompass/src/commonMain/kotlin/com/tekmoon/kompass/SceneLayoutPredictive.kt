@@ -19,7 +19,7 @@ import kotlinx.collections.immutable.ImmutableList
  *
  * @Composable
  * fun MyApp() {
- *     val navController = rememberNavController(Home)
+ *     val navController = rememberKompassNavController(Home)
  *     KompassPredictiveBackHandler(navController)
  *     KompassNavigationHost(navController, persistentListOf(MyGraph))
  * }

@@ -108,7 +108,7 @@ fun <T : Any> TypedDestination<T>.argsFrom(entry: BackStackEntry, json: Json): T
  * Use this when constructing a back stack manually (e.g., for deep links
  * or initial state). For ordinary navigation prefer [NavController.navigateTo].
  */
-fun <T : Any> TypedDestination<T>.toBackStackEntry(
+fun <T : Any> TypedDestination<T>.toKompassBackStackEntry(
     args: T,
     json: Json,
     scopeId: NavigationScopeId = defaultScope(),
@@ -130,7 +130,7 @@ fun <T : Any> TypedDestination<T>.toBackStackEntry(
 /**
  * Navigates to a [TypedDestination] with strongly-typed [args].
  *
- * Equivalent to building a [BackStackEntry] via [TypedDestination.toBackStackEntry]
+ * Equivalent to building a [BackStackEntry] via [TypedDestination.toKompassBackStackEntry]
  * and dispatching [NavController.navigate], but in one call. The controller's
  * [NavController.json] is used to encode the args.
  *
@@ -156,7 +156,7 @@ fun <T : Any> NavController.navigateTo(
     reuseIfExists: Boolean = false,
     metadata: Map<String, String> = emptyMap(),
 ) {
-    val entry = destination.toBackStackEntry(
+    val entry = destination.toKompassBackStackEntry(
         args = args,
         json = json,
         scopeId = scopeId,
@@ -177,29 +177,29 @@ fun <T : Any> NavController.navigateTo(
  * strongly-typed [args].
  */
 @Deprecated(
-    message = "Use replaceStackTo, which matches replaceStack.",
-    replaceWith = ReplaceWith("replaceStackTo(destination, args, scopeId)"),
+    message = "Use replaceStack, which matches replaceStack.",
+    replaceWith = ReplaceWith("replaceStack(destination, args, scopeId)"),
 )
-fun <T : Any> NavController.replaceRootTo(
+fun <T : Any> NavController.replaceRoot(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
 ) {
-    replaceStackTo(destination, args, scopeId)
+    replaceStack(destination, args, scopeId)
 }
 
 /**
  * Replaces the entire back stack with a single [TypedDestination] entry, with
  * strongly-typed [args].
  */
-fun <T : Any> NavController.replaceStackTo(
+fun <T : Any> NavController.replaceStack(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
     metadata: Map<String, String> = emptyMap(),
 ) {
     replaceStack(
-        destination.toBackStackEntry(
+        destination.toKompassBackStackEntry(
             args = args,
             json = json,
             scopeId = scopeId,
@@ -238,7 +238,7 @@ fun <T : Any> NavController.argsOrNull(
  *
  * Use this when external code needs a raw encoded string — e.g., when a
  * custom [DeepLinkHandler] or test fixture builds [NavigationCommand]s by
- * hand. Prefer [navigateTo] / [replaceRootTo] for ordinary navigation.
+ * hand. Prefer [navigateTo] / [replaceRoot] for ordinary navigation.
  */
 fun <T : Any> NavController.encodeArgs(
     destination: TypedDestination<T>,
@@ -259,13 +259,13 @@ fun <T : Any> NavController.encodeArgs(
  * @param pendingResultKey Optional key for [NavigationResult] return when this
  * entry is later popped.
  */
-fun <T : Any> NavController.toBackStackEntry(
+fun <T : Any> NavController.toKompassBackStackEntry(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
     pendingResultKey: String? = null,
     metadata: Map<String, String> = emptyMap(),
-): BackStackEntry = destination.toBackStackEntry(
+): BackStackEntry = destination.toKompassBackStackEntry(
     args = args,
     json = json,
     scopeId = scopeId,

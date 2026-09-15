@@ -27,8 +27,8 @@ import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.SceneLayout
 import com.tekmoon.kompass.SceneLayoutPredictive
 import com.tekmoon.kompass.SceneTransition
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -114,7 +114,7 @@ fun Sample9_PredictiveBack(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {}
 ) {
-    val navController = rememberNavController(Sample9Dest.Level1)
+    val navController = rememberKompassNavController(Sample9Dest.Level1)
 
     // This handler replaces KompassBackHandler for the pop. Do not install both for the same
     // controller, because enabled handlers compete for the same event.
@@ -169,7 +169,7 @@ private fun Sample9Screen(
             enabled = depth < 3,
             onClick = {
                 val next = Sample9Dest.entries[depth]
-                navController.navigate(entry = next.toBackStackEntry())
+                navController.navigate(entry = next.toKompassBackStackEntry())
             }
         ) {
             Text("Push next level")

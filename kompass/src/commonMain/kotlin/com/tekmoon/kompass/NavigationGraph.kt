@@ -28,7 +28,7 @@ interface Destination {
 /**
  * Helper function to convert [Destination] to [BackStackEntry]
  */
-fun Destination.toBackStackEntry(
+fun Destination.toKompassBackStackEntry(
     args: ArgsJson? = null,
     scopeId: NavigationScopeId = defaultScope(),
     pendingResultKey: String? = null,
@@ -98,7 +98,7 @@ typealias ArgsJson = String
  * of the destinations a feature module owns:
  *
  * ```
- * Profile.toBackStackEntry(metadata = mapOf("presentation" to "sheet"))
+ * Profile.toKompassBackStackEntry(metadata = mapOf("presentation" to "sheet"))
  * ```
  *
  * Values are strings because the whole entry crosses the wire. A server payload, a deep link and a

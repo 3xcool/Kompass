@@ -88,13 +88,13 @@ class SharedElementTransitionTest {
         val graph = Graph(scopes, sharedStates)
 
         setContent {
-            navController = rememberNavController(ListDestination)
+            navController = rememberKompassNavController(ListDestination)
             KompassSharedTransitionHost(navController, persistentListOf(graph))
         }
         onNodeWithText("screen:list").assertExists()
 
         mainClock.autoAdvance = false
-        runOnIdle { navController.navigate(DetailDestination.toBackStackEntry()) }
+        runOnIdle { navController.navigate(DetailDestination.toKompassBackStackEntry()) }
         mainClock.advanceTimeBy(64)
 
         runOnIdle {
@@ -121,7 +121,7 @@ class SharedElementTransitionTest {
         val graph = Graph(scopes, sharedStates, SceneLayoutPredictive())
 
         setContent {
-            navController = rememberNavController(ListDestination)
+            navController = rememberKompassNavController(ListDestination)
             KompassSharedTransitionHost(navController, persistentListOf(graph))
         }
 
@@ -129,7 +129,7 @@ class SharedElementTransitionTest {
         mainClock.autoAdvance = false
         runOnIdle {
             root = navController.currentEntry
-            navController.navigate(DetailDestination.toBackStackEntry())
+            navController.navigate(DetailDestination.toKompassBackStackEntry())
         }
         mainClock.advanceTimeBy(1_000)
         runOnIdle {
@@ -171,7 +171,7 @@ class SharedElementTransitionTest {
 
         setContent {
             KompassNavigationHost(
-                navController = rememberNavController(ListDestination),
+                navController = rememberKompassNavController(ListDestination),
                 graphs = persistentListOf(observingGraph),
             )
         }

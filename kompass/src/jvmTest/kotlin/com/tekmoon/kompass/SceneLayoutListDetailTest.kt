@@ -47,7 +47,7 @@ class SceneLayoutListDetailTest {
     fun a_compact_width_shows_only_the_top_entry() = runComposeUiTest {
         val nav = hostOfWidth(400.dp)
 
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
         waitForIdle()
 
         onNodeWithText("screen:b").assertExists()
@@ -58,7 +58,7 @@ class SceneLayoutListDetailTest {
     fun an_expanded_width_shows_the_first_entry_beside_the_top_entry() = runComposeUiTest {
         val nav = hostOfWidth(900.dp)
 
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
         waitForIdle()
 
         onNodeWithText("screen:a").assertExists()
@@ -77,7 +77,7 @@ class SceneLayoutListDetailTest {
     fun the_threshold_decides_where_the_second_pane_appears() = runComposeUiTest {
         val nav = hostOfWidth(500.dp, layout = SceneLayoutListDetail(compactWidthThreshold = 400.dp))
 
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
         waitForIdle()
 
         onNodeWithText("screen:a").assertExists()
@@ -89,9 +89,9 @@ class SceneLayoutListDetailTest {
         runComposeUiTest {
             val nav = hostOfWidth(900.dp)
 
-            runOnIdle { nav.navigate(B.toBackStackEntry()) }
+            runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
             waitForIdle()
-            runOnIdle { nav.navigate(B.toBackStackEntry()) }
+            runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
             waitForIdle()
 
             runOnIdle { assertEquals(3, nav.backStack.size) }
@@ -105,7 +105,7 @@ class SceneLayoutListDetailTest {
     ): NavController {
         lateinit var nav: NavController
         setContent {
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             Box(Modifier.requiredWidth(width).fillMaxHeight()) {
                 KompassNavigationHost(nav, persistentListOf(Graph(layout)))
             }

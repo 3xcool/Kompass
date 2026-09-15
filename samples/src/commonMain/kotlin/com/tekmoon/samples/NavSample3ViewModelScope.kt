@@ -15,7 +15,7 @@ import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationScopeId
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.rememberScoped
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
@@ -104,7 +104,7 @@ fun Sample3_WithScope(
     onDismiss: () -> Unit = {}
 ) {
 
-    val navController = rememberNavController(Sample3Dest.First)
+    val navController = rememberKompassNavController(Sample3Dest.First)
 
     KompassBackHandler(
         backPressedChannel = backPressedChannel,

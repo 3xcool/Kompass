@@ -37,7 +37,7 @@ import kotlinx.serialization.modules.SerializersModule
  * All rules are delegated to the reducer to ensure consistency,
  * testability, and predictability.
  *
- * Use [rememberNavController] in composition or [createNavController] for external ownership.
+ * Use [rememberKompassNavController] in composition or [createKompassNavController] for external ownership.
  * Mutation, saving and disposal are confined to the UI thread. StateFlow observation may
  * occur on any dispatcher.
  *
@@ -60,7 +60,7 @@ class NavController internal constructor(
      *
      * `internal` so the typed-args extensions defined in this module can use it,
      * while preventing external consumers from poking at the raw [Json].
-     * Configured with the [SerializersModule] passed to [rememberNavController].
+     * Configured with the [SerializersModule] passed to [rememberKompassNavController].
      *
      * If a consumer ever needs raw encode/decode, the right pattern is a public
      * extension on [NavController] that wraps the encoding — not direct access
@@ -372,7 +372,7 @@ private fun restoreNavigation(
  * savedNavigationState restores navigation only; it does not serialize live ViewModels or UI.
  * Recovery reports the failure and uses initialState unless Throw is selected.
  */
-fun createNavController(
+fun createKompassNavController(
     initialState: NavigationState,
     serializersModule: SerializersModule = SerializersModule {},
     deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
@@ -387,7 +387,7 @@ fun createNavController(
 }
 
 /** External-ownership convenience overload starting at a destination. */
-fun createNavController(
+fun createKompassNavController(
     startDestination: Destination,
     serializersModule: SerializersModule = SerializersModule {},
     scopeId: NavigationScopeId? = null,
@@ -395,14 +395,14 @@ fun createNavController(
     savedNavigationState: String? = null,
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
-): NavController = createNavController(
-    defaultNavigationState(startDestination.toBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())),
+): NavController = createKompassNavController(
+    defaultNavigationState(startDestination.toKompassBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())),
     serializersModule, deepLinkHandlers, savedNavigationState, restorePolicy, onRestoreFailure,
 )
 
 /** Remember a controller with automatic owner retention and saved navigation recovery. */
 @Composable
-fun rememberNavController(
+fun rememberKompassNavController(
     initialState: NavigationState,
     serializersModule: SerializersModule = SerializersModule {},
     deepLinkUri: String? = null,
@@ -432,7 +432,7 @@ fun rememberNavController(
 
 /** Remember a controller starting at one destination. */
 @Composable
-fun rememberNavController(
+fun rememberKompassNavController(
     startDestination: Destination,
     serializersModule: SerializersModule = SerializersModule {},
     scopeId: NavigationScopeId? = null,
@@ -441,8 +441,8 @@ fun rememberNavController(
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
 ): NavController {
-    val initial = remember { defaultNavigationState(startDestination.toBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())) }
-    return rememberNavController(initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure)
+    val initial = remember { defaultNavigationState(startDestination.toKompassBackStackEntry(scopeId = scopeId ?: startDestination.defaultScope())) }
+    return rememberKompassNavController(initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure)
 }
 
 /**

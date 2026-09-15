@@ -32,9 +32,9 @@ import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationGraph
-import com.tekmoon.kompass.createNavController
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.createKompassNavController
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kompasskmp.samples.generated.resources.Res
 import kompasskmp.samples.generated.resources.sample11_back
@@ -136,7 +136,7 @@ private fun Sample11TabScreen(entry: BackStackEntry, destination: Destination, n
             text = stringResource(Res.string.sample11_visits, visits.value),
             style = MaterialTheme.typography.bodyLarge,
         )
-        Button(onClick = { navController.navigate(Sample11Dest.Detail.toBackStackEntry()) }) {
+        Button(onClick = { navController.navigate(Sample11Dest.Detail.toKompassBackStackEntry()) }) {
             Text(stringResource(Res.string.sample11_open_detail))
         }
     }
@@ -210,7 +210,7 @@ fun Sample11_Tabs(
 /** One controller. A tab tap moves the entry to the top and keeps everything it owns. */
 @Composable
 private fun Sample11ReorderModel(backPressedChannel: BackPressedChannel?, onDismiss: () -> Unit) {
-    val navController = rememberNavController(Sample11Dest.Home)
+    val navController = rememberKompassNavController(Sample11Dest.Home)
 
     KompassBackHandler(backPressedChannel = backPressedChannel) {
         navController.popIfCan(onFailure = onDismiss)
@@ -226,7 +226,7 @@ private fun Sample11ReorderModel(backPressedChannel: BackPressedChannel?, onDism
                 NavigationBarItem(
                     selected = navController.currentEntry.destinationId == tab.id,
                     // The whole bottom bar is this one line.
-                    onClick = { navController.navigate(tab.toBackStackEntry(), reuseIfExists = true) },
+                    onClick = { navController.navigate(tab.toKompassBackStackEntry(), reuseIfExists = true) },
                     icon = { Text(tabLabel(tab).take(1)) },
                     label = { Text(tabLabel(tab)) },
                 )
@@ -244,7 +244,7 @@ private fun Sample11ReorderModel(backPressedChannel: BackPressedChannel?, onDism
 @Composable
 private fun Sample11PerTabModel(backPressedChannel: BackPressedChannel?, onDismiss: () -> Unit) {
     val controllers = remember {
-        Sample11Tabs.associateWith { createNavController(it) }
+        Sample11Tabs.associateWith { createKompassNavController(it) }
     }
     DisposableEffect(controllers) {
         // An externally owned controller is released by close(), never by leaving composition.

@@ -17,8 +17,8 @@ import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.KompassBackHandler
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 import kompasskmp.samples.generated.resources.Res
@@ -205,7 +205,7 @@ fun KompassNavSample(
     deepLinkChannel: DeepLinkChannel? = null
 ) {
 
-    val navController = rememberNavController(KompassSampleDestinations.SampleList)
+    val navController = rememberKompassNavController(KompassSampleDestinations.SampleList)
 
     KompassBackHandler(
         backPressedChannel = backPressedChannel,
@@ -250,7 +250,7 @@ private fun KompassSampleList(
                 title = destination.label(),
                 onClick = {
                     navController.navigate(
-                        entry = destination.toBackStackEntry()
+                        entry = destination.toKompassBackStackEntry()
                     )
                 }
             )

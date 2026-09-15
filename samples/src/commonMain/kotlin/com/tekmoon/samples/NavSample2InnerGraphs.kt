@@ -10,7 +10,7 @@ import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationScopeId
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -97,7 +97,7 @@ fun Sample2_InnerGraphs_SameScopeId(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {}
 ) {
-    val navController = rememberNavController(startDestination = MainDestination.Home)
+    val navController = rememberKompassNavController(startDestination = MainDestination.Home)
 
     // Always enabled to avoid closing the app
     KompassBackHandler(

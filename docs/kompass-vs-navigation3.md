@@ -89,14 +89,14 @@ decorators and scene strategies provide lifecycle and layout behavior.
 Kompass exposes a controller over immutable navigation state:
 
 ```kotlin
-val navController = rememberNavController(Home)
+val navController = rememberKompassNavController(Home)
 
 KompassNavigationHost(
     navController = navController,
     graphs = persistentListOf(MainGraph),
 )
 
-navController.navigate(Profile.toBackStackEntry(args = profileArgs))
+navController.navigate(Profile.toKompassBackStackEntry(args = profileArgs))
 ```
 
 Navigation commands are reduced into new states:

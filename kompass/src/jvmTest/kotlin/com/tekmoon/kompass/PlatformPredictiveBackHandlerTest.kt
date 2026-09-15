@@ -81,12 +81,12 @@ class PlatformPredictiveBackHandlerTest {
         lateinit var nav: NavController
         setContent {
             window.Content {
-                nav = rememberNavController(TestDestination.A)
+                nav = rememberKompassNavController(TestDestination.A)
                 KompassPredictiveBackHandler(nav)
                 KompassBackHandler(enabled = !nav.canGoBack()) { dismisses++ }
             }
         }
-        runOnIdle { nav.navigate(TestDestination.B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(TestDestination.B.toKompassBackStackEntry()) }
         runOnIdle { window.input.start(); window.input.progress(0.6f) }
         runOnIdle {
             assertEquals(2, nav.backStack.size)
@@ -169,12 +169,12 @@ class PlatformPredictiveBackHandlerTest {
         lateinit var nav: NavController
         setContent {
             window.Content {
-                nav = rememberNavController(TestDestination.A)
+                nav = rememberKompassNavController(TestDestination.A)
                 KompassPredictiveBackHandler(nav)
             }
         }
-        runOnIdle { nav.navigate(TestDestination.B.toBackStackEntry()) }
-        runOnIdle { nav.navigate(TestDestination.C.toBackStackEntry()) }
+        runOnIdle { nav.navigate(TestDestination.B.toKompassBackStackEntry()) }
+        runOnIdle { nav.navigate(TestDestination.C.toKompassBackStackEntry()) }
 
         // The drag starts on [A, B, C], so the preview targets B.
         runOnIdle { window.input.start(); window.input.progress(0.6f) }
@@ -199,16 +199,16 @@ class PlatformPredictiveBackHandlerTest {
         lateinit var nav: NavController
         setContent {
             window.Content {
-                nav = rememberNavController(TestDestination.A)
+                nav = rememberKompassNavController(TestDestination.A)
                 KompassPredictiveBackHandler(nav)
             }
         }
-        runOnIdle { nav.navigate(TestDestination.B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(TestDestination.B.toKompassBackStackEntry()) }
         runOnIdle { window.input.start(); window.input.progress(0.6f) }
         runOnIdle {
             // Keep A as the predecessor, but replace the screen the gesture started on.
             nav.pop()
-            nav.navigate(TestDestination.C.toBackStackEntry())
+            nav.navigate(TestDestination.C.toKompassBackStackEntry())
         }
         runOnIdle { window.input.commit() }
         runOnIdle {

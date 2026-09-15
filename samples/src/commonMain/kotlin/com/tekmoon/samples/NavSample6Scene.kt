@@ -17,7 +17,7 @@ import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.TypedDestination
 import com.tekmoon.kompass.navigateTo
 import com.tekmoon.kompass.newScope
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.requireArgs
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
@@ -101,7 +101,7 @@ fun Sample6_ListDetail(
     onDismiss: () -> Unit = {}
 ) {
 
-    val navController = rememberNavController(Sample6Dest.List)
+    val navController = rememberKompassNavController(Sample6Dest.List)
 
     KompassBackHandler(
         backPressedChannel = backPressedChannel,

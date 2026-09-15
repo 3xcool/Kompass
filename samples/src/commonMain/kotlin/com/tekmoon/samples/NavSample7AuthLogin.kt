@@ -10,8 +10,8 @@ import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -85,7 +85,7 @@ fun Sample7_AuthLogin(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {}
 ) {
-    val navController = rememberNavController(
+    val navController = rememberKompassNavController(
         startDestination = LoginDestination.Email
     )
 
@@ -126,7 +126,7 @@ private fun LoginEmailScreen(
     Button(
         onClick = {
             navController.navigate(
-                entry = LoginDestination.Password.toBackStackEntry()
+                entry = LoginDestination.Password.toKompassBackStackEntry()
             )
         }
     ) {

@@ -26,7 +26,7 @@ import com.tekmoon.kompass.SceneLayout
 import com.tekmoon.kompass.defaultScope
 import com.tekmoon.kompass.layout.CompositeLayoutState
 import com.tekmoon.kompass.layout.SceneLayoutComposite
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
@@ -206,7 +206,7 @@ fun NavigationPreview_ListOnly() {
 //    val navController = remember(state) {
 //        NavController(state, {})
 //    }
-    val navController = rememberNavController(DsNavigationPreviewStates.listOnly())
+    val navController = rememberKompassNavController(DsNavigationPreviewStates.listOnly())
     KompassNavigationHost(
         navController = navController,
         graphs = persistentListOf(PreviewNavigationGraph),
@@ -230,7 +230,7 @@ fun NavigationPreview_MultiPane() {
 //    val navController = remember(state) {
 //        NavController(state, {})
 //    }
-    val navController = rememberNavController(DsNavigationPreviewStates.listDetail())
+    val navController = rememberKompassNavController(DsNavigationPreviewStates.listDetail())
     KompassNavigationHost(
         navController = navController,
         graphs = persistentListOf(PreviewNavigationGraph)
@@ -244,7 +244,7 @@ fun NavigationPreview_MultiPane() {
 )
 @Composable
 fun NavigationPreview_CompositeLayout() {
-    val navController = rememberNavController(DsNavigationPreviewStates.listDetail())
+    val navController = rememberKompassNavController(DsNavigationPreviewStates.listDetail())
     KompassNavigationHost(
         navController = navController,
         graphs = persistentListOf(PreviewCompositeNavigationGraph),

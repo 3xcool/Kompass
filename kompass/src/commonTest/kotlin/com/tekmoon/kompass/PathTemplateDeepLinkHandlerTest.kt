@@ -19,8 +19,8 @@ class PathTemplateDeepLinkHandlerTest {
         listOf(
             NavigationCommand.ReplaceStack(
                 listOf(
-                    Home.toBackStackEntry(),
-                    Profile.toBackStackEntry(args = match.args),
+                    Home.toKompassBackStackEntry(),
+                    Profile.toKompassBackStackEntry(args = match.args),
                 )
             )
         )
@@ -124,7 +124,7 @@ class PathTemplateDeepLinkHandlerTest {
     // ---------------------------------------------------------------- end to end
 
     @Test fun a_multi_level_link_applies_in_one_state_change() {
-        val nav = createNavController(Home, deepLinkHandlers = persistentListOf(handler("app://profile/{userId}")))
+        val nav = createKompassNavController(Home, deepLinkHandlers = persistentListOf(handler("app://profile/{userId}")))
         try {
             assertFalse(nav.applyDeepLink("app://unknown/7"))
             assertTrue(nav.applyDeepLink("app://profile/7?tab=orders"))

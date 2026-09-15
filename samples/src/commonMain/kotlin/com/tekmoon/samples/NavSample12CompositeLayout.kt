@@ -30,7 +30,7 @@ import com.tekmoon.kompass.layout.CompositeLayoutLabels
 import com.tekmoon.kompass.layout.CompositeLayoutState
 import com.tekmoon.kompass.layout.SceneLayoutComposite
 import com.tekmoon.kompass.layout.rememberCompositeLayoutState
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kompasskmp.samples.generated.resources.Res
 import kompasskmp.samples.generated.resources.sample12_add_pane
@@ -128,7 +128,7 @@ private class Sample12Graph(
                     .maxOfOrNull { it.number }
                     ?.plus(1)
                     ?: 1
-                navController.navigate(Sample12Dest.Level(nextLevel).toBackStackEntry())
+                navController.navigate(Sample12Dest.Level(nextLevel).toKompassBackStackEntry())
             },
         )
     }
@@ -151,13 +151,13 @@ fun Sample12_CompositeLayout(
     val initialState = remember {
         NavigationState(
             backStack = persistentListOf(
-                Sample12Dest.Overview.toBackStackEntry(),
-                Sample12Dest.Level(1).toBackStackEntry(),
-                Sample12Dest.Level(2).toBackStackEntry(),
+                Sample12Dest.Overview.toKompassBackStackEntry(),
+                Sample12Dest.Level(1).toKompassBackStackEntry(),
+                Sample12Dest.Level(2).toKompassBackStackEntry(),
             ),
         )
     }
-    val navController = com.tekmoon.kompass.rememberNavController(initialState)
+    val navController = com.tekmoon.kompass.rememberKompassNavController(initialState)
 
     KompassBackHandler(backPressedChannel = backPressedChannel) {
         if (layoutState.isEditMode) {

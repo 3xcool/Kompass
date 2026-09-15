@@ -33,8 +33,8 @@ import com.tekmoon.kompass.LocalKompassAnimatedVisibilityScope
 import com.tekmoon.kompass.LocalKompassSharedTransitionScope
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationGraph
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kompasskmp.samples.generated.resources.Res
 import kompasskmp.samples.generated.resources.sample10_back
@@ -80,7 +80,7 @@ fun Sample10_SharedElementTransition(
     backPressedChannel: BackPressedChannel?,
     onDismiss: () -> Unit = {},
 ): Unit {
-    val navController = rememberNavController(Sample10Destination.List)
+    val navController = rememberKompassNavController(Sample10Destination.List)
 
     KompassBackHandler(backPressedChannel = backPressedChannel) {
         navController.popIfCan(onFailure = onDismiss)
@@ -110,7 +110,7 @@ private fun Sample10ListScreen(navController: NavController): Unit {
             style = MaterialTheme.typography.bodyMedium,
         )
         Card(
-            onClick = { navController.navigate(Sample10Destination.Detail.toBackStackEntry()) },
+            onClick = { navController.navigate(Sample10Destination.Detail.toKompassBackStackEntry()) },
             modifier = Modifier.fillMaxWidth(),
         ) {
             Row(

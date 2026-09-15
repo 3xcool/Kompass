@@ -56,8 +56,8 @@ class SceneTransitionTest {
             }
         }
         val context = SceneTransitionContext(
-            from = A.toBackStackEntry(),
-            to = B.toBackStackEntry(),
+            from = A.toKompassBackStackEntry(),
+            to = B.toKompassBackStackEntry(),
             direction = NavDirection.Pop,
         )
 
@@ -76,8 +76,8 @@ class SceneTransitionTest {
             }
         }
         val context = SceneTransitionContext(
-            from = A.toBackStackEntry(args = """{"userId":"1"}"""),
-            to = B.toBackStackEntry(),
+            from = A.toKompassBackStackEntry(args = """{"userId":"1"}"""),
+            to = B.toKompassBackStackEntry(),
             direction = NavDirection.Push,
         )
 

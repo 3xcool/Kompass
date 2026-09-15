@@ -176,7 +176,7 @@ overrides read `entries`, so they never change again.
 ```kotlin
 @Composable
 fun AppNavigation() {
-    val navController = rememberNavController(
+    val navController = rememberKompassNavController(
         startDestination = MainDestination.Home
     )
 
@@ -193,14 +193,14 @@ fun AppNavigation() {
 @Composable
 fun HomeScreen(navController: NavController) {
     Button(
-        onClick = { navController.navigate(MainDestination.Profile.toBackStackEntry()) }
+        onClick = { navController.navigate(MainDestination.Profile.toKompassBackStackEntry()) }
     ) {
         Text("Go to Profile")
     }
 }
 ```
 
-`toBackStackEntry` takes the ID from the destination and gives the entry its own scope, so you never
+`toKompassBackStackEntry` takes the ID from the destination and gives the entry its own scope, so you never
 repeat the string. Build a `BackStackEntry` by hand only when the destination ID arrives at runtime,
 from a server payload or a deep link.
 
@@ -236,7 +236,7 @@ Install the controller-aware handler beside the host:
 ```kotlin
 @Composable
 fun AppNavigation(onDismiss: () -> Unit) {
-    val navController = rememberNavController(MainDestination.Home)
+    val navController = rememberKompassNavController(MainDestination.Home)
 
     KompassPredictiveBackHandler(navController)
 
@@ -362,7 +362,7 @@ The same stack built as one `replaceStack` and then two `navigate` calls publish
 plays three animations. One command publishes one state. A repeated entry object becomes a separate
 occurrence at each level, the same as it does for `navigate`. The list must not be empty.
 
-`replaceRoot`, `NavigationCommand.ReplaceRoot` and `replaceRootTo` are deprecated in 2.0.0. Each has
+`replaceRoot`, `NavigationCommand.ReplaceRoot` and `replaceRoot` are deprecated in 2.0.0. Each has
 a `replaceStack` counterpart with the same behaviour, and they come out in a later release.
 
 ## Presentation metadata
@@ -372,7 +372,7 @@ apart: `args` belongs to the screen, `metadata` belongs to whoever draws around 
 
 ```kotlin
 navController.navigate(
-    Profile.toBackStackEntry(
+    Profile.toKompassBackStackEntry(
         args = """{"userId":"123"}""",
         metadata = mapOf("presentation" to "sheet"),
     )
@@ -411,7 +411,7 @@ lies about where the user came from. This is what YouTube and Instagram do. The 
 one line:
 
 ```kotlin
-onClick = { navController.navigate(tab.toBackStackEntry(), reuseIfExists = true) }
+onClick = { navController.navigate(tab.toKompassBackStackEntry(), reuseIfExists = true) }
 ```
 
 `reuseIfExists` retains the occurrence ID, so the moved entry keeps its ViewModel and its
@@ -421,11 +421,11 @@ is correct for this model.
 
 ### Per-tab model — one controller for each tab
 
-Every tab keeps its own depth. Create each controller outside composition with `createNavController`,
+Every tab keeps its own depth. Create each controller outside composition with `createKompassNavController`,
 give each tab **its own host**, and compose only the active one:
 
 ```kotlin
-val controllers = remember { tabs.associateWith { createNavController(it) } }
+val controllers = remember { tabs.associateWith { createKompassNavController(it) } }
 DisposableEffect(controllers) {
     // An externally owned controller is released by close(), never by leaving composition.
     onDispose { controllers.values.forEach { it.close() } }
@@ -489,7 +489,7 @@ Use `pendingResultKey` when opening the destination, then return a result with `
 
 ```kotlin
 navController.navigate(
-    Profile.toBackStackEntry(pendingResultKey = "profile_result")
+    Profile.toKompassBackStackEntry(pendingResultKey = "profile_result")
 )
 
 // Inside Profile: remove this destination and deliver the result to the previous entry.
@@ -633,8 +633,8 @@ val profileLink = PathTemplateDeepLinkHandler("app://profile/{userId}") { match 
         // One command, so a multi-level link applies in one state change and one animation.
         NavigationCommand.ReplaceStack(
             listOf(
-                MainDestination.Home.toBackStackEntry(),
-                MainDestination.Profile.toBackStackEntry(args = match.args),
+                MainDestination.Home.toKompassBackStackEntry(),
+                MainDestination.Profile.toKompassBackStackEntry(args = match.args),
             )
         )
     )
@@ -682,7 +682,7 @@ Navigation state is automatically serialized and restored:
 
 ```kotlin
 @Composable
-fun rememberNavController(
+fun rememberKompassNavController(
     initialState: NavigationState,
     serializersModule: SerializersModule = SerializersModule {},
     deepLinkUri: String? = null,
@@ -782,7 +782,7 @@ val serializersModule = SerializersModule {
     }
 }
 
-val navController = rememberNavController(
+val navController = rememberKompassNavController(
     startDestination = MainDestination.Home,
     serializersModule = serializersModule
 )
@@ -918,8 +918,8 @@ navController.navigateTo(Profile, ProfileArgs("example"), scopeId = newScope())
 val args = navController.requireArgs(Profile, entry)
 ```
 
-For commands built outside a controller, use `Profile.toBackStackEntry(args, json)` with the
-appropriate serializers. With a controller, `navController.toBackStackEntry(Profile, args)`
+For commands built outside a controller, use `Profile.toKompassBackStackEntry(args, json)` with the
+appropriate serializers. With a controller, `navController.toKompassBackStackEntry(Profile, args)`
 and `navController.encodeArgs(Profile, args)` use its configured Json. Existing opaque argument
 strings, polymorphic NavigationResult serializers, deep-link handlers and command sequences
 remain supported.
@@ -954,7 +954,7 @@ data class NameResult(val name: String) : NavigationResult
 val resultSerializers = SerializersModule {
     polymorphic(NavigationResult::class) { subclass(NameResult::class) }
 }
-val controller = createNavController(Home, serializersModule = resultSerializers)
+val controller = createKompassNavController(Home, serializersModule = resultSerializers)
 // After a destination has delivered a result with pendingResultKey = "name":
 val result = controller.consumeResult<NameResult>("name")
 ```
@@ -973,7 +973,7 @@ whether the app's graphs still support every saved destination; graph resolution
 app's routing contract.
 
 ```kotlin
-val controller = createNavController(
+val controller = createKompassNavController(
     Home,
     serializersModule = resultSerializers,
     savedNavigationState = previouslySavedJson,
@@ -982,14 +982,14 @@ val controller = createNavController(
 controller.stateFlow.collect { state -> /* observe the current immutable stack */ }
 ```
 
-`createNavController` does not require composition. Pass it directly to KompassNavigationHost.
+`createKompassNavController` does not require composition. Pass it directly to KompassNavigationHost.
 Its owner must call `close()` when finished; temporary host unmount does not close it. Mutation,
 saving and close must run on the UI thread. Flow collection can use another dispatcher.
 `stateFlow` is read-only and conflated: it represents current state, not every intermediate
 command. The existing `state`, `currentEntry`, typed helpers and deep-link methods remain available.
 
 `saveNavigationState()` serializes the stack, arguments and pending results only. It does not
-serialize live ViewModels, SavedStateHandles or Compose UI state. Use rememberNavController
+serialize live ViewModels, SavedStateHandles or Compose UI state. Use rememberKompassNavController
 for automatic composition-owned restoration/retention. An external controller's lifetime and
 persistence belong to its owner; close is idempotent, and navigation after close throws.
 
@@ -1040,7 +1040,7 @@ destination content.
 )
 @Composable
 fun App() {
-    val navController = rememberNavController(Home)
+    val navController = rememberKompassNavController(Home)
 
     KompassSharedTransitionHost(
         navController = navController,

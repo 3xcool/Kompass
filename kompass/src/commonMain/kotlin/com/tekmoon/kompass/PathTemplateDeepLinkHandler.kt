@@ -39,8 +39,8 @@ class DeepLinkMatch internal constructor(
  *     listOf(
  *         NavigationCommand.ReplaceStack(
  *             listOf(
- *                 Home.toBackStackEntry(),
- *                 Profile.toBackStackEntry(args = match.args),
+ *                 Home.toKompassBackStackEntry(),
+ *                 Profile.toKompassBackStackEntry(args = match.args),
  *             )
  *         )
  *     )

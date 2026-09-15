@@ -58,7 +58,7 @@ class TabNavigationTest {
         lateinit var nav: NavController
         val counters = mutableMapOf<String, Counter>()
         setContent {
-            nav = rememberNavController(Home)
+            nav = rememberKompassNavController(Home)
             KompassNavigationHost(
                 nav,
                 persistentListOf(
@@ -75,11 +75,11 @@ class TabNavigationTest {
         // Visit Home, then Search, and leave a mark on each.
         runOnIdle { counters.getValue("home").value = 7 }
         val homeId = nav.backStack.last().id
-        runOnIdle { nav.navigate(Search.toBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassBackStackEntry(), reuseIfExists = true) }
         runOnIdle { counters.getValue("search").value = 3 }
 
         // Back to Home. The entry moves to the top instead of being created again.
-        runOnIdle { nav.navigate(Home.toBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Home.toKompassBackStackEntry(), reuseIfExists = true) }
 
         runOnIdle {
             assertEquals(listOf("search", "home"), nav.backStack.map { it.destinationId })
@@ -94,12 +94,12 @@ class TabNavigationTest {
     @Test fun back_walks_the_cross_tab_visit_history() = runComposeUiTest {
         lateinit var nav: NavController
         setContent {
-            nav = rememberNavController(Home)
+            nav = rememberKompassNavController(Home)
             KompassNavigationHost(nav, persistentListOf(Graph { entry, _ -> BasicText(entry.destinationId) }))
         }
-        runOnIdle { nav.navigate(Search.toBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Profile.toBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Search.toBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Profile.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassBackStackEntry(), reuseIfExists = true) }
 
         // Search was visited twice, and only the later visit stays on the stack.
         runOnIdle { assertEquals(listOf("home", "profile", "search"), nav.backStack.map { it.destinationId }) }
@@ -113,13 +113,13 @@ class TabNavigationTest {
         // This is the documented limit of the reorder model, and it is correct behaviour for it.
         lateinit var nav: NavController
         setContent {
-            nav = rememberNavController(Home)
+            nav = rememberKompassNavController(Home)
             KompassNavigationHost(nav, persistentListOf(Graph { entry, _ -> BasicText(entry.destinationId) }))
         }
-        runOnIdle { nav.navigate(Profile.toBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Search.toBackStackEntry()) }          // a detail inside Profile
-        runOnIdle { nav.navigate(Home.toBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Profile.toBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Profile.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassBackStackEntry()) }          // a detail inside Profile
+        runOnIdle { nav.navigate(Home.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Profile.toKompassBackStackEntry(), reuseIfExists = true) }
 
         runOnIdle {
             // Profile comes back alone. Its detail stays where it was, it does not follow the tab.
@@ -134,7 +134,7 @@ class TabNavigationTest {
         // The trap. One host whose navController parameter changes is NOT the same as unmounting a
         // host: the outgoing controller's entry owners are reconciled away, and its ViewModels are
         // cleared. Do not build a per-tab model this way.
-        val tabs = listOf(Home, Search).map { createNavController(it) }
+        val tabs = listOf(Home, Search).map { createKompassNavController(it) }
         val counters = mutableMapOf<String, Counter>()
         var active by mutableStateOf(0)
 
@@ -163,7 +163,7 @@ class TabNavigationTest {
     @Test fun one_host_per_tab_keeps_the_stack_view_models_and_ui_state_while_unmounted() = runComposeUiTest {
         // The pattern that works. Each tab owns a controller created outside composition and its own
         // host. Only the active host is composed, and the inactive tab keeps everything.
-        val tabs = listOf(Home, Search).map { createNavController(it) }
+        val tabs = listOf(Home, Search).map { createKompassNavController(it) }
         val counters = mutableMapOf<String, Counter>()
         var active by mutableStateOf(0)
 
@@ -184,7 +184,7 @@ class TabNavigationTest {
         }
 
         // Go one level deep in the first tab and mark its ViewModel.
-        runOnIdle { tabs[0].navigate(Profile.toBackStackEntry()) }
+        runOnIdle { tabs[0].navigate(Profile.toKompassBackStackEntry()) }
         val deepId = tabs[0].currentEntry.id
         runOnIdle { counters.getValue(deepId).value = 42 }
 
@@ -207,7 +207,7 @@ class TabNavigationTest {
     @Test fun closing_a_tab_controller_clears_its_view_models() = runComposeUiTest {
         // The other half of the contract: an externally owned controller is released by close(),
         // not by leaving composition. A tab host that is never closed leaks.
-        val nav = createNavController(Home)
+        val nav = createKompassNavController(Home)
         val counters = mutableMapOf<String, Counter>()
         var mounted by mutableStateOf(true)
 

@@ -46,11 +46,11 @@ class PredictiveBackTest {
         lateinit var nav: NavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
         lateinit var root: BackStackEntry
         mainClock.autoAdvance = false
-        runOnIdle { root = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { root = nav.currentEntry; nav.navigate(B.toKompassBackStackEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         waitForIdle()
 
@@ -85,11 +85,11 @@ class PredictiveBackTest {
             }
         }
         val graph = Graph(probes, SceneLayoutPredictive(recordedMotion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
         lateinit var root: BackStackEntry
         mainClock.autoAdvance = false
-        runOnIdle { root = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { root = nav.currentEntry; nav.navigate(B.toKompassBackStackEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         waitForIdle()
 
@@ -131,12 +131,12 @@ class PredictiveBackTest {
         val graph = Graph(mutableMapOf(), SceneLayoutPredictive(motion))
         setContent {
             sceneWidth = with(LocalDensity.current) { 100.dp.toPx() }
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             KompassPredictiveBackHandler(nav)
             KompassNavigationHost(nav, persistentListOf(graph))
         }
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
         mainClock.advanceTimeBy(2000)
         // Skiko test injection runs on the caller thread; real window events arrive on the UI thread.
         runOnUiThread {
@@ -171,9 +171,9 @@ class PredictiveBackTest {
         lateinit var nav: NavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         runOnIdle { nav.predictiveBack.start(nav.backStack.first().id); nav.predictiveBack.update(1f) }
         mainClock.advanceTimeBy(64)
@@ -191,12 +191,12 @@ class PredictiveBackTest {
         lateinit var nav: NavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
         lateinit var root: BackStackEntry
         lateinit var top: BackStackEntry
         mainClock.autoAdvance = false
-        runOnIdle { root = nav.currentEntry; nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { root = nav.currentEntry; nav.navigate(B.toKompassBackStackEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(2000)
         waitForIdle()
         runOnIdle { top = nav.currentEntry }
@@ -224,10 +224,10 @@ class PredictiveBackTest {
         lateinit var nav: NavController
         val probes = mutableMapOf<String, Probe>()
         val graph = Graph(probes, SceneLayoutPredictive(motion))
-        setContent { nav = rememberNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
+        setContent { nav = rememberKompassNavController(A); KompassNavigationHost(nav, persistentListOf(graph)) }
 
         mainClock.autoAdvance = false
-        runOnIdle { nav.navigate(B.toBackStackEntry(scopeId = newScope())) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry(scopeId = newScope())) }
         mainClock.advanceTimeBy(64)
         // A push with no gesture keeps the ordinary direction: the new screen comes in from the right.
         assertTrue(xOf(this, "screen:b") > 0f, "A push must bring the new screen in from the right")

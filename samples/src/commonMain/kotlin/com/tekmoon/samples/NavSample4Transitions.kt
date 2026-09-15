@@ -24,9 +24,9 @@ import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationScopeId
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.SceneTransition
-import com.tekmoon.kompass.rememberNavController
+import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.rememberScoped
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -144,7 +144,7 @@ fun Sample4_PerGraphTransitions(
     onDismiss: () -> Unit = {}
 ) {
 
-    val navController = rememberNavController(Sample4Dest.Home)
+    val navController = rememberKompassNavController(Sample4Dest.Home)
 
     // Track previous state for direction
     val previousState =
@@ -204,7 +204,7 @@ private fun HomeScreen(
 
         Button(onClick = {
             navController.navigate(
-                entry = Sample4Dest.Details.toBackStackEntry()
+                entry = Sample4Dest.Details.toKompassBackStackEntry()
             )
         }) {
             Text("Go to Details →")

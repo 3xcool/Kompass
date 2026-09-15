@@ -11,8 +11,8 @@ import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationResult
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
@@ -72,7 +72,7 @@ fun Sample1_ResultNavigation(
         }
     }
 
-    val navController = rememberNavController(
+    val navController = rememberKompassNavController(
         startDestination = Sample1Destination.First,
         serializersModule = navigationSerializersModule
     )
@@ -113,7 +113,7 @@ private fun Sample1First(
 //            )
             // or
             navController.navigate(
-                entry = Sample1Destination.Second.toBackStackEntry(
+                entry = Sample1Destination.Second.toKompassBackStackEntry(
                     pendingResultKey = navResultKey
                 )
             )

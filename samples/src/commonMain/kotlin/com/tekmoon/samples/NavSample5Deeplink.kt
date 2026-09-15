@@ -19,8 +19,8 @@ import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.TypedDestination
 import com.tekmoon.kompass.navigateTo
 import com.tekmoon.kompass.requireArgs
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
@@ -122,7 +122,7 @@ private data class ProfileArgs(
  * PathTemplateDeepLinkHandler parses the URI and gives us the path values. A
  * deep-link handler runs without a NavController, so it can't call
  * navController.navigateTo. Instead we build entries with the destination's
- * own toBackStackEntry helper, passing a Json instance ourselves.
+ * own toKompassBackStackEntry helper, passing a Json instance ourselves.
  * Json.Default works fine for plain @Serializable args; if you need polymorphic
  * args, configure a SerializersModule and pass it here.
  * ------------------------------------------- */
@@ -138,7 +138,7 @@ private val profileDeepLinkHandler = PathTemplateDeepLinkHandler("myapp://profil
                     destinationId = Sample5Dest.Home.id,
                     scopeId = newScope()
                 ),
-                Sample5Dest.Profile.toBackStackEntry(
+                Sample5Dest.Profile.toKompassBackStackEntry(
                     args = ProfileArgs(userId),
                     json = Json,
                     scopeId = newScope()
@@ -196,7 +196,7 @@ fun Sample5_DeepLink(
     onDismiss: () -> Unit = {}
 ) {
     val navController =
-        rememberNavController(
+        rememberKompassNavController(
             startDestination = Sample5Dest.Home,
             deepLinkUri = deepLinkUri,
             deepLinkHandlers = persistentListOf(profileDeepLinkHandler)

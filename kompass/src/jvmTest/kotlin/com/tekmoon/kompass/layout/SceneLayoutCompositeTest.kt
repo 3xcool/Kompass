@@ -36,8 +36,8 @@ import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.NavController
 import com.tekmoon.kompass.NavigationGraph
 import com.tekmoon.kompass.SceneLayout
-import com.tekmoon.kompass.rememberNavController
-import com.tekmoon.kompass.toBackStackEntry
+import com.tekmoon.kompass.rememberKompassNavController
+import com.tekmoon.kompass.toKompassBackStackEntry
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -180,10 +180,10 @@ class SceneLayoutCompositeTest {
         var visible by mutableStateOf(true)
         lateinit var nav: NavController
         setContent {
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             if (visible) KompassNavigationHost(nav, persistentListOf(graphOf(state)))
         }
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
         waitForIdle()
         enterEditMode()
 
@@ -216,10 +216,10 @@ class SceneLayoutCompositeTest {
         )
         lateinit var nav: NavController
         setContent {
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             KompassNavigationHost(nav, persistentListOf(graphOf(state, layout)))
         }
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
         waitForIdle()
         val initialOrder = runOnIdle { state.layout.paneIds() }
 
@@ -308,10 +308,10 @@ class SceneLayoutCompositeTest {
     private fun ComposeUiTest.twoPaneHost(state: CompositeLayoutState): NavController {
         lateinit var nav: NavController
         setContent {
-            nav = rememberNavController(A)
+            nav = rememberKompassNavController(A)
             KompassNavigationHost(nav, persistentListOf(graphOf(state)))
         }
-        runOnIdle { nav.navigate(B.toBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
         waitForIdle()
         return nav
     }
