@@ -27,12 +27,12 @@ import kotlinx.serialization.encoding.encodeStructure
  *
  * All navigation mutations must produce a new [NavigationState].
  *
- * @param backStack Ordered list of [BackStackEntry] instances.
+ * @param backStack Ordered list of [KompassEntry] instances.
  * The last entry represents the currently active destination.
  */
 @Serializable
 data class NavigationState(
-    val backStack: ImmutableList<BackStackEntry>
+    val backStack: ImmutableList<KompassEntry>
 ) {
 
     /**
@@ -49,15 +49,15 @@ data class NavigationState(
          * Creates a custom serializer for [NavigationState].
          *
          * This indirection allows callers to provide a custom
-         * [KSerializer] for [BackStackEntry], enabling polymorphic
+         * [KSerializer] for [KompassEntry], enabling polymorphic
          * destination arguments and results.
          *
          * @param backStackEntrySerializer Serializer used to encode
-         * and decode individual [BackStackEntry] instances.
+         * and decode individual [KompassEntry] instances.
          *
          * @return A [KSerializer] for [NavigationState].
          */
-        fun serializer(backStackEntrySerializer: KSerializer<BackStackEntry>): KSerializer<NavigationState> {
+        fun serializer(backStackEntrySerializer: KSerializer<KompassEntry>): KSerializer<NavigationState> {
             return NavigationStateSerializer(backStackEntrySerializer)
         }
     }
@@ -68,12 +68,12 @@ data class NavigationState(
  *
  * This is the canonical way to initialize navigation for an app.
  *
- * @param start The initial root [BackStackEntry].
+ * @param start The initial root [KompassEntry].
  *
  * @return A [NavigationState] containing only the start entry.
  */
 fun defaultNavigationState(
-    start: BackStackEntry
+    start: KompassEntry
 ): NavigationState = NavigationState(backStack = persistentListOf(start))
 
 /**
@@ -85,16 +85,16 @@ fun defaultNavigationState(
  * - Reject corrupted or incompatible state so the controller can apply its recovery policy
  *
  * Serialization format:
- * - Encodes the back stack as a list of [BackStackEntry]
+ * - Encodes the back stack as a list of [KompassEntry]
  */
 private class NavigationStateSerializer(
-    private val backStackEntrySerializer: KSerializer<BackStackEntry>
+    private val backStackEntrySerializer: KSerializer<KompassEntry>
 ) : KSerializer<NavigationState> {
 
     private val listSerializer = ListSerializer(backStackEntrySerializer)
 
     override val descriptor: SerialDescriptor = buildClassSerialDescriptor("NavigationState") {
-        element<List<BackStackEntry>>("backStack")
+        element<List<KompassEntry>>("backStack")
     }
 
     /**
@@ -129,7 +129,7 @@ private class NavigationStateSerializer(
      * @return A valid decoded [NavigationState].
      */
     override fun deserialize(decoder: Decoder): NavigationState {
-        var entries: ImmutableList<BackStackEntry>? = null
+        var entries: ImmutableList<KompassEntry>? = null
         decoder.decodeStructure(descriptor) {
             while (true) {
                 when (val index = decodeElementIndex(descriptor)) {

@@ -14,10 +14,10 @@ import kotlinx.serialization.Serializable
  * A [Destination] is a lightweight identifier describing where the navigation
  * system should route to. It does not contain UI logic by itself.
  *
- * Destinations are resolved and rendered by a [NavigationGraph].
+ * Destinations are resolved and rendered by a [KompassNavigationGraph].
  *
  * @property id Stable identifier for the destination.
- * This value is used to match [BackStackEntry.destinationId]
+ * This value is used to match [KompassEntry.destinationId]
  * and must remain stable across app versions.
  */
 @Stable
@@ -26,16 +26,16 @@ interface Destination {
 }
 
 /**
- * Helper function to convert [Destination] to [BackStackEntry]
+ * Helper function to convert [Destination] to [KompassEntry]
  */
-fun Destination.toKompassBackStackEntry(
+fun Destination.toKompassEntry(
     args: ArgsJson? = null,
     scopeId: NavigationScopeId = defaultScope(),
     pendingResultKey: String? = null,
     results: Map<String, NavigationResult> = emptyMap(),
     metadata: Map<String, String> = emptyMap()
-): BackStackEntry =
-    BackStackEntry(
+): KompassEntry =
+    KompassEntry(
         destinationId = id,
         args = args,
         scopeId = scopeId,
@@ -64,14 +64,14 @@ typealias ArgsJson = String
 /**
  * Represents a single entry in the navigation back stack.
  *
- * A [BackStackEntry] is a pure data structure describing:
+ * A [KompassEntry] is a pure data structure describing:
  * - Which destination should be rendered
  * - Which arguments were used to reach it
  * - Which navigation scope it belongs to
  * - Any pending or delivered navigation results
  *
  * @param destinationId Identifier of the destination to render.
- * This must match the [Destination.id] resolved by a [NavigationGraph].
+ * This must match the [Destination.id] resolved by a [KompassNavigationGraph].
  *
  * @param args Optional encoded arguments associated with this destination.
  *
@@ -98,7 +98,7 @@ typealias ArgsJson = String
  * of the destinations a feature module owns:
  *
  * ```
- * Profile.toKompassBackStackEntry(metadata = mapOf("presentation" to "sheet"))
+ * Profile.toKompassEntry(metadata = mapOf("presentation" to "sheet"))
  * ```
  *
  * Values are strings because the whole entry crosses the wire. A server payload, a deep link and a
@@ -110,7 +110,7 @@ typealias ArgsJson = String
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Serializable
-class BackStackEntry(
+class KompassEntry(
     val destinationId: String,
     val args: ArgsJson? = null,
     val scopeId: NavigationScopeId,
@@ -133,16 +133,16 @@ class BackStackEntry(
         pendingResultKey: String? = this.pendingResultKey,
         results: Map<String, NavigationResult> = this.results,
         metadata: Map<String, String> = this.metadata,
-    ): BackStackEntry = BackStackEntry(destinationId, args, scopeId, pendingResultKey, results, metadata).also {
+    ): KompassEntry = KompassEntry(destinationId, args, scopeId, pendingResultKey, results, metadata).also {
         if (scopeId == this.scopeId && destinationId == this.destinationId) it.occurrenceId = occurrenceId
     }
 
-    internal fun withIdentityOf(entry: BackStackEntry): BackStackEntry = copy().also {
+    internal fun withIdentityOf(entry: KompassEntry): KompassEntry = copy().also {
         it.occurrenceId = entry.id
     }
 
-    internal fun newOccurrence(): BackStackEntry =
-        BackStackEntry(destinationId, args, scopeId, pendingResultKey, results, metadata)
+    internal fun newOccurrence(): KompassEntry =
+        KompassEntry(destinationId, args, scopeId, pendingResultKey, results, metadata)
 
     operator fun component1() = destinationId
     operator fun component2() = args
@@ -151,7 +151,7 @@ class BackStackEntry(
     operator fun component5() = results
     operator fun component6() = metadata
 
-    override fun equals(other: Any?): Boolean = other is BackStackEntry &&
+    override fun equals(other: Any?): Boolean = other is KompassEntry &&
         id == other.id && destinationId == other.destinationId && args == other.args &&
         scopeId == other.scopeId && pendingResultKey == other.pendingResultKey &&
         results == other.results && metadata == other.metadata
@@ -166,7 +166,7 @@ class BackStackEntry(
         return 31 * result + metadata.hashCode()
     }
 
-    override fun toString(): String = "BackStackEntry(destinationId=$destinationId, args=$args, " +
+    override fun toString(): String = "KompassEntry(destinationId=$destinationId, args=$args, " +
         "scopeId=$scopeId, pendingResultKey=$pendingResultKey, results=$results, " +
         "metadata=$metadata, id=$id)"
 }
@@ -174,7 +174,7 @@ class BackStackEntry(
 /**
  * Defines a navigation graph responsible for resolving and rendering destinations.
  *
- * A [NavigationGraph] acts as the bridge between:
+ * A [KompassNavigationGraph] acts as the bridge between:
  * - Back stack entries
  * - Destination resolution
  * - UI rendering
@@ -183,7 +183,7 @@ class BackStackEntry(
  * The navigation system selects the appropriate graph based on destinationId.
  */
 @Stable
-interface NavigationGraph {
+interface KompassNavigationGraph {
 
     /**
      * Whether this graph can resolve and render the given destinationId.
@@ -227,7 +227,7 @@ interface NavigationGraph {
     /**
      * Renders the UI for the given destination.
      *
-     * @param entry The current [BackStackEntry] being rendered.
+     * @param entry The current [KompassEntry] being rendered.
      *
      * @param destination The resolved [Destination] associated with this entry.
      *
@@ -236,8 +236,8 @@ interface NavigationGraph {
      */
     @Composable
     fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     )
 }

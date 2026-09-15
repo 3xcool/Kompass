@@ -10,15 +10,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.DeepLinkChannel
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavController
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.rememberKompassNavController
-import com.tekmoon.kompass.toKompassBackStackEntry
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 import kompasskmp.samples.generated.resources.Res
@@ -61,7 +61,7 @@ private data class KompassNavSampleGraph(
     val backPressedChannel: BackPressedChannel?,
     val deepLinkUri: String? = null,
     val deepLinkChannel: DeepLinkChannel? = null
-) : NavigationGraph {
+) : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean {
         return KompassSampleDestinations.entries.any { it.id == destinationId }
@@ -78,9 +78,9 @@ private data class KompassNavSampleGraph(
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             KompassSampleDestinations.SampleList -> {
@@ -227,7 +227,7 @@ fun KompassNavSample(
 
 @Composable
 private fun KompassSampleList(
-    navController: NavController
+    navController: KompassNavController
 ) {
     val samples = KompassSampleDestinations.entries
         .filter { it != KompassSampleDestinations.SampleList }
@@ -250,7 +250,7 @@ private fun KompassSampleList(
                 title = destination.label(),
                 onClick = {
                     navController.navigate(
-                        entry = destination.toKompassBackStackEntry()
+                        entry = destination.toKompassEntry()
                     )
                 }
             )

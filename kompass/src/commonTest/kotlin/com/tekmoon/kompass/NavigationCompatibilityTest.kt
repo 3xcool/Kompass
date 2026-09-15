@@ -11,7 +11,7 @@ import kotlin.test.*
 class NavigationCompatibilityTest {
     private val reducer = NavigationHandler()
     private fun entry(route: String, scope: String = route, args: String? = null) =
-        BackStackEntry(route, args, NavigationScopeId(scope))
+        KompassEntry(route, args, NavigationScopeId(scope))
 
     @Test fun reuse_moves_last_match_and_updates_payload_without_changing_identity() {
         val a = entry("a")
@@ -65,14 +65,14 @@ class NavigationCompatibilityTest {
         }
         val state = defaultNavigationState(entry("a", args = "opaque-not-json")
             .copy(results = mapOf("answer" to Result("yes"))))
-        val serializer = NavigationState.serializer(BackStackEntry.serializer())
+        val serializer = NavigationState.serializer(KompassEntry.serializer())
         val encoded = json.encodeToString(serializer, state)
         assertTrue(encoded.contains(state.backStack.single().id))
         assertEquals(state, json.decodeFromString(serializer, encoded))
     }
 
     @Test fun old_serialized_entries_without_identity_still_restore() {
-        val restored = Json.decodeFromString(BackStackEntry.serializer(),
+        val restored = Json.decodeFromString(KompassEntry.serializer(),
             """{"destinationId":"a","scopeId":"a"}""")
         assertEquals("a", restored.destinationId)
         assertTrue(restored.id.isNotBlank())
@@ -96,7 +96,7 @@ class NavigationCompatibilityTest {
 
     @Serializable private data class Result(val value: String) : NavigationResult
     @Test fun copying_payload_preserves_library_identity_and_original_constructor() {
-        val original = BackStackEntry("a", "old", newScope(), "result", emptyMap())
+        val original = KompassEntry("a", "old", newScope(), "result", emptyMap())
         val updated = original.copy(args = "new")
         assertEquals(original.id, updated.id)
         assertNotEquals(original.id, original.copy(scopeId = newScope()).id)
@@ -107,7 +107,7 @@ class NavigationCompatibilityTest {
         assertEquals(original.scopeId, scope)
         assertEquals("result", resultKey)
         assertTrue(results.isEmpty())
-        assertEquals(updated, Json.decodeFromString<BackStackEntry>(Json.encodeToString(updated)))
+        assertEquals(updated, Json.decodeFromString<KompassEntry>(Json.encodeToString(updated)))
     }
 
 }

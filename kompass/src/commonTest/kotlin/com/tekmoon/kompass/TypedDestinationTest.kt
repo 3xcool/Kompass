@@ -45,7 +45,7 @@ class TypedDestinationTest {
 
     @Test fun args_survive_the_round_trip_through_the_opaque_string() {
         val args = ProfileArgs(userId = "42", tab = 3)
-        val entry = Profile.toKompassBackStackEntry(args, json)
+        val entry = Profile.toKompassEntry(args, json)
 
         // The wire format stays a plain string. Nothing about the type leaks into the entry.
         assertEquals("profile", entry.destinationId)
@@ -56,13 +56,13 @@ class TypedDestinationTest {
 
     @Test fun encode_args_produces_exactly_what_the_entry_carries() {
         val args = OrderArgs(orderId = 7L)
-        assertEquals(Order.encodeArgs(args, json), Order.toKompassBackStackEntry(args, json).args)
+        assertEquals(Order.encodeArgs(args, json), Order.toKompassEntry(args, json).args)
     }
 
     @Test fun an_entry_with_no_args_returns_null_or_fails_naming_the_destination() {
         // Both helpers read entry.args and nothing else. The destinationId is here only so the entry
         // looks like a real one: a deep link that forgot to attach the arguments.
-        val noArgs = BackStackEntry(destinationId = Profile.id, scopeId = Profile.defaultScope())
+        val noArgs = KompassEntry(destinationId = Profile.id, scopeId = Profile.defaultScope())
 
         // Optional arguments: null is an answer.
         assertNull(Profile.argsOrNull(noArgs, json))
@@ -77,22 +77,22 @@ class TypedDestinationTest {
     }
 
     @Test fun reading_args_with_the_wrong_destination_fails_even_when_the_payload_shape_matches() {
-        val entry = Profile.toKompassBackStackEntry(ProfileArgs("42"), json)
+        val entry = Profile.toKompassEntry(ProfileArgs("42"), json)
         // A serializer alone cannot detect this: SameShape accepts the exact same payload shape.
         assertFailsWith<IllegalArgumentException> { SameShape.argsOrNull(entry, json) }
         assertFailsWith<IllegalArgumentException> { SameShape.argsFrom(entry, json) }
     }
 
     @Test fun a_typed_entry_takes_the_default_scope_of_its_destination() {
-        val entry = Profile.toKompassBackStackEntry(ProfileArgs("42"), json)
+        val entry = Profile.toKompassEntry(ProfileArgs("42"), json)
         assertEquals(Profile.defaultScope(), entry.scopeId)
 
         val custom = NavigationScopeId("checkout")
-        assertEquals(custom, Profile.toKompassBackStackEntry(ProfileArgs("42"), json, scopeId = custom).scopeId)
+        assertEquals(custom, Profile.toKompassEntry(ProfileArgs("42"), json, scopeId = custom).scopeId)
     }
 
     @Test fun a_typed_entry_carries_presentation_metadata() {
-        val entry = Profile.toKompassBackStackEntry(ProfileArgs("42"), json, metadata = mapOf("presentation" to "sheet"))
+        val entry = Profile.toKompassEntry(ProfileArgs("42"), json, metadata = mapOf("presentation" to "sheet"))
         assertEquals("sheet", entry.metadata["presentation"])
     }
 
@@ -194,7 +194,7 @@ class TypedDestinationTest {
         val nav = createKompassNavController(Home)
         try {
             val args = ProfileArgs("7", 1)
-            val built = nav.toKompassBackStackEntry(Profile, args)
+            val built = nav.toKompassEntry(Profile, args)
 
             assertEquals(nav.encodeArgs(Profile, args), built.args)
             assertEquals(Profile.encodeArgs(args, json), built.args)

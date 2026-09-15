@@ -48,7 +48,7 @@ class PredictiveBackStateTest {
 
     @Test fun a_gesture_never_reaches_the_reducer_or_the_saved_state() {
         val nav = createKompassNavController(A)
-        nav.navigate(B.toKompassBackStackEntry())
+        nav.navigate(B.toKompassEntry())
         val before = nav.saveNavigationState()
 
         nav.predictiveBack.start(nav.backStack.first().id)
@@ -61,7 +61,7 @@ class PredictiveBackStateTest {
     }
 
     @Test fun a_controller_owns_exactly_one_gesture_state() {
-        val nav = createKompassNavController(NavigationState(persistentListOf(A.toKompassBackStackEntry())))
+        val nav = createKompassNavController(NavigationState(persistentListOf(A.toKompassEntry())))
         assertSame(nav.predictiveBack, nav.predictiveBack)
         assertNotSame(nav.predictiveBack, createKompassNavController(A).predictiveBack)
         nav.close()

@@ -9,7 +9,7 @@ breaking API change: update imports and call sites when moving from 1.x to 2.0.
 |---|---|
 | `rememberNavController` | `rememberKompassNavController` |
 | `createNavController` | `createKompassNavController` |
-| `toBackStackEntry` | `toKompassBackStackEntry` |
+| `toBackStackEntry` | `toKompassEntry` |
 | `newScope` | `newScope` |
 | `defaultScope` | `defaultScope` |
 | `buildArgs` | `buildArgs` |
@@ -38,13 +38,13 @@ After:
 
 ```kotlin
 import com.tekmoon.kompass.rememberKompassNavController
-import com.tekmoon.kompass.toKompassBackStackEntry
+import com.tekmoon.kompass.toKompassEntry
 
 val navController = rememberKompassNavController(Home)
-navController.navigate(Profile.toKompassBackStackEntry())
+navController.navigate(Profile.toKompassEntry())
 ```
 
-The core `NavController` methods remain unchanged: `navigate`, `pop`, `replaceRoot`, `replaceStack`,
+The core `KompassNavController` methods remain unchanged: `navigate`, `pop`, `replaceRoot`, `replaceStack`,
 `runNavCommands`, `canGoBack`, and `close`. The typed `replaceRoot` and `replaceStack` helpers now
 share those names as overloads.
 

@@ -17,13 +17,13 @@ class BackStackEntryMetadataTest {
     private val sheet = mapOf("presentation" to "sheet")
 
     @Test fun an_entry_carries_no_metadata_by_default() {
-        assertEquals(emptyMap(), A.toKompassBackStackEntry().metadata)
+        assertEquals(emptyMap(), A.toKompassEntry().metadata)
     }
 
     @Test fun metadata_survives_a_save_and_a_restore() {
         val nav = createKompassNavController(A)
         try {
-            nav.navigate(B.toKompassBackStackEntry(metadata = sheet))
+            nav.navigate(B.toKompassEntry(metadata = sheet))
             val saved = nav.saveNavigationState()
 
             val restored = createKompassNavController(A, savedNavigationState = saved)
@@ -39,13 +39,13 @@ class BackStackEntryMetadataTest {
     }
 
     @Test fun copy_keeps_metadata_and_can_replace_it() {
-        val entry = A.toKompassBackStackEntry(metadata = sheet)
+        val entry = A.toKompassEntry(metadata = sheet)
         assertEquals(sheet, entry.copy(args = "other").metadata)
         assertEquals(emptyMap(), entry.copy(metadata = emptyMap()).metadata)
     }
 
     @Test fun metadata_takes_part_in_equality() {
-        val plain = A.toKompassBackStackEntry()
+        val plain = A.toKompassEntry()
         assertNotEquals(plain, plain.copy(metadata = sheet))
         assertNotEquals(plain.hashCode(), plain.copy(metadata = sheet).hashCode())
     }
@@ -55,10 +55,10 @@ class BackStackEntryMetadataTest {
         // while the occurrence identity stays.
         val nav = createKompassNavController(A)
         try {
-            nav.navigate(B.toKompassBackStackEntry())
+            nav.navigate(B.toKompassEntry())
             val firstId = nav.currentEntry.id
-            nav.navigate(A.toKompassBackStackEntry())
-            nav.navigate(B.toKompassBackStackEntry(metadata = sheet), reuseIfExists = true)
+            nav.navigate(A.toKompassEntry())
+            nav.navigate(B.toKompassEntry(metadata = sheet), reuseIfExists = true)
 
             assertEquals("b", nav.currentEntry.destinationId)
             assertEquals(firstId, nav.currentEntry.id)
@@ -69,12 +69,12 @@ class BackStackEntryMetadataTest {
     }
 
     @Test fun a_replaced_stack_keeps_the_metadata_of_every_level() {
-        val nav = createKompassNavController(NavigationState(persistentListOf(A.toKompassBackStackEntry())))
+        val nav = createKompassNavController(NavigationState(persistentListOf(A.toKompassEntry())))
         try {
             nav.replaceStack(
                 listOf(
-                    A.toKompassBackStackEntry(),
-                    B.toKompassBackStackEntry(metadata = mapOf("presentation" to "pane")),
+                    A.toKompassEntry(),
+                    B.toKompassEntry(metadata = mapOf("presentation" to "pane")),
                 )
             )
 
@@ -87,7 +87,7 @@ class BackStackEntryMetadataTest {
 
     @Test fun metadata_is_separate_from_args() {
         // args belong to the screen, metadata belongs to whoever draws around it.
-        val entry = B.toKompassBackStackEntry(args = "{\"userId\":\"7\"}", metadata = sheet)
+        val entry = B.toKompassEntry(args = "{\"userId\":\"7\"}", metadata = sheet)
         assertEquals("{\"userId\":\"7\"}", entry.args)
         assertEquals(sheet, entry.metadata)
         assertTrue(entry.toString().contains("metadata="))

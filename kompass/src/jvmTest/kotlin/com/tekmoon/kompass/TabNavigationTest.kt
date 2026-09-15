@@ -38,8 +38,8 @@ class TabNavigationTest {
     }
 
     private class Graph(
-        val content: @Composable (BackStackEntry, NavController) -> Unit,
-    ) : NavigationGraph {
+        val content: @Composable (KompassEntry, KompassNavController) -> Unit,
+    ) : KompassNavigationGraph {
         override fun canResolveDestination(destinationId: String) = true
         override fun resolveDestination(destinationId: String, args: String?) = when (destinationId) {
             "home" -> Home
@@ -48,14 +48,14 @@ class TabNavigationTest {
         }
 
         @Composable
-        override fun Content(entry: BackStackEntry, destination: Destination, navController: NavController) =
+        override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) =
             content(entry, navController)
     }
 
     // ---------------------------------------------------------------- reorder model
 
     @Test fun reordering_tabs_moves_the_entry_and_keeps_its_state_and_view_model() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         val counters = mutableMapOf<String, Counter>()
         setContent {
             nav = rememberKompassNavController(Home)
@@ -75,11 +75,11 @@ class TabNavigationTest {
         // Visit Home, then Search, and leave a mark on each.
         runOnIdle { counters.getValue("home").value = 7 }
         val homeId = nav.backStack.last().id
-        runOnIdle { nav.navigate(Search.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassEntry(), reuseIfExists = true) }
         runOnIdle { counters.getValue("search").value = 3 }
 
         // Back to Home. The entry moves to the top instead of being created again.
-        runOnIdle { nav.navigate(Home.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Home.toKompassEntry(), reuseIfExists = true) }
 
         runOnIdle {
             assertEquals(listOf("search", "home"), nav.backStack.map { it.destinationId })
@@ -92,14 +92,14 @@ class TabNavigationTest {
     }
 
     @Test fun back_walks_the_cross_tab_visit_history() = runComposeUiTest {
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         setContent {
             nav = rememberKompassNavController(Home)
             KompassNavigationHost(nav, persistentListOf(Graph { entry, _ -> BasicText(entry.destinationId) }))
         }
-        runOnIdle { nav.navigate(Search.toKompassBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Profile.toKompassBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Search.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Profile.toKompassEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassEntry(), reuseIfExists = true) }
 
         // Search was visited twice, and only the later visit stays on the stack.
         runOnIdle { assertEquals(listOf("home", "profile", "search"), nav.backStack.map { it.destinationId }) }
@@ -111,15 +111,15 @@ class TabNavigationTest {
 
     @Test fun reuse_moves_one_entry_and_not_the_segment_above_it() = runComposeUiTest {
         // This is the documented limit of the reorder model, and it is correct behaviour for it.
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         setContent {
             nav = rememberKompassNavController(Home)
             KompassNavigationHost(nav, persistentListOf(Graph { entry, _ -> BasicText(entry.destinationId) }))
         }
-        runOnIdle { nav.navigate(Profile.toKompassBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Search.toKompassBackStackEntry()) }          // a detail inside Profile
-        runOnIdle { nav.navigate(Home.toKompassBackStackEntry(), reuseIfExists = true) }
-        runOnIdle { nav.navigate(Profile.toKompassBackStackEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Profile.toKompassEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Search.toKompassEntry()) }          // a detail inside Profile
+        runOnIdle { nav.navigate(Home.toKompassEntry(), reuseIfExists = true) }
+        runOnIdle { nav.navigate(Profile.toKompassEntry(), reuseIfExists = true) }
 
         runOnIdle {
             // Profile comes back alone. Its detail stays where it was, it does not follow the tab.
@@ -168,7 +168,7 @@ class TabNavigationTest {
         var active by mutableStateOf(0)
 
         @Composable
-        fun TabHost(nav: NavController) = KompassNavigationHost(
+        fun TabHost(nav: KompassNavController) = KompassNavigationHost(
             nav,
             persistentListOf(
                 Graph { entry, _ ->
@@ -184,7 +184,7 @@ class TabNavigationTest {
         }
 
         // Go one level deep in the first tab and mark its ViewModel.
-        runOnIdle { tabs[0].navigate(Profile.toKompassBackStackEntry()) }
+        runOnIdle { tabs[0].navigate(Profile.toKompassEntry()) }
         val deepId = tabs[0].currentEntry.id
         runOnIdle { counters.getValue(deepId).value = 42 }
 

@@ -8,11 +8,11 @@ import kotlinx.collections.immutable.ImmutableList
  * Single-pane layout that follows a predictive Back gesture.
  *
  * While the user drags, the entry below the top slides in and the top slides out, and the back stack
- * does not change. The layout reads [NavController.predictiveBack], so the graph holds no state and
+ * does not change. The layout reads [KompassNavController.predictiveBack], so the graph holds no state and
  * can stay an `object`. Install [KompassPredictiveBackHandler] to feed the gesture:
  *
  * ```
- * object MyGraph : NavigationGraph {
+ * object MyGraph : KompassNavigationGraph {
  *     override val sceneLayout = SceneLayoutPredictive()
  *     // ...
  * }
@@ -41,9 +41,9 @@ data class SceneLayoutPredictive(
 
     @Composable
     override fun Render(
-        backStack: ImmutableList<BackStackEntry>,
-        resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-        navController: NavController,
+        backStack: ImmutableList<KompassEntry>,
+        resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+        navController: KompassNavController,
         direction: NavDirection,
     ) {
         val gesture = navController.predictiveBack

@@ -28,16 +28,16 @@ class SceneLayoutListDetailTest {
     private object A : Destination { override val id = "a" }
     private object B : Destination { override val id = "b" }
 
-    private class Graph(override val sceneLayout: SceneLayout) : NavigationGraph {
+    private class Graph(override val sceneLayout: SceneLayout) : KompassNavigationGraph {
         override fun canResolveDestination(destinationId: String) = true
         override fun resolveDestination(destinationId: String, args: String?) =
             if (destinationId == "a") A else B
 
         @Composable
         override fun Content(
-            entry: BackStackEntry,
+            entry: KompassEntry,
             destination: Destination,
-            navController: NavController,
+            navController: KompassNavController,
         ) {
             BasicText("screen:${entry.destinationId}")
         }
@@ -47,7 +47,7 @@ class SceneLayoutListDetailTest {
     fun a_compact_width_shows_only_the_top_entry() = runComposeUiTest {
         val nav = hostOfWidth(400.dp)
 
-        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         waitForIdle()
 
         onNodeWithText("screen:b").assertExists()
@@ -58,7 +58,7 @@ class SceneLayoutListDetailTest {
     fun an_expanded_width_shows_the_first_entry_beside_the_top_entry() = runComposeUiTest {
         val nav = hostOfWidth(900.dp)
 
-        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         waitForIdle()
 
         onNodeWithText("screen:a").assertExists()
@@ -77,7 +77,7 @@ class SceneLayoutListDetailTest {
     fun the_threshold_decides_where_the_second_pane_appears() = runComposeUiTest {
         val nav = hostOfWidth(500.dp, layout = SceneLayoutListDetail(compactWidthThreshold = 400.dp))
 
-        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         waitForIdle()
 
         onNodeWithText("screen:a").assertExists()
@@ -89,9 +89,9 @@ class SceneLayoutListDetailTest {
         runComposeUiTest {
             val nav = hostOfWidth(900.dp)
 
-            runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+            runOnIdle { nav.navigate(B.toKompassEntry()) }
             waitForIdle()
-            runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+            runOnIdle { nav.navigate(B.toKompassEntry()) }
             waitForIdle()
 
             runOnIdle { assertEquals(3, nav.backStack.size) }
@@ -102,8 +102,8 @@ class SceneLayoutListDetailTest {
     private fun ComposeUiTest.hostOfWidth(
         width: Dp,
         layout: SceneLayout = SceneLayoutListDetail(),
-    ): NavController {
-        lateinit var nav: NavController
+    ): KompassNavController {
+        lateinit var nav: KompassNavController
         setContent {
             nav = rememberKompassNavController(A)
             Box(Modifier.requiredWidth(width).fillMaxHeight()) {

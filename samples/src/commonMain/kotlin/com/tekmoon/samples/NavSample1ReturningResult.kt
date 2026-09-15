@@ -5,14 +5,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.tekmoon.kompass.KompassBackHandler
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationResult
 import com.tekmoon.kompass.rememberKompassNavController
-import com.tekmoon.kompass.toKompassBackStackEntry
+import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.serialization.Serializable
@@ -33,7 +33,7 @@ internal sealed interface Sample1Destination : Destination {
 @Serializable
 internal data class NameResult(val name: String) : NavigationResult
 
-private object Sample1Graph : NavigationGraph {
+private object Sample1Graph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         destinationId.startsWith("kompass/sample1/")
@@ -50,9 +50,9 @@ private object Sample1Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         when (destination) {
             Sample1Destination.First -> Sample1First(entry, navController)
@@ -94,8 +94,8 @@ fun Sample1_ResultNavigation(
 
 @Composable
 private fun Sample1First(
-    entry: BackStackEntry,
-    navController: NavController
+    entry: KompassEntry,
+    navController: KompassNavController
 ) {
     val navResultKey = "name"
     val name = (entry.results[navResultKey] as? NameResult)?.name
@@ -105,7 +105,7 @@ private fun Sample1First(
 
         Button(onClick = {
 //            navController.navigate(
-//                entry = BackStackEntry(
+//                entry = KompassEntry(
 //                    destinationId = Sample1Destination.Second.id,
 //                    scopeId = Sample1Destination.Second.defaultScope(),
 //                    pendingResultKey = navResultKey
@@ -113,7 +113,7 @@ private fun Sample1First(
 //            )
             // or
             navController.navigate(
-                entry = Sample1Destination.Second.toKompassBackStackEntry(
+                entry = Sample1Destination.Second.toKompassEntry(
                     pendingResultKey = navResultKey
                 )
             )
@@ -125,7 +125,7 @@ private fun Sample1First(
 
 @Composable
 private fun Sample1Second(
-    navController: NavController
+    navController: KompassNavController
 ) {
     Button(onClick = {
         navController.pop(

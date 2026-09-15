@@ -39,7 +39,7 @@ class SharedElementTransitionTest {
         private val scopes: MutableMap<String, Pair<SharedTransitionScope?, AnimatedVisibilityScope?>>,
         private val sharedStates: MutableMap<String, SharedContentState>,
         override val sceneLayout: SceneLayout = SceneLayoutDefaultAnimatedSinglePane,
-    ) : NavigationGraph {
+    ) : KompassNavigationGraph {
         override fun canResolveDestination(destinationId: String) = true
 
         override fun resolveDestination(destinationId: String, args: String?) =
@@ -47,9 +47,9 @@ class SharedElementTransitionTest {
 
         @Composable
         override fun Content(
-            entry: BackStackEntry,
+            entry: KompassEntry,
             destination: Destination,
-            navController: NavController,
+            navController: KompassNavController,
         ) {
             val sharedTransitionScope = LocalKompassSharedTransitionScope.current
             val animatedVisibilityScope = LocalKompassAnimatedVisibilityScope.current
@@ -82,7 +82,7 @@ class SharedElementTransitionTest {
 
     @Test
     fun shared_host_matches_elements_across_navigation_occurrences() = runComposeUiTest {
-        lateinit var navController: NavController
+        lateinit var navController: KompassNavController
         val scopes = mutableMapOf<String, Pair<SharedTransitionScope?, AnimatedVisibilityScope?>>()
         val sharedStates = mutableMapOf<String, SharedContentState>()
         val graph = Graph(scopes, sharedStates)
@@ -94,7 +94,7 @@ class SharedElementTransitionTest {
         onNodeWithText("screen:list").assertExists()
 
         mainClock.autoAdvance = false
-        runOnIdle { navController.navigate(DetailDestination.toKompassBackStackEntry()) }
+        runOnIdle { navController.navigate(DetailDestination.toKompassEntry()) }
         mainClock.advanceTimeBy(64)
 
         runOnIdle {
@@ -115,7 +115,7 @@ class SharedElementTransitionTest {
 
     @Test
     fun predictive_back_keeps_the_shared_match_before_navigation_commits() = runComposeUiTest {
-        lateinit var navController: NavController
+        lateinit var navController: KompassNavController
         val scopes = mutableMapOf<String, Pair<SharedTransitionScope?, AnimatedVisibilityScope?>>()
         val sharedStates = mutableMapOf<String, SharedContentState>()
         val graph = Graph(scopes, sharedStates, SceneLayoutPredictive())
@@ -125,11 +125,11 @@ class SharedElementTransitionTest {
             KompassSharedTransitionHost(navController, persistentListOf(graph))
         }
 
-        lateinit var root: BackStackEntry
+        lateinit var root: KompassEntry
         mainClock.autoAdvance = false
         runOnIdle {
             root = navController.currentEntry
-            navController.navigate(DetailDestination.toKompassBackStackEntry())
+            navController.navigate(DetailDestination.toKompassEntry())
         }
         mainClock.advanceTimeBy(1_000)
         runOnIdle {
@@ -155,12 +155,12 @@ class SharedElementTransitionTest {
     fun regular_host_keeps_the_shared_transition_coordinator_opt_in() = runComposeUiTest {
         lateinit var observedScopes: Pair<SharedTransitionScope?, AnimatedVisibilityScope?>
         val graph = Graph(mutableMapOf(), mutableMapOf())
-        val observingGraph = object : NavigationGraph by graph {
+        val observingGraph = object : KompassNavigationGraph by graph {
             @Composable
             override fun Content(
-                entry: BackStackEntry,
+                entry: KompassEntry,
                 destination: Destination,
-                navController: NavController,
+                navController: KompassNavController,
             ) {
                 val scopes = LocalKompassSharedTransitionScope.current to
                     LocalKompassAnimatedVisibilityScope.current

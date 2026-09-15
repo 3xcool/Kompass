@@ -19,8 +19,8 @@ class PathTemplateDeepLinkHandlerTest {
         listOf(
             NavigationCommand.ReplaceStack(
                 listOf(
-                    Home.toKompassBackStackEntry(),
-                    Profile.toKompassBackStackEntry(args = match.args),
+                    Home.toKompassEntry(),
+                    Profile.toKompassEntry(args = match.args),
                 )
             )
         )

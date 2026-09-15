@@ -18,7 +18,7 @@ internal class KompassOwnerStore(restored: Map<String, SavedState> = emptyMap())
     internal val isClosed: Boolean get() = closed
     var platformExtras: CreationExtras = CreationExtras.Empty
 
-    fun owner(entry: BackStackEntry): KompassEntryOwner {
+    fun owner(entry: KompassEntry): KompassEntryOwner {
         check(!closed) { "The Kompass controller has been disposed" }
         return owners.getOrPut(entry.id) {
             val scope = scopes.getOrPut(entry.scopeId) {
@@ -28,9 +28,9 @@ internal class KompassOwnerStore(restored: Map<String, SavedState> = emptyMap())
         }
     }
 
-    fun reconcile(entries: List<BackStackEntry>) {
+    fun reconcile(entries: List<KompassEntry>) {
         val ids = entries.map { it.id }.toSet()
-        require(ids.size == entries.size) { "Each back-stack occurrence needs a distinct BackStackEntry.id" }
+        require(ids.size == entries.size) { "Each back-stack occurrence needs a distinct KompassEntry.id" }
         liveScopes = entries.map { it.scopeId }.toSet()
         liveIds = ids
         topId = entries.lastOrNull()?.id
@@ -39,13 +39,13 @@ internal class KompassOwnerStore(restored: Map<String, SavedState> = emptyMap())
         clearUnusedScopes()
     }
 
-    fun retain(entry: BackStackEntry) {
+    fun retain(entry: KompassEntry) {
         references[entry.id] = (references[entry.id] ?: 0) + 1
         NavigationScopes.retain(entry.scopeId)
         update(entry.id)
     }
 
-    fun release(entry: BackStackEntry) {
+    fun release(entry: KompassEntry) {
         val count = checkNotNull(references[entry.id]) - 1
         if (count == 0) references.remove(entry.id) else references[entry.id] = count
         update(entry.id)

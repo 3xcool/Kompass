@@ -30,14 +30,14 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.runComposeUiTest
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavController
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.SceneLayout
 import com.tekmoon.kompass.rememberKompassNavController
-import com.tekmoon.kompass.toKompassBackStackEntry
+import com.tekmoon.kompass.toKompassEntry
 import kotlinx.collections.immutable.persistentListOf
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -61,17 +61,17 @@ class SceneLayoutCompositeTest {
 
     private class Graph(
         override val sceneLayout: SceneLayout,
-        val content: @Composable (BackStackEntry) -> Unit,
-    ) : NavigationGraph {
+        val content: @Composable (KompassEntry) -> Unit,
+    ) : KompassNavigationGraph {
         override fun canResolveDestination(destinationId: String) = true
         override fun resolveDestination(destinationId: String, args: String?) =
             if (destinationId == "a") A else B
 
         @Composable
         override fun Content(
-            entry: BackStackEntry,
+            entry: KompassEntry,
             destination: Destination,
-            navController: NavController,
+            navController: KompassNavController,
         ) = content(entry)
     }
 
@@ -178,12 +178,12 @@ class SceneLayoutCompositeTest {
     fun leaving_composition_cancels_an_active_drag() = runComposeUiTest {
         val state = CompositeLayoutState()
         var visible by mutableStateOf(true)
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         setContent {
             nav = rememberKompassNavController(A)
             if (visible) KompassNavigationHost(nav, persistentListOf(graphOf(state)))
         }
-        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         waitForIdle()
         enterEditMode()
 
@@ -214,12 +214,12 @@ class SceneLayoutCompositeTest {
                 }
             },
         )
-        lateinit var nav: NavController
+        lateinit var nav: KompassNavController
         setContent {
             nav = rememberKompassNavController(A)
             KompassNavigationHost(nav, persistentListOf(graphOf(state, layout)))
         }
-        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         waitForIdle()
         val initialOrder = runOnIdle { state.layout.paneIds() }
 
@@ -305,13 +305,13 @@ class SceneLayoutCompositeTest {
     }
 
     /** Renders a host with two panes and returns its controller. */
-    private fun ComposeUiTest.twoPaneHost(state: CompositeLayoutState): NavController {
-        lateinit var nav: NavController
+    private fun ComposeUiTest.twoPaneHost(state: CompositeLayoutState): KompassNavController {
+        lateinit var nav: KompassNavController
         setContent {
             nav = rememberKompassNavController(A)
             KompassNavigationHost(nav, persistentListOf(graphOf(state)))
         }
-        runOnIdle { nav.navigate(B.toKompassBackStackEntry()) }
+        runOnIdle { nav.navigate(B.toKompassEntry()) }
         waitForIdle()
         return nav
     }
@@ -376,7 +376,7 @@ class SceneLayoutCompositeTest {
     private fun splitFraction(state: CompositeLayoutState): Float =
         (state.layout.root as CompositeLayoutNode.Split).firstFraction
 
-    private fun destinationOrder(nav: NavController, state: CompositeLayoutState): List<String> =
+    private fun destinationOrder(nav: KompassNavController, state: CompositeLayoutState): List<String> =
         state.layout.paneIds().map { paneId ->
             nav.backStack.first { it.id == paneId }.destinationId
         }

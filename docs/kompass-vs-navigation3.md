@@ -54,8 +54,8 @@ smaller core artifact is not automatically a smaller application architecture.
 
 Kompass's public model is built around a small set of concepts:
 
-`Destination` · `BackStackEntry` · `NavigationState` · `NavigationCommand` · `NavigationHandler` ·
-`NavController` · `NavigationGraph` · `SceneLayout` · `SceneTransition` · `NavigationScopeId`
+`Destination` · `KompassEntry` · `NavigationState` · `NavigationCommand` · `NavigationHandler` ·
+`KompassNavController` · `KompassNavigationGraph` · `SceneLayout` · `SceneTransition` · `NavigationScopeId`
 
 The optional composite layout is isolated behind its opt-in package. Applications that only need a
 single pane do not need to adopt the pane-tree API.
@@ -96,7 +96,7 @@ KompassNavigationHost(
     graphs = persistentListOf(MainGraph),
 )
 
-navController.navigate(Profile.toKompassBackStackEntry(args = profileArgs))
+navController.navigate(Profile.toKompassEntry(args = profileArgs))
 ```
 
 Navigation commands are reduced into new states:
@@ -163,7 +163,7 @@ Rating: **K** Kompass advantage, **N3** Navigation 3 advantage, **=** practical 
 | Flow-wide shared state | Decorator or custom owner design | `NavigationScopeId` shared across entries | **K** |
 | Entry lifecycle and saved state | AndroidX decorators | Built into the navigation host | **=** |
 | Deep links | Official recipes and matchers | Template helper plus open handler API | **=** |
-| Metadata | `NavEntry`/scene metadata | Serializable `BackStackEntry.metadata` | **=** |
+| Metadata | `NavEntry`/scene metadata | Serializable `KompassEntry.metadata` | **=** |
 | Predictive Back | Official AndroidX integration | Android, iOS, Desktop, and Wasm support | **K** |
 | Shared elements | Compose/Navigation integration | `KompassSharedTransitionHost` | **=** |
 

@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
  * navigation event dispatcher, which carries the native edge swipe and the ESC key. This replaces
  * [PlatformBackHandler], which never handled a native event on iOS or on the web.
  *
- * Use this for a back action that no [NavController] owns, such as leaving a flow at its root. For
+ * Use this for a back action that no [KompassNavController] owns, such as leaving a flow at its root. For
  * the back action that pops a controller, use [KompassPredictiveBackHandler] instead. Two enabled
  * handlers compete for the same event, so install only one for each action.
  *

@@ -10,11 +10,11 @@ import androidx.compose.runtime.setValue
  * Visual state of a back gesture that the user started but did not complete.
  *
  * An unfinished gesture is not navigation. It never enters [NavigationState], it is never written by
- * [NavController.saveNavigationState], and it never reaches the reducer. Only a completed gesture
- * changes the back stack, and it does that through the ordinary [NavController.pop] path. A
+ * [KompassNavController.saveNavigationState], and it never reaches the reducer. Only a completed gesture
+ * changes the back stack, and it does that through the ordinary [KompassNavController.pop] path. A
  * cancelled gesture costs nothing: no command runs, no scope is cleared, and no owner is disposed.
  *
- * Each controller owns one instance. Read it at [NavController.predictiveBack] and render it with a
+ * Each controller owns one instance. Read it at [KompassNavController.predictiveBack] and render it with a
  * layout that can seek, such as [SceneLayoutPredictive].
  *
  * Mutation is confined to the UI thread, the same as the controller.
@@ -33,7 +33,7 @@ class PredictiveBackState internal constructor() {
     /**
      * Occurrence ID of the entry the gesture moves toward, or null when no gesture is in progress.
      *
-     * This is the [BackStackEntry.id] of the entry below the top one, captured when the gesture
+     * This is the [KompassEntry.id] of the entry below the top one, captured when the gesture
      * started. It stays fixed for the whole gesture, so a back stack change in the middle of a drag
      * cannot move the target.
      */
@@ -87,7 +87,7 @@ expect fun PlatformPredictiveBackHandler(
 )
 
 /**
- * Drives [NavController.predictiveBack] from the platform back gesture, and pops the controller when
+ * Drives [KompassNavController.predictiveBack] from the platform back gesture, and pops the controller when
  * the user completes it.
  *
  * Use this **instead of** [KompassBackHandler] for the same back action on this controller.
@@ -110,7 +110,7 @@ expect fun PlatformPredictiveBackHandler(
  * Pair it with a layout that can seek. Without one the gesture still pops, but it does not animate:
  *
  * ```
- * object MyGraph : NavigationGraph {
+ * object MyGraph : KompassNavigationGraph {
  *     override val sceneLayout = SceneLayoutPredictive()
  *     // ...
  * }
@@ -121,7 +121,7 @@ expect fun PlatformPredictiveBackHandler(
  */
 @Composable
 fun KompassPredictiveBackHandler(
-    navController: NavController,
+    navController: KompassNavController,
     enabled: Boolean = true,
 ) {
     val gesture = navController.predictiveBack

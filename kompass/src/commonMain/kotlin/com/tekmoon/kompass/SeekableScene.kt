@@ -34,11 +34,11 @@ import kotlinx.collections.immutable.ImmutableList
  */
 @Composable
 internal fun SeekableScene(
-    target: BackStackEntry,
+    target: KompassEntry,
     progress: Float?,
-    backStack: ImmutableList<BackStackEntry>,
-    resolve: (BackStackEntry) -> Pair<NavigationGraph, Destination>,
-    navController: NavController,
+    backStack: ImmutableList<KompassEntry>,
+    resolve: (KompassEntry) -> Pair<KompassNavigationGraph, Destination>,
+    navController: KompassNavController,
     direction: NavDirection,
     transition: SceneTransition?,
     label: String,
@@ -48,7 +48,7 @@ internal fun SeekableScene(
     // Animate occurrence keys: consuming results or changing arguments must not restart motion.
     val seekable = remember(navController) { SeekableTransitionState(target.id) }
     val animation = rememberTransition(seekable, label = label)
-    val entries = remember(navController) { mutableMapOf<String, BackStackEntry>() }
+    val entries = remember(navController) { mutableMapOf<String, KompassEntry>() }
     val rendered = remember(navController) { mutableSetOf<String>() }
     backStack.forEach { entries[it.id] = it }
     val spec = transition ?: resolve(target).first.sceneTransition ?: SceneTransitionDefault()

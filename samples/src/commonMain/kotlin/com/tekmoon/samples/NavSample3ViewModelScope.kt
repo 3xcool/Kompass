@@ -7,11 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.tekmoon.kompass.BackStackEntry
+import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
-import com.tekmoon.kompass.NavigationGraph
+import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
-import com.tekmoon.kompass.NavController
+import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationScopeId
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
@@ -34,7 +34,7 @@ private enum class Sample3Dest : Destination {
  * Navigation Graph
  * ------------------------------------------- */
 
-private object Sample3Graph : NavigationGraph {
+private object Sample3Graph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
         Sample3Dest.entries.any { it.id == destinationId }
@@ -48,9 +48,9 @@ private object Sample3Graph : NavigationGraph {
 
     @Composable
     override fun Content(
-        entry: BackStackEntry,
+        entry: KompassEntry,
         destination: Destination,
-        navController: NavController
+        navController: KompassNavController
     ) {
         // Flow-scoped (shared across screens)
         val sharedState = rememberScoped(
@@ -126,8 +126,8 @@ fun Sample3_WithScope(
 
 @Composable
 private fun FirstScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: SharedState
 ) {
     // Screen-scoped (cleared on pop)
@@ -154,7 +154,7 @@ private fun FirstScreen(
 
         Button(onClick = {
             navController.navigate(
-                entry = BackStackEntry(
+                entry = KompassEntry(
                     destinationId = Sample3Dest.Second.id,
                     scopeId = Sample3Dest.Second.defaultScope()
                 )
@@ -167,8 +167,8 @@ private fun FirstScreen(
 
 @Composable
 private fun SecondScreen(
-    entry: BackStackEntry,
-    navController: NavController,
+    entry: KompassEntry,
+    navController: KompassNavController,
     sharedState: SharedState
 ) {
     val screenState = rememberScoped(
