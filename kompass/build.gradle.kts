@@ -9,8 +9,25 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinSerialization)
+    // Coverage. `./gradlew :kompass:koverLog` prints the percent and
+    // `./gradlew :kompass:koverHtmlReport` writes kompass/build/reports/kover/html/index.html.
+    // Both run the JVM and the Android unit tests. The verification rule below keeps total
+    // coverage from dropping below the agreed baseline.
+    alias(libs.plugins.kover)
     id("com.vanniktech.maven.publish") version "0.35.0"
     signing
+}
+
+kover {
+    reports {
+        total {
+            verify {
+                rule {
+                    minBound(60)
+                }
+            }
+        }
+    }
 }
 
 kotlin {

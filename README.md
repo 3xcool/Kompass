@@ -1,6 +1,7 @@
 # Kompass (KMP Navigation)
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.tekmoon/kompass)](https://central.sonatype.com/artifact/com.tekmoon/kompass)
+[![Kover](https://img.shields.io/badge/Kover-87.9%25%20class%20coverage-brightgreen)](#testing)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9+-purple?logo=kotlin)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Latest-blue?logo=android)](https://developer.android.com/jetpack/compose)
@@ -693,6 +694,25 @@ fun rememberNavController(
 
 ## Testing
 
+Tests are split by responsibility:
+
+- **Core tests** live in `kompass/src/commonTest` and cover the reducer, immutable navigation
+  state, commands, serialization, deep links, metadata, results, scopes, and gesture state.
+- **Host/UI smoke tests** live in `kompass/src/jvmTest` and `kompass/src/androidUnitTest`. They
+  exercise Compose hosts, layouts, transitions, tabs, predictive Back, and platform ownership.
+  They are integration/smoke tests for the sample-style usage of the library, not the core
+  navigation contract.
+
+Kover measures the `:kompass` core module. The aggregate verification rule requires at least 60%
+coverage, including the configured total metrics. Generate the local HTML report with:
+
+```bash
+./gradlew :kompass:koverHtmlReport
+```
+
+See [Coverage and Test Workflow](docs/coverage-workflow.md) for the local PR workflow, badge
+maintenance, and iOS memory guidance.
+
 Since navigation logic is pure and deterministic, testing is straightforward:
 
 ```kotlin
@@ -779,6 +799,10 @@ Use an explicit `NavigationScopeId` and the `key`, `factory`, and `onCleared` pa
 - **Lazy Graph Resolution** - Destinations are only resolved when rendered
 - **Efficient Recomposition** - State changes only trigger recomposition of affected content
 - **Scope Cleanup** - Scopes are automatically cleaned when entries are removed, preventing memory leaks
+- **iOS linking** - Link one iOS framework target at a time on memory-constrained machines. Running
+  `linkReleaseFrameworkIosArm64` and `linkReleaseFrameworkIosSimulatorArm64` concurrently can
+  exhaust the Gradle JVM heap; a successful isolated link indicates a resource contention issue,
+  not necessarily a source or navigation failure.
 
 ## Thread Safety
 
