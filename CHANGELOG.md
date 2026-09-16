@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.0.0
+
+### Highlights
+
+- Introduced the explicit Kompass 2.0 navigation API: `KompassNavController`, `KompassEntry` and `KompassNavigationGraph`.
+- Added entry metadata, typed destinations and arguments, atomic `replaceStack`, and immutable public back-stack access.
+- Added predictive Back, seekable and source/target-aware transitions, and shared element transitions.
+- Added multi-scene and adaptive layouts, including resizable and rearrangeable panes through `SceneLayoutComposite`.
+- Added deep-link templates, typed result consumption, expanded restoration, nested-host ownership and tab navigation support.
+- Added Kover coverage reporting and separate core and UI smoke-test workflows.
+
+### Migration
+
+Kompass 2.0 contains breaking API renames and signature changes. See the [API v2 migration guide](docs/api-v2-migration.md) before upgrading from 1.x.
+
 ## 1.2.0
 
 ### Highlights
