@@ -99,8 +99,3 @@ share those names as overloads.
    ./gradlew :kompass:jvmTest :kompass:koverVerify :samples:compileKotlinJvm
    ```
 
-## Snapshot validation
-
-Before publishing the stable `2.0.0`, publish `2.0.0-SNAPSHOT01` and validate it in a real consumer
-application. Confirm dependency resolution, Android compilation, shared KMP compilation, and iOS
-framework integration. The snapshot is for integration validation and is not the final stable release.
