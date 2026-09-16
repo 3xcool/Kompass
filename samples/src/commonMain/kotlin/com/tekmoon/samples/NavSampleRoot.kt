@@ -8,12 +8,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.DeepLinkChannel
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
+import com.tekmoon.kompass.NavigationState
+import com.tekmoon.kompass.defaultNavigationState
 import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassBackHandler
@@ -205,7 +208,23 @@ fun KompassNavSample(
     deepLinkChannel: DeepLinkChannel? = null
 ) {
 
-    val navController = rememberKompassNavController(KompassSampleDestinations.SampleList)
+    // A URI that started the app opens Sample 5 straight away, because that is the sample that owns
+    // the deep-link handlers. Without this the app would cold-start on the list and the URI would
+    // sit unused until the user found Sample 5 by hand.
+    val initialState = remember(deepLinkUri) {
+        if (deepLinkUri == null) {
+            defaultNavigationState(KompassSampleDestinations.SampleList.toKompassEntry())
+        } else {
+            NavigationState(
+                persistentListOf(
+                    KompassSampleDestinations.SampleList.toKompassEntry(),
+                    KompassSampleDestinations.Sample5Deeplink.toKompassEntry(),
+                )
+            )
+        }
+    }
+
+    val navController = rememberKompassNavController(initialState)
 
     KompassBackHandler(
         backPressedChannel = backPressedChannel,
