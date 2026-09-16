@@ -107,6 +107,7 @@ navController.navigate(
     popUpTo = null,
     popUpToInclusive = false,
     reuseIfExists = false,
+    resultKey = null,          // opens a result request; see section 8
 )
 ```
 
@@ -154,8 +155,6 @@ navController.replaceStack(
 ```
 
 Use it for restored flows, server-provided routes and multi-level deep links. Building the same flow with multiple `navigate` calls publishes intermediate states and runs multiple transitions.
-
-`replaceRoot` is retained only as a deprecated compatibility alias; new code should use `replaceStack(entry)`.
 
 ## 7. Arguments and metadata
 
@@ -210,20 +209,21 @@ declaring the key on its producer keeps the name unique without a convention to 
 
 ```kotlin
 // A opens the request.
-navController.navigateForResult(Profile.toKompassEntry(), Profile.Result)
+navController.navigate(Profile.toKompassEntry(), resultKey = Profile.Result)
 
 // Profile answers it.
 navController.pop(result = ProfileResult(userId = "123"), resultKey = Profile.Result)
 ```
 
-`navigateForResult` is what makes the request exist. A plain `navigate` followed by
-`pop(result, key)` delivers nothing: the entry below is not waiting, so Kompass rejects the delivery
+The `resultKey` of `navigate` is what makes the request exist. A `navigate` without it, followed by
+`pop(result, key)`, delivers nothing: the entry below is not waiting, so Kompass rejects the delivery
 and reports it. That is deliberate — without a record of who is waiting, Back could not be told
-apart from "the screen is still open".
+apart from "the screen is still open". `navigateTo` takes the same parameter for a typed destination.
 
-It takes no `clearBackStack` or `popUpTo`, because both can remove the entry that would receive the
-answer. `pop(result, resultKey)` takes no `count` or `popUntil`, because a result only reaches the
-entry one step below.
+Do not combine `resultKey` with `clearBackStack`: that removes the entry that would receive the
+answer, so the request is dropped and reported. `popUpTo` is safe, and the request lands on whichever
+entry ends up below the new one. `pop(result, resultKey)` takes no `count` or `popUntil`, because a
+result only reaches the entry one step below.
 
 ### Read the request
 

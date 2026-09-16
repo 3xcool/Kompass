@@ -52,7 +52,7 @@ interface DeepLinkHandler {
      * Resolve the uri into navigation commands.
      *
      * Example:
-     * - ReplaceRoot(Home)
+     * - ReplaceStack(listOf(Home))
      * - Navigate(Profile(userId))
      *
      * This method is only called if [matches] returned true for the same URI.

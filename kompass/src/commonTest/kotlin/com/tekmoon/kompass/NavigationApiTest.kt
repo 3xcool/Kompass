@@ -44,7 +44,7 @@ class NavigationApiTest {
             seen.clear()
             nav.replaceStack(listOf(A.toKompassEntry(), B.toKompassEntry(), A.toKompassEntry()))
 
-            // Building the same stack with ReplaceRoot + Navigate + Navigate would publish
+            // Building the same stack with several Navigate commands would publish
             // [a], [a, b], [a, b, a] and animate three times. One command must publish once.
             assertEquals(listOf(listOf("a", "b", "a")), seen)
             assertEquals("a", nav.currentEntry.destinationId)
@@ -136,7 +136,7 @@ class NavigationApiTest {
     @Test fun delivered_result_can_be_consumed_after_restore() {
         val nav = createKompassNavController(A, serializers)
         try {
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             nav.pop(result = Answer("saved"), resultKey = answerKey)
             val restored = createKompassNavController(A, serializers, savedNavigationState = nav.saveNavigationState())
             try {
@@ -150,7 +150,7 @@ class NavigationApiTest {
         val nav = createKompassNavController(A, serializers)
         try {
             assertNull(nav.currentEntry.peekResult(answerKey))
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             assertEquals(ResultState.Pending, nav.backStack.first().peekResult(answerKey))
             nav.pop(result = Answer("done"), resultKey = answerKey)
             assertEquals(ResultState.Delivered(Answer("done")), nav.currentEntry.peekResult(answerKey))
@@ -162,7 +162,7 @@ class NavigationApiTest {
         for (goBack in listOf<(KompassNavController) -> Unit>({ it.pop() }, { it.popIfCan() })) {
             val nav = createKompassNavController(A, serializers)
             try {
-                nav.navigateForResult(B.toKompassEntry(), answerKey)
+                nav.navigate(B.toKompassEntry(), resultKey = answerKey)
                 goBack(nav)
                 assertEquals(ResultState.Cancelled, nav.currentEntry.peekResult(answerKey))
                 assertNull(nav.currentEntry.pendingResultKey)
@@ -175,7 +175,7 @@ class NavigationApiTest {
     @Test fun a_multi_entry_pop_cancels_the_request_of_the_surviving_entry() {
         val byCount = createKompassNavController(A, serializers)
         try {
-            byCount.navigateForResult(B.toKompassEntry(), answerKey)   // [a(waiting), b]
+            byCount.navigate(B.toKompassEntry(), resultKey = answerKey)   // [a(waiting), b]
             byCount.navigate(A.toKompassEntry())                       // [a(waiting), b, a]
             byCount.pop(count = 2)                                     // survivor: the waiting a
             assertEquals(ResultState.Cancelled, byCount.currentEntry.peekResult(answerKey))
@@ -184,7 +184,7 @@ class NavigationApiTest {
         val byDestination = createKompassNavController(A, serializers)
         try {
             byDestination.navigate(B.toKompassEntry())                          // [a, b]
-            byDestination.navigateForResult(A.toKompassEntry(), answerKey)      // [a, b(waiting), a]
+            byDestination.navigate(A.toKompassEntry(), resultKey = answerKey)      // [a, b(waiting), a]
             byDestination.pop(popUntil = "b")                                   // survivor: the waiting b
             assertEquals("b", byDestination.currentEntry.destinationId)
             assertEquals(ResultState.Cancelled, byDestination.currentEntry.peekResult(answerKey))
@@ -194,7 +194,7 @@ class NavigationApiTest {
     @Test fun replacing_the_stack_never_cancels_and_can_drop_an_open_request() {
         val nav = createKompassNavController(A, serializers)
         try {
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             nav.replaceStack(A.toKompassEntry())
             // The entry that was waiting is gone, so there is nobody to tell. This is documented
             // behaviour: replaceStack applies a whole stack and does not close open requests.
@@ -222,7 +222,7 @@ class NavigationApiTest {
         val nav = createKompassNavController(A, serializers, onNavigationError = { reports += it.message.orEmpty() })
         try {
             nav.navigate(B.toKompassEntry())                          // [a, b]
-            nav.navigateForResult(A.toKompassEntry(), answerKey)      // [a, b(waiting), a]
+            nav.navigate(A.toKompassEntry(), resultKey = answerKey)      // [a, b(waiting), a]
 
             nav.pop(result = Answer("first"), resultKey = answerKey)  // [a, b] delivered
             assertEquals(listOf("a", "b"), nav.backStack.map { it.destinationId })
@@ -257,7 +257,7 @@ class NavigationApiTest {
         val reports = mutableListOf<String>()
         val nav = createKompassNavController(A, serializers, onNavigationError = { reports += it.message.orEmpty() })
         try {
-            nav.navigateForResult(B.toKompassEntry(), expectedKey)
+            nav.navigate(B.toKompassEntry(), resultKey = expectedKey)
             nav.pop(result = Answer("wrong key"), resultKey = answerKey)
 
             // Nothing happens: the destination stays on the stack and the request stays open. The
@@ -272,14 +272,14 @@ class NavigationApiTest {
         val reports = mutableListOf<String>()
         val nav = createKompassNavController(A, serializers, onNavigationError = { reports += it.message.orEmpty() })
         try {
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             nav.pop(result = Answer("stale"), resultKey = answerKey)
             assertEquals(ResultState.Delivered(Answer("stale")), nav.currentEntry.peekResult(answerKey))
             assertEquals(0, reports.size)
 
             // The screen never consumed the first answer. Opening the destination is what the user
             // asked for, so it happens; the stale answer is dropped and the drop is reported.
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             assertEquals(listOf("a", "b"), nav.backStack.map { it.destinationId })
             assertEquals(ResultState.Pending, nav.backStack.first().peekResult(answerKey))
             assertEquals(1, reports.size)
@@ -291,13 +291,40 @@ class NavigationApiTest {
         val reports = mutableListOf<String>()
         val nav = createKompassNavController(A, serializers, onNavigationError = { reports += it.message.orEmpty() })
         try {
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             nav.pop()
             assertEquals(ResultState.Cancelled, nav.currentEntry.peekResult(answerKey))
 
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             assertEquals(1, reports.size)
             assertEquals(ResultState.Pending, nav.backStack.first().peekResult(answerKey))
+        } finally { nav.close() }
+    }
+
+    @Test fun a_request_combined_with_clearBackStack_is_reported() {
+        val reports = mutableListOf<String>()
+        val nav = createKompassNavController(A, serializers, onNavigationError = { reports += it.message.orEmpty() })
+        try {
+            // clearBackStack removes the entry that would receive the answer, so the request has
+            // nobody to belong to. The navigation still happens; only the request is dropped.
+            nav.navigate(B.toKompassEntry(), clearBackStack = true, resultKey = answerKey)
+            assertEquals(listOf("b"), nav.backStack.map { it.destinationId })
+            assertEquals(1, reports.size)
+            assertTrue(reports.single().contains("clearBackStack"), reports.single())
+        } finally { nav.close() }
+    }
+
+    @Test fun a_request_combined_with_popUpTo_lands_on_the_surviving_entry() {
+        val nav = createKompassNavController(A, serializers)
+        try {
+            nav.navigate(B.toKompassEntry())                 // [a, b]
+            // popUpTo keeps "a", so the request belongs to it and the answer reaches it.
+            nav.navigate(B.toKompassEntry(), popUpTo = "a", resultKey = answerKey)
+            assertEquals(listOf("a", "b"), nav.backStack.map { it.destinationId })
+            assertEquals(ResultState.Pending, nav.backStack.first().peekResult(answerKey))
+
+            nav.pop(result = Answer("ok"), resultKey = answerKey)
+            assertEquals(ResultState.Delivered(Answer("ok")), nav.currentEntry.peekResult(answerKey))
         } finally { nav.close() }
     }
 
@@ -306,7 +333,7 @@ class NavigationApiTest {
         val nav = createKompassNavController(A, serializers, onNavigationError = { reports += it.message.orEmpty() })
         try {
             repeat(2) {
-                nav.navigateForResult(B.toKompassEntry(), answerKey)
+                nav.navigate(B.toKompassEntry(), resultKey = answerKey)
                 nav.pop(result = Answer("answer $it"), resultKey = answerKey)
                 assertEquals(ResultState.Delivered(Answer("answer $it")), nav.consumeResult(answerKey))
             }
@@ -317,7 +344,7 @@ class NavigationApiTest {
     @Test fun pending_is_derived_and_never_enters_the_saved_state() {
         val nav = createKompassNavController(A, serializers)
         try {
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             val saved = nav.saveNavigationState()
             assertTrue(saved.contains("\"pendingResultKey\":\"answer\""), saved)
             assertFalse(saved.contains("Pending"), saved)
@@ -332,7 +359,7 @@ class NavigationApiTest {
     @Test fun a_cancelled_request_survives_restoration() {
         val nav = createKompassNavController(A, serializers)
         try {
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             nav.pop()
             val restored = createKompassNavController(A, serializers, savedNavigationState = nav.saveNavigationState())
             try {
@@ -379,7 +406,7 @@ class NavigationApiTest {
     @Test fun direction_comes_from_commands_and_result_consumption_does_not_change_it() {
         val nav = createKompassNavController(A)
         try {
-            nav.navigateForResult(B.toKompassEntry(), answerKey)
+            nav.navigate(B.toKompassEntry(), resultKey = answerKey)
             nav.pop(result = Answer("x"), resultKey = answerKey)
             assertEquals(NavDirection.Pop, nav.direction)
             nav.consumeResult(answerKey)
@@ -412,12 +439,10 @@ class NavigationApiTest {
         } finally { collector.cancel(); nav.close() }
     }
 
-    // Keeps the deprecated ReplaceRoot command covered until it is removed.
-    @Suppress("DEPRECATION")
     @Test fun external_controller_keeps_deep_links_typed_arguments_and_command_order() {
         val handler = object : DeepLinkHandler {
             override fun matches(uri: String) = uri == "app://b"
-            override fun resolve(uri: String) = listOf(NavigationCommand.ReplaceRoot(A.toKompassEntry()), NavigationCommand.Navigate(B.toKompassEntry(args = "opaque")))
+            override fun resolve(uri: String) = listOf(NavigationCommand.ReplaceStack(listOf(A.toKompassEntry())), NavigationCommand.Navigate(B.toKompassEntry(args = "opaque")))
         }
         val nav = createKompassNavController(A, deepLinkHandlers = persistentListOf(handler))
         try {

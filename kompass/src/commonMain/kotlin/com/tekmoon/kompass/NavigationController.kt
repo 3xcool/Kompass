@@ -243,13 +243,26 @@ class KompassNavController internal constructor(
      * @param reuseIfExists Whether an existing matching entry in the
      * back stack should be moved to the top with updated arguments. An unchanged scope
      * preserves entry ownership and UI state; a different scope requests fresh ownership.
+     *
+     * @param resultKey Opens a result request when it is not null. The entry that is on top before
+     * this navigation starts waiting under that key, and reads [ResultState.Pending] from
+     * [peekResult] until [pop] answers it or the destination leaves without answering.
+     *
+     * A second request under the same key replaces the first. The navigation still happens, and an
+     * answer or a cancellation that was never consumed is dropped and reported through
+     * `onNavigationError`.
+     *
+     * Do not combine it with [clearBackStack]: that removes the entry that would receive the
+     * answer, and the request is dropped and reported. [popUpTo] is safe, and the request lands on
+     * whichever entry ends up below the new one.
      */
     fun navigate(
         entry: KompassEntry,
         clearBackStack: Boolean = false,
         popUpTo: String? = null,
         popUpToInclusive: Boolean = false,
-        reuseIfExists: Boolean = false
+        reuseIfExists: Boolean = false,
+        resultKey: ResultKey<*>? = null,
     ) {
         dispatch(
             NavigationCommand.Navigate(
@@ -257,7 +270,8 @@ class KompassNavController internal constructor(
                 clearBackStack,
                 popUpTo,
                 popUpToInclusive,
-                reuseIfExists
+                reuseIfExists,
+                resultKey?.name,
             )
         )
     }
@@ -282,7 +296,7 @@ class KompassNavController internal constructor(
     /**
      * Pops one entry and delivers a typed result to the entry below it.
      *
-     * The receiving entry must have opened this destination with [navigateForResult] under the same
+     * The receiving entry must have opened this destination with [navigate] and the same
      * [resultKey]. Any other case is rejected whole: nothing is popped, no result is stored, and the
      * controller reports a [NavigationResultException] through `onNavigationError`. A repeated tap
      * that pops twice is one of those cases, so this never throws, and the second tap never takes an
@@ -298,52 +312,6 @@ class KompassNavController internal constructor(
         resultKey: ResultKey<T>,
     ) {
         dispatch(NavigationCommand.Pop(result = result, resultKey = resultKey))
-    }
-
-    /**
-     * Navigates to [entry] and records that the current entry waits for a result under [resultKey].
-     *
-     * The request opens at once: the current entry reads [ResultState.Pending] from [peekResult]
-     * until the destination answers with [pop] or leaves the stack without answering. Back,
-     * predictive Back and a plain [pop] all end the request as [ResultState.Cancelled].
-     *
-     * A second request under the same key replaces the first. The navigation still happens, and an
-     * answer or a cancellation that was never consumed is dropped and reported through
-     * `onNavigationError`.
-     *
-     * It offers no `clearBackStack` or `popUpTo`, because both can remove the entry that would
-     * receive the answer.
-     *
-     * @param entry The destination entry to navigate to.
-     * @param resultKey Key this entry waits for.
-     * @param reuseIfExists Whether an existing matching entry should be moved to the top.
-     */
-    fun <T : NavigationResult> navigateForResult(
-        entry: KompassEntry,
-        resultKey: ResultKey<T>,
-        reuseIfExists: Boolean = false,
-    ) {
-        dispatch(
-            NavigationCommand.Navigate(
-                entry = entry,
-                reuseIfExists = reuseIfExists,
-                pendingResultKey = resultKey.name,
-            )
-        )
-    }
-
-    /**
-     * Replaces the entire back stack with a single root entry.
-     *
-     * @param entry The new root [KompassEntry] that will become
-     * the only entry in the back stack.
-     */
-    @Deprecated(
-        message = "Use replaceStack, which applies one entry or a whole stack.",
-        replaceWith = ReplaceWith("replaceStack(entry)"),
-    )
-    fun replaceRoot(entry: KompassEntry) {
-        replaceStack(entry)
     }
 
     /**

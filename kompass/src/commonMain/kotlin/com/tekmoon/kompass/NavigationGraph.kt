@@ -150,7 +150,7 @@ class KompassEntry internal constructor(
     /**
      * Name of the [ResultKey] this entry waits for, or null when it waits for nothing.
      *
-     * [KompassNavController.navigateForResult] writes it, and delivery, cancellation and
+     * The `resultKey` of [KompassNavController.navigate] writes it, and delivery, cancellation and
      * [KompassNavController.consumeResult] clear it. It records **that** the entry is waiting;
      * the key that routes an answer travels with [KompassNavController.pop] instead.
      */

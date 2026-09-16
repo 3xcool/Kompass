@@ -186,7 +186,7 @@ navController.pop(count = 2)
 navController.pop(popUntil = "home")
 
 // Open a destination that must answer, then return the result while popping.
-navController.navigateForResult(Profile.toKompassEntry(), Profile.Result)
+navController.navigate(Profile.toKompassEntry(), resultKey = Profile.Result)
 navController.pop(result = ProfileResult(saved = true), resultKey = Profile.Result)
 
 // Replace the complete stack in one state update.
@@ -241,7 +241,7 @@ navController.navigate(
 )
 ```
 
-Kompass transports and restores metadata but does not assign meaning to its keys. Use `defaultScope()` to share state for a destination within a controller, or `newScope()` for an isolated scope. A result is a request: `navigateForResult` opens it, `pop(result, resultKey)` answers it, and `peekResult` / `consumeResult` read and close it as `Pending`, `Delivered` or `Cancelled`. Back cancels an open request.
+Kompass transports and restores metadata but does not assign meaning to its keys. Use `defaultScope()` to share state for a destination within a controller, or `newScope()` for an isolated scope. A result is a request: the `resultKey` of `navigate` opens it, `pop(result, resultKey)` answers it, and `peekResult` / `consumeResult` read and close it as `Pending`, `Delivered` or `Cancelled`. Back cancels an open request.
 
 ## Deep linking
 

@@ -35,8 +35,6 @@ class NavigationHandler() {
      * @return A new [NavigationState] representing the result of applying
      * the command.
      */
-    // The reducer must keep handling the deprecated ReplaceRoot until it is removed.
-    @Suppress("DEPRECATION")
     fun reduce(
         state: NavigationState,
         command: NavigationCommand
@@ -143,10 +141,6 @@ class NavigationHandler() {
                 }.toImmutableList())
             }
 
-            is NavigationCommand.ReplaceRoot -> {
-                state.copy(backStack = persistentListOf(command.entry))
-            }
-
             is NavigationCommand.ReplaceStack -> {
                 state.copy(backStack = command.entries.toImmutableList())
             }
@@ -221,7 +215,7 @@ internal fun resultIssue(state: NavigationState, command: NavigationCommand.Pop)
     return when (survivor.pendingResultKey) {
         key -> null
         null -> "The entry \"${survivor.destinationId}\" is not waiting for a result. " +
-            "Open the destination with navigateForResult to receive \"$key\"."
+            "Open the destination with navigate(entry, resultKey = ...) to receive \"$key\"."
 
         else -> "The entry \"${survivor.destinationId}\" waits for " +
             "\"${survivor.pendingResultKey}\", not \"$key\"."
@@ -243,7 +237,7 @@ internal fun discardedResultReport(
     val key = command.pendingResultKey ?: return null
     val requester = navigateBaseStack(state, command).lastOrNull()
         ?: return "A result request under \"$key\" has no entry to belong to, because the command " +
-            "cleared the whole back stack. Use navigateForResult, which has no stack options."
+            "cleared the whole back stack. Do not combine resultKey with clearBackStack."
     val previous = requester.results[key] ?: return null
     val outcome = if (previous is StoredResult.Delivered) "an answer" else "a cancellation"
     return "The entry \"${requester.destinationId}\" opened a new request under \"$key\" while " +
@@ -286,7 +280,7 @@ sealed interface NavigationCommand {
      * @param pendingResultKey Name of the [ResultKey] the current top entry starts waiting for.
      * A repeated request under the same name replaces the previous one. Combining it with
      * [clearBackStack] or [popUpTo] can remove the entry that would receive the answer; prefer
-     * [KompassNavController.navigateForResult], which does not offer those options.
+     * [KompassNavController.navigate] with a resultKey and no clearBackStack.
      */
     data class Navigate(
         val entry: KompassEntry,
@@ -324,20 +318,6 @@ sealed interface NavigationCommand {
     ) : NavigationCommand
 
     /**
-     * Replace the root of the back stack.
-     *
-     * @param entry The new root [KompassEntry] that will become
-     * the only entry in the back stack.
-     */
-    @Deprecated(
-        message = "Use ReplaceStack, which applies one entry or a whole stack.",
-        replaceWith = ReplaceWith("NavigationCommand.ReplaceStack(listOf(entry))"),
-    )
-    data class ReplaceRoot(
-        val entry: KompassEntry
-    ) : NavigationCommand
-
-    /**
      * Replace the whole back stack.
      *
      * One command applies a whole stack, so a server payload, a multi-level deep link and a
@@ -346,7 +326,7 @@ sealed interface NavigationCommand {
      * and play one animation per step.
      *
      * The first entry becomes the root and the last becomes the active destination. One entry in the
-     * list replaces the whole stack with that entry, which is what `ReplaceRoot` did.
+     * list replaces the whole stack with that entry.
      *
      * @param entries The new back stack, from root to top. It must not be empty.
      */

@@ -52,7 +52,7 @@ value class ResultKey<T : NavigationResult>(val name: String)
 /**
  * The state of one navigation result request, seen by the entry that started it.
  *
- * A request starts with [KompassNavController.navigateForResult] and ends when the entry consumes
+ * A request starts with the `resultKey` of [KompassNavController.navigate] and ends when it consumes
  * it with [KompassNavController.consumeResult]. Read it with [peekResult].
  */
 sealed interface ResultState<out T : NavigationResult> {

@@ -133,9 +133,9 @@ private fun Sample1First(
         Text(if (request == ResultState.Pending) "Result: waiting…" else "Result: ${name ?: "-"}")
 
         Button(onClick = {
-            // navigateForResult records that this entry waits for an answer. Without it, Back
-            // could not be told apart from "the screen is still open".
-            navController.navigateForResult(
+            // resultKey records that this entry waits for an answer. Without it, Back could not be
+            // told apart from "the screen is still open", and the pop below would be refused.
+            navController.navigate(
                 entry = Sample1Destination.Second.toKompassEntry(),
                 resultKey = Sample1Destination.Second.Name,
             )

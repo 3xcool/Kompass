@@ -168,13 +168,11 @@ class NavigationCompatibilityTest {
         assertTrue(restored.id.isNotBlank())
     }
 
-    // Keeps the deprecated ReplaceRoot command covered until it is removed.
-    @Suppress("DEPRECATION")
     @Test fun deep_links_use_first_matching_handler_and_apply_commands_in_order() {
         val a = entry("a"); val b = entry("b")
         val handler = object : DeepLinkHandler {
             override fun matches(uri: String) = uri == "test://b"
-            override fun resolve(uri: String) = listOf(NavigationCommand.ReplaceRoot(a), NavigationCommand.Navigate(b))
+            override fun resolve(uri: String) = listOf(NavigationCommand.ReplaceStack(listOf(a)), NavigationCommand.Navigate(b))
         }
         val unexpected = object : DeepLinkHandler {
             override fun matches(uri: String): Boolean = error("second handler must not run")

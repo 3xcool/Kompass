@@ -7,8 +7,9 @@ API changes. It is published as a minor version because 2.0.0 has no consumers y
 
 ### Highlights
 
-- Added `navigateForResult(entry, resultKey)`. It opens a result request and records it on the entry
-  that starts it.
+- Added a `resultKey` parameter to `navigate` and `navigateTo`. It opens a result request and records
+  it on the entry that starts it. Do not combine it with `clearBackStack`, which removes the entry
+  that would receive the answer; the request is dropped and reported.
 - Added `ResultState`: `Pending`, `Delivered(value)` and `Cancelled`. Back, predictive Back and a
   plain `pop` now end an open request as `Cancelled`, which an application could not detect before.
 - Added `ResultKey<T>`, a value class that carries the expected result type to the call site. Only
@@ -49,8 +50,10 @@ API changes. It is published as a minor version because 2.0.0 has no consumers y
   one step below.
 - `consumeResult(key, entryId)` returns `ResultState<T>?` instead of `T?`.
 - `toKompassEntry` and `navigateTo` drop their `pendingResultKey` and `results` parameters.
-- A result delivered to an entry that did not call `navigateForResult` is rejected and reported. A
-  plain `navigate` followed by `pop(result, key)` no longer delivers anything.
+- A result delivered to an entry that did not open a request is rejected and reported. A `navigate`
+  without `resultKey`, followed by `pop(result, key)`, no longer delivers anything.
+- `replaceRoot` is removed, on the controller and on the typed helper, together with
+  `NavigationCommand.ReplaceRoot`. Use `replaceStack`, which applies one entry or a whole stack.
 - Saved state written by 2.0.0 restores only when it carries no result. A result is now stored in an
   internal envelope instead of a bare `NavigationResult`, so an older entry that holds one fails to
   decode. The controller reports the failure and falls back to its initial state, as it does for any

@@ -141,6 +141,7 @@ fun <T : Any> TypedDestination<T>.toKompassEntry(
  * @param popUpTo Optional destination ID to pop up to before navigating.
  * @param popUpToInclusive Whether to also remove [popUpTo] itself.
  * @param reuseIfExists Replace an existing matching entry rather than pushing a new one.
+ * @param resultKey Opens a result request when it is not null. See [KompassNavController.navigate].
  */
 fun <T : Any> KompassNavController.navigateTo(
     destination: TypedDestination<T>,
@@ -151,6 +152,7 @@ fun <T : Any> KompassNavController.navigateTo(
     popUpToInclusive: Boolean = false,
     reuseIfExists: Boolean = false,
     metadata: Map<String, String> = emptyMap(),
+    resultKey: ResultKey<*>? = null,
 ) {
     val entry = destination.toKompassEntry(
         args = args,
@@ -164,23 +166,8 @@ fun <T : Any> KompassNavController.navigateTo(
         popUpTo = popUpTo,
         popUpToInclusive = popUpToInclusive,
         reuseIfExists = reuseIfExists,
+        resultKey = resultKey,
     )
-}
-
-/**
- * Replaces the entire back stack with a single [TypedDestination] entry, with
- * strongly-typed [args].
- */
-@Deprecated(
-    message = "Use replaceStack, which matches replaceStack.",
-    replaceWith = ReplaceWith("replaceStack(destination, args, scopeId)"),
-)
-fun <T : Any> KompassNavController.replaceRoot(
-    destination: TypedDestination<T>,
-    args: T,
-    scopeId: NavigationScopeId = destination.defaultScope(),
-) {
-    replaceStack(destination, args, scopeId)
 }
 
 /**
@@ -233,7 +220,7 @@ fun <T : Any> KompassNavController.argsOrNull(
  *
  * Use this when external code needs a raw encoded string — e.g., when a
  * custom [DeepLinkHandler] or test fixture builds [NavigationCommand]s by
- * hand. Prefer [navigateTo] / [replaceRoot] for ordinary navigation.
+ * hand. Prefer [navigateTo] / [replaceStack] for ordinary navigation.
  */
 fun <T : Any> KompassNavController.encodeArgs(
     destination: TypedDestination<T>,
