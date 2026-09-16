@@ -25,11 +25,11 @@ class NavigationApiTest {
     private fun Destination.entryWith(
         delivered: Map<String, NavigationResult> = emptyMap(),
         cancelled: Set<String> = emptySet(),
-        awaiting: String? = null,
+        pending: String? = null,
     ) = KompassEntry(
         destinationId = id,
         scopeId = defaultScope(),
-        awaitingResultKey = awaiting,
+        pendingResultKey = pending,
         results = (delivered.mapValues { StoredResult.Delivered(it.value) } +
             cancelled.associateWith { StoredResult.Cancelled }).toPersistentMap(),
     )
@@ -154,7 +154,7 @@ class NavigationApiTest {
             assertEquals(ResultState.Pending, nav.backStack.first().peekResult(answerKey))
             nav.pop(result = Answer("done"), resultKey = answerKey)
             assertEquals(ResultState.Delivered(Answer("done")), nav.currentEntry.peekResult(answerKey))
-            assertNull(nav.currentEntry.awaitingResultKey)
+            assertNull(nav.currentEntry.pendingResultKey)
         } finally { nav.close() }
     }
 
@@ -165,7 +165,7 @@ class NavigationApiTest {
                 nav.navigateForResult(B.toKompassEntry(), answerKey)
                 goBack(nav)
                 assertEquals(ResultState.Cancelled, nav.currentEntry.peekResult(answerKey))
-                assertNull(nav.currentEntry.awaitingResultKey)
+                assertNull(nav.currentEntry.pendingResultKey)
                 assertEquals(ResultState.Cancelled, nav.consumeResult(answerKey))
                 assertNull(nav.currentEntry.peekResult(answerKey))
             } finally { nav.close() }
@@ -238,7 +238,7 @@ class NavigationApiTest {
     @Test fun a_pop_that_removes_nothing_leaves_an_open_request_open() {
         // A stack restored or rebuilt with replaceStack can put a waiting entry on top. popUntil
         // naming that entry pops nothing, so it must not close the request either.
-        val waiting = A.entryWith(awaiting = "answer")
+        val waiting = A.entryWith(pending = "answer")
         val nav = createKompassNavController(
             NavigationState(persistentListOf(B.toKompassEntry(), waiting)), serializers,
         )
@@ -248,7 +248,7 @@ class NavigationApiTest {
 
             assertEquals(before, nav.backStack)
             assertEquals(ResultState.Pending, nav.currentEntry.peekResult(answerKey))
-            assertEquals("answer", nav.currentEntry.awaitingResultKey)
+            assertEquals("answer", nav.currentEntry.pendingResultKey)
         } finally { nav.close() }
     }
 
@@ -319,7 +319,7 @@ class NavigationApiTest {
         try {
             nav.navigateForResult(B.toKompassEntry(), answerKey)
             val saved = nav.saveNavigationState()
-            assertTrue(saved.contains("\"awaitingResultKey\":\"answer\""), saved)
+            assertTrue(saved.contains("\"pendingResultKey\":\"answer\""), saved)
             assertFalse(saved.contains("Pending"), saved)
 
             val restored = createKompassNavController(A, serializers, savedNavigationState = saved)

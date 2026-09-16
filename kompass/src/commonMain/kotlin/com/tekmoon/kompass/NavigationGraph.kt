@@ -154,7 +154,7 @@ class KompassEntry internal constructor(
      * [KompassNavController.consumeResult] clear it. It records **that** the entry is waiting;
      * the key that routes an answer travels with [KompassNavController.pop] instead.
      */
-    val awaitingResultKey: String? = null,
+    val pendingResultKey: String? = null,
     /**
      * Closed result requests, keyed by result name.
      *
@@ -195,20 +195,20 @@ class KompassEntry internal constructor(
         args: ArgsJson? = this.args,
         scopeId: NavigationScopeId = this.scopeId,
         metadata: ImmutableMap<String, String> = this.metadata,
-        awaitingResultKey: String? = this.awaitingResultKey,
+        pendingResultKey: String? = this.pendingResultKey,
         results: PersistentMap<String, StoredResult> = this.results,
     ): KompassEntry = KompassEntry(
-        destinationId, args, scopeId, metadata, awaitingResultKey, results,
+        destinationId, args, scopeId, metadata, pendingResultKey, results,
         // A different destination or scope is a different occurrence, so it takes a fresh ID.
         id = if (scopeId == this.scopeId && destinationId == this.destinationId) id else randomUUID(),
     )
 
     internal fun withIdentityOf(entry: KompassEntry): KompassEntry = KompassEntry(
-        destinationId, args, scopeId, metadata, awaitingResultKey, results, id = entry.id,
+        destinationId, args, scopeId, metadata, pendingResultKey, results, id = entry.id,
     )
 
     internal fun newOccurrence(): KompassEntry =
-        KompassEntry(destinationId, args, scopeId, metadata, awaitingResultKey, results)
+        KompassEntry(destinationId, args, scopeId, metadata, pendingResultKey, results)
 
     /** True when the request under [key] ended without an answer. */
     @PublishedApi
@@ -226,7 +226,7 @@ class KompassEntry internal constructor(
     override fun equals(other: Any?): Boolean = other is KompassEntry &&
         id == other.id && destinationId == other.destinationId && args == other.args &&
         scopeId == other.scopeId && metadata == other.metadata &&
-        awaitingResultKey == other.awaitingResultKey && results == other.results
+        pendingResultKey == other.pendingResultKey && results == other.results
 
     override fun hashCode(): Int {
         var result = id.hashCode()
@@ -234,12 +234,12 @@ class KompassEntry internal constructor(
         result = 31 * result + (args?.hashCode() ?: 0)
         result = 31 * result + scopeId.hashCode()
         result = 31 * result + metadata.hashCode()
-        result = 31 * result + (awaitingResultKey?.hashCode() ?: 0)
+        result = 31 * result + (pendingResultKey?.hashCode() ?: 0)
         return 31 * result + results.hashCode()
     }
 
     override fun toString(): String = "KompassEntry(destinationId=$destinationId, args=$args, " +
-        "scopeId=$scopeId, metadata=$metadata, awaitingResultKey=$awaitingResultKey, " +
+        "scopeId=$scopeId, metadata=$metadata, pendingResultKey=$pendingResultKey, " +
         "results=$results, id=$id)"
 }
 

@@ -15,13 +15,13 @@ class NavigationCompatibilityTest {
         route: String,
         scope: String = route,
         args: String? = null,
-        awaiting: String? = null,
+        pending: String? = null,
         results: Map<String, NavigationResult> = emptyMap(),
     ) = KompassEntry(
         destinationId = route,
         args = args,
         scopeId = NavigationScopeId(scope),
-        awaitingResultKey = awaiting,
+        pendingResultKey = pending,
         results = results.mapValues { StoredResult.Delivered(it.value) }.toPersistentMap(),
     )
 
@@ -62,7 +62,7 @@ class NavigationCompatibilityTest {
     }
 
     @Test fun result_delivery_preserves_receiver_identity_and_previous_results() {
-        val a = entry("a", awaiting = "answer", results = mapOf("previous" to Result("first")))
+        val a = entry("a", pending = "answer", results = mapOf("previous" to Result("first")))
         val b = entry("b")
         val result = reducer.reduce(
             NavigationState(persistentListOf(a, b)),
@@ -72,11 +72,11 @@ class NavigationCompatibilityTest {
         assertEquals(a.id, receiver.id)
         assertEquals(ResultState.Delivered(Result("first")), receiver.peekResult(ResultKey<Result>("previous")))
         assertEquals(ResultState.Delivered(Result("second")), receiver.peekResult(ResultKey<Result>("answer")))
-        assertNull(receiver.awaitingResultKey)
+        assertNull(receiver.pendingResultKey)
     }
 
     @Test fun a_result_without_a_key_pops_nothing() {
-        val a = entry("a", awaiting = "answer")
+        val a = entry("a", pending = "answer")
         val b = entry("b")
         val state = NavigationState(persistentListOf(a, b))
         val result = reducer.reduce(state, NavigationCommand.Pop(result = Result("second")))
@@ -95,7 +95,7 @@ class NavigationCompatibilityTest {
             }
         }
         val state = defaultNavigationState(
-            entry("a", args = "opaque-not-json", awaiting = "later", results = mapOf("answer" to Result("yes")))
+            entry("a", args = "opaque-not-json", pending = "later", results = mapOf("answer" to Result("yes")))
         )
         val serializer = NavigationState.serializer(KompassEntry.serializer())
         val encoded = json.encodeToString(serializer, state)
@@ -121,11 +121,18 @@ class NavigationCompatibilityTest {
         """.trimIndent()
         assertFails { json.decodeFromString(KompassEntry.serializer(), withResult) }
 
-        // An entry with no result still restores. The dropped pendingResultKey is an unknown key.
+        // An entry with no result still restores. pendingResultKey keeps its name across 2.0.0 and
+        // 2.1.0, but not its owner: it used to sit on the destination that would return a result,
+        // and now it sits on the entry that waits. So a restored 2.0.0 entry carries a marker for a
+        // request that no longer exists.
+        //
+        // That marker is harmless and clears itself. It sits on a producer, whose screen never calls
+        // peekResult, and a pop of that entry reveals the caller instead, so the marker leaves with
+        // the entry it is on. Keeping one name was worth more than dodging this.
         val withoutResult = """{"destinationId":"a","scopeId":"a","pendingResultKey":"answer"}"""
         val restored = json.decodeFromString(KompassEntry.serializer(), withoutResult)
         assertEquals("a", restored.destinationId)
-        assertNull(restored.awaitingResultKey)
+        assertEquals("answer", restored.pendingResultKey)
     }
 
     @Test fun an_entry_never_holds_the_map_the_caller_passed() {

@@ -327,7 +327,7 @@ class KompassNavController internal constructor(
             NavigationCommand.Navigate(
                 entry = entry,
                 reuseIfExists = reuseIfExists,
-                awaitingResultKey = resultKey.name,
+                pendingResultKey = resultKey.name,
             )
         )
     }

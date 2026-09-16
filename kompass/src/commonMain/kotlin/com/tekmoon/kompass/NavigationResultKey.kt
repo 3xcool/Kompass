@@ -9,7 +9,7 @@ import kotlin.jvm.JvmInline
  *
  * This is the shape that enters the saved navigation state. It pairs with the public [ResultState]:
  * same outcomes, minus [ResultState.Pending]. Pending cannot be stored by construction, because an
- * open request is recorded by [KompassEntry.awaitingResultKey] instead.
+ * open request is recorded by [KompassEntry.pendingResultKey] instead.
  *
  * Internal on purpose. An application reads a result through [peekResult] and
  * [KompassNavController.consumeResult], and never names this type. [NavigationResult] stays the one
@@ -87,7 +87,7 @@ inline fun <reified T : NavigationResult> KompassEntry.peekResult(key: ResultKey
     if (isResultCancelled(key.name)) return ResultState.Cancelled
     val delivered = deliveredResult(key.name)
     if (delivered != null) return if (delivered is T) ResultState.Delivered(delivered) else null
-    return if (awaitingResultKey == key.name) ResultState.Pending else null
+    return if (pendingResultKey == key.name) ResultState.Pending else null
 }
 
 /**

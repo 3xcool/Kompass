@@ -50,10 +50,10 @@ class NavigationHandler() {
                 // A repeated request under the same key supersedes the previous one, so any answer
                 // still sitting there is dropped. Failing here would turn a repeated tap into an
                 // exception.
-                val requestingStack = command.awaitingResultKey?.let { key ->
+                val requestingStack = command.pendingResultKey?.let { key ->
                     if (baseStack.isEmpty()) baseStack
                     else (baseStack.dropLast(1) + baseStack.last().copyInternal(
-                        awaitingResultKey = key,
+                        pendingResultKey = key,
                         results = baseStack.last().results.remove(key),
                     )).toImmutableList()
                 } ?: baseStack
@@ -120,14 +120,14 @@ class NavigationHandler() {
                 // a pop with no answer cancels, because the destination that had to answer is
                 // leaving the stack. A delivery that does not match never reaches this point.
                 val survivor = newStack.last()
-                val awaited = survivor.awaitingResultKey
-                val finalStack = if (awaited == null) newStack else {
+                val pending = survivor.pendingResultKey
+                val finalStack = if (pending == null) newStack else {
                     val outcome = command.result
                         ?.let { StoredResult.Delivered(it) }
                         ?: StoredResult.Cancelled
                     newStack.dropLast(1) + survivor.copyInternal(
-                        awaitingResultKey = null,
-                        results = survivor.results.put(awaited, outcome),
+                        pendingResultKey = null,
+                        results = survivor.results.put(pending, outcome),
                     )
                 }
 
@@ -137,7 +137,7 @@ class NavigationHandler() {
             is NavigationCommand.ConsumeResult -> {
                 state.copy(backStack = state.backStack.map { entry ->
                     if (entry.id == command.entryId) entry.copyInternal(
-                        awaitingResultKey = entry.awaitingResultKey.takeIf { it != command.key },
+                        pendingResultKey = entry.pendingResultKey.takeIf { it != command.key },
                         results = entry.results.remove(command.key),
                     ) else entry
                 }.toImmutableList())
@@ -218,13 +218,13 @@ internal fun resultIssue(state: NavigationState, command: NavigationCommand.Pop)
         return "The root entry cannot be popped, so \"$key\" was not delivered."
     }
     val survivor = state.backStack[state.backStack.size - 2]
-    return when (survivor.awaitingResultKey) {
+    return when (survivor.pendingResultKey) {
         key -> null
         null -> "The entry \"${survivor.destinationId}\" is not waiting for a result. " +
             "Open the destination with navigateForResult to receive \"$key\"."
 
         else -> "The entry \"${survivor.destinationId}\" waits for " +
-            "\"${survivor.awaitingResultKey}\", not \"$key\"."
+            "\"${survivor.pendingResultKey}\", not \"$key\"."
     }
 }
 
@@ -240,7 +240,7 @@ internal fun discardedResultReport(
     state: NavigationState,
     command: NavigationCommand.Navigate,
 ): String? {
-    val key = command.awaitingResultKey ?: return null
+    val key = command.pendingResultKey ?: return null
     val requester = navigateBaseStack(state, command).lastOrNull()
         ?: return "A result request under \"$key\" has no entry to belong to, because the command " +
             "cleared the whole back stack. Use navigateForResult, which has no stack options."
@@ -283,7 +283,7 @@ sealed interface NavigationCommand {
      * its payload. Its identity (and UI state) is retained when the scope is unchanged;
      * explicitly supplying a different scope starts new ownership.
      *
-     * @param awaitingResultKey Name of the [ResultKey] the current top entry starts waiting for.
+     * @param pendingResultKey Name of the [ResultKey] the current top entry starts waiting for.
      * A repeated request under the same name replaces the previous one. Combining it with
      * [clearBackStack] or [popUpTo] can remove the entry that would receive the answer; prefer
      * [KompassNavController.navigateForResult], which does not offer those options.
@@ -294,7 +294,7 @@ sealed interface NavigationCommand {
         val popUpTo: String? = null,
         val popUpToInclusive: Boolean = false,
         val reuseIfExists: Boolean = false,
-        val awaitingResultKey: String? = null
+        val pendingResultKey: String? = null
     ) : NavigationCommand
 
     /**

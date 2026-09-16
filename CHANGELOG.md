@@ -35,8 +35,9 @@ API changes. It is published as a minor version because 2.0.0 has no consumers y
 
 ### Breaking changes
 
-- `KompassEntry.pendingResultKey` is replaced by `awaitingResultKey`, which records only that the
-  entry is waiting. The key that routes an answer travels with `pop` instead.
+- `KompassEntry.pendingResultKey` keeps its name and changes both its owner and its meaning. It used
+  to sit on the destination that would return a result, and it routed the answer. It now sits on the
+  entry that is waiting, and it records only that. The key that routes an answer travels with `pop`.
 - `KompassEntry.results` is now internal. Use `peekResult` and `consumeResult`.
 - The `KompassEntry` constructor is now internal, because an entry carries result state that only
   the reducer may set. Use `Destination.toKompassEntry(...)`, or the new `kompassEntry(...)` when
@@ -54,6 +55,9 @@ API changes. It is published as a minor version because 2.0.0 has no consumers y
   internal envelope instead of a bare `NavigationResult`, so an older entry that holds one fails to
   decode. The controller reports the failure and falls back to its initial state, as it does for any
   unreadable saved state. It never restores half a stack.
+- A restored 2.0.0 entry that carries `pendingResultKey` arrives with a marker for a request that no
+  longer exists, because the field kept its name and changed owner. The marker is harmless: it sits
+  on a producer, whose screen never reads it, and it leaves the stack with that entry.
 
 ## 2.0.0
 
