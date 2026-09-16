@@ -207,17 +207,13 @@ data object NavigationScopes {
  * Retrieves or creates a scoped instance (similar to ViewModel).
  *
  * The instance is created once per scope and survives recomposition.
- * It's destroyed when the scope is cleared (i.e., when the back stack entry is popped).
  *
- * @param T Instance type
- * @param scopeId The scope to store the instance in
- * @param key Unique key for the instance (defaults to class qualified name)
- * @param factory Function to create the instance if it doesn't exist
- * @param onCleared Called when the scope is cleared
+ * ## Two lifetimes, and you pick one with [scopeId]
  *
- * @return Scoped instance that survives recomposition but dies with navigation pop
+ * **Automatic — the scope belongs to entries.** Pass `entry.scopeId`, [Destination.defaultScope] or
+ * [newScope], or any ID that some [KompassEntry] carries. Kompass clears the scope once, after the
+ * last entry using it leaves the back stack and its outgoing content is disposed. Nothing to write:
  *
- * Example:
  * ```
  * val viewModel = rememberScoped<ProfileViewModel>(
  *     scopeId = entry.scopeId,
@@ -225,6 +221,31 @@ data object NavigationScopes {
  *     onCleared = { it.close() }
  * )
  * ```
+ *
+ * **Manual — the scope belongs to you.** Pass an ID no entry carries, to share one object across a
+ * flow of different destinations. Kompass never clears it, because there is no entry whose removal
+ * could mean "the flow ended". It is a process-wide singleton until you say otherwise, so give it
+ * an owner:
+ *
+ * ```
+ * private val CheckoutScope = NavigationScopeId("flow:checkout")
+ *
+ * DisposableEffect(CheckoutScope) {
+ *     onDispose { NavigationScopes.clearScope(CheckoutScope) }
+ * }
+ * ```
+ *
+ * Prefer the automatic form. Reach for the manual one only when the flow has no single entry that
+ * outlives the others, and remember that the object survives the whole process without that
+ * [NavigationScopes.clearScope].
+ *
+ * @param T Instance type
+ * @param scopeId The scope to store the instance in. It decides which lifetime above applies.
+ * @param key Unique key for the instance (defaults to class qualified name)
+ * @param factory Function to create the instance if it doesn't exist
+ * @param onCleared Called when the scope is cleared
+ *
+ * @return Scoped instance that survives recomposition
  *
  * Threading: call from composition on the UI thread.
  */

@@ -348,6 +348,26 @@ val viewModel = rememberScoped<ProfileViewModel>(
 - `newScope()` creates isolated state for a new navigation occurrence.
 - An explicit shared `NavigationScopeId` lets several entries use the same scoped object.
 
+Cleanup follows the back stack, so the ID you pass decides the lifetime:
+
+| Scope | Cleared by |
+|-------|------------|
+| `entry.scopeId`, `defaultScope()`, `newScope()`, or any ID an entry carries | Kompass, once the last entry using it leaves the back stack. |
+| An ID no entry carries, named for a flow | Nobody. It is a process-wide singleton until you call `NavigationScopes.clearScope(id)`. |
+
+Prefer the first form. For the second, give the scope an owner where the flow ends:
+
+```kotlin
+private val CheckoutScope = NavigationScopeId("flow:checkout")
+
+DisposableEffect(CheckoutScope) {
+    onDispose { NavigationScopes.clearScope(CheckoutScope) }
+}
+```
+
+`NavSample3ViewModelScope` and `NavSample4Transitions` show the manual form with its disposal;
+`NavSample2InnerGraphs` shows the automatic one, where the flow ID is the entry's own `scopeId`.
+
 Entry UI state and scope state are separate. Reusing an entry can preserve its occurrence and UI state; sharing a scope shares scoped objects without merging entry lifecycles.
 
 ### Owners provided by the host
