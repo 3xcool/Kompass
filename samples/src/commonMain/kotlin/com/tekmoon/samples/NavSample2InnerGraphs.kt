@@ -5,6 +5,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.KompassEntry
+import com.tekmoon.kompass.kompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
@@ -125,7 +126,7 @@ private fun MainHome(
 ) {
     Button(onClick = {
         navController.navigate(
-            entry = KompassEntry(
+            entry = kompassEntry(
                 destinationId = MainDestination.Feature.id,
                 scopeId = NavigationScopeId("flow:feature")
             )
@@ -141,7 +142,7 @@ private fun MainFeature(
 ) {
     Button(onClick = {
         navController.navigate(
-            entry = KompassEntry(
+            entry = kompassEntry(
                 destinationId = FeatureDestination.StepOne.id,
                 scopeId = NavigationScopeId("flow:feature")
             )
@@ -157,7 +158,7 @@ private fun StepOne(
 ) {
     Button(onClick = {
         navController.navigate(
-            entry = KompassEntry(
+            entry = kompassEntry(
                 destinationId = FeatureDestination.StepTwo.id,
                 scopeId = NavigationScopeId("flow:feature")
             )

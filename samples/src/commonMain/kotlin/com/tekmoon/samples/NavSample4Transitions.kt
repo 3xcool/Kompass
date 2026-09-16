@@ -1,6 +1,7 @@
 package com.tekmoon.samples
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationGraph
@@ -22,6 +23,7 @@ import com.tekmoon.kompass.NavDirection
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationScopeId
+import com.tekmoon.kompass.NavigationScopes
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.SceneTransition
 import com.tekmoon.kompass.rememberKompassNavController
@@ -74,6 +76,15 @@ private enum class Sample4Dest : Destination {
  * Graph with per-graph transition
  * ------------------------------------------- */
 
+/**
+ * A scope shared by the whole flow, named explicitly instead of taken from an entry.
+ *
+ * No entry carries this ID, so Kompass never clears it on its own. [Sample4_PerGraphTransitions]
+ * clears it when the flow leaves composition. The screen scopes below use the automatic form,
+ * `entry.scopeId`, which dies with the entry and needs no code.
+ */
+private val Sample4FlowScope = NavigationScopeId("flow:sample4")
+
 private object Sample4Graph : KompassNavigationGraph {
 
     override val sceneTransition: SceneTransition = SlideGraphTransition
@@ -93,8 +104,9 @@ private object Sample4Graph : KompassNavigationGraph {
         destination: Destination,
         navController: KompassNavController
     ) {
+        // Explicit flow scope. Sample4_Transitions clears it; see Sample4FlowScope.
         val sharedState = rememberScoped(
-            scopeId = NavigationScopeId("flow:sample4"),
+            scopeId = Sample4FlowScope,
             onCleared = { it.onCleared() }
         ) {
             Sample4SharedState()
@@ -145,6 +157,11 @@ fun Sample4_PerGraphTransitions(
 ) {
 
     val navController = rememberKompassNavController(Sample4Dest.Home)
+
+    // An explicit scope has no entry to die with, so this flow owns it.
+    DisposableEffect(Sample4FlowScope) {
+        onDispose { NavigationScopes.clearScope(Sample4FlowScope) }
+    }
 
     // Track previous state for direction
     val previousState =

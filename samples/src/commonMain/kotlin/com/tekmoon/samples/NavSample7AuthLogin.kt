@@ -3,7 +3,9 @@ package com.tekmoon.samples
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import com.tekmoon.kompass.KompassEntry
+import com.tekmoon.kompass.kompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.KompassNavController
@@ -97,17 +99,23 @@ fun Sample7_AuthLogin(
         }
     }
 
-    val graphs = persistentListOf(
-        LoginGraph( onLoginSuccess = {
-            navController.replaceStack(
-                entry = KompassEntry(
-                    destinationId = AppDestination.Home.id,
-                    scopeId = AppDestination.Home.defaultScope()
+    // A graph that takes a parameter is a new instance on every recomposition unless it is
+    // remembered. The host does `remember(graphs) { NavigationGraphRouter(graphs) }`, and LoginGraph
+    // is a plain class, so a fresh instance would rebuild the router on every frame. A graph
+    // declared as an `object`, or as a `data class` that compares equal, needs none of this.
+    val graphs = remember(navController) {
+        persistentListOf(
+            LoginGraph(onLoginSuccess = {
+                navController.replaceStack(
+                    entry = kompassEntry(
+                        destinationId = AppDestination.Home.id,
+                        scopeId = AppDestination.Home.defaultScope()
+                    )
                 )
-            )
-        }),
-        AppGraph
-    )
+            }),
+            AppGraph
+        )
+    }
 
     KompassNavigationHost(
         navController = navController,
@@ -144,7 +152,7 @@ private fun LoginPasswordScreen(
 //            onLoginSuccess() // this way we hoist the logic to Main Nav Host
             // or we can call it directly from this screen like this:
             navController.replaceStack(
-                entry = KompassEntry(
+                entry = kompassEntry(
                     destinationId = AppDestination.Home.id,
                     scopeId = AppDestination.Home.defaultScope()
                 )

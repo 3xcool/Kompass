@@ -1,5 +1,8 @@
 package com.tekmoon.kompass
 
+import androidx.compose.runtime.Immutable
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -13,11 +16,16 @@ import kotlinx.serialization.json.put
  * @param query Query parameters, percent-decoded. A repeated key keeps its last value.
  * @param args [path] and [query] merged into one JSON object, ready for [KompassEntry.args]. A
  * query parameter never overwrites a path placeholder of the same name.
+ *
+ * The Compose stability report marks the backing field of [args] unstable, because it cannot see
+ * inside a `Lazy`. The [Immutable] promise still holds: [args] is computed once, from values that
+ * never change, and nothing here has a setter. Keep the annotation, and keep this note with it.
  */
+@Immutable
 class DeepLinkMatch internal constructor(
     val uri: String,
-    val path: Map<String, String>,
-    val query: Map<String, String>,
+    val path: ImmutableMap<String, String>,
+    val query: ImmutableMap<String, String>,
 ) {
     /** Every value as a JSON string. Escaping is done by the serializer, never by concatenation. */
     val args: ArgsJson by lazy {
@@ -77,7 +85,7 @@ class PathTemplateDeepLinkHandler(
 
     override fun resolve(uri: String): List<NavigationCommand> {
         val path = capture(uri) ?: return emptyList()
-        return toCommands(DeepLinkMatch(uri, path, parseQuery(uri)))
+        return toCommands(DeepLinkMatch(uri, path.toPersistentMap(), parseQuery(uri).toPersistentMap()))
     }
 
     /** Returns the captured placeholders, or null when the URI does not fit the template. */

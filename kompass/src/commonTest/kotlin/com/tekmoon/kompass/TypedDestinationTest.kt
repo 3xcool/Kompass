@@ -151,10 +151,10 @@ class TypedDestinationTest {
         }
     }
 
-    @Test fun navigate_to_keeps_the_existing_positional_parameter_order() {
+    @Test fun navigate_to_accepts_the_new_positional_parameter_order() {
         val nav = createKompassNavController(Home)
         try {
-            nav.navigateTo(Order, OrderArgs(1L), Order.defaultScope(), null, true)
+            nav.navigateTo(Order, OrderArgs(1L), Order.defaultScope(), true)
 
             assertEquals(listOf("order"), nav.backStack.map { it.destinationId })
         } finally {
@@ -176,12 +176,11 @@ class TypedDestinationTest {
         }
     }
 
-    @Suppress("DEPRECATION")
-    @Test fun the_deprecated_replace_root_to_still_behaves_the_same() {
+    @Test fun the_typed_replace_stack_leaves_one_entry_with_its_arguments() {
         val nav = createKompassNavController(Home)
         try {
             nav.navigateTo(Order, OrderArgs(1L))
-            nav.replaceRoot(Profile, ProfileArgs("7"))
+            nav.replaceStack(Profile, ProfileArgs("7"))
 
             assertEquals(listOf("profile"), nav.backStack.map { it.destinationId })
             assertEquals(ProfileArgs("7"), nav.requireArgs(Profile))

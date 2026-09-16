@@ -107,6 +107,7 @@ navController.navigate(
     popUpTo = null,
     popUpToInclusive = false,
     reuseIfExists = false,
+    resultKey = null,          // opens a result request; see section 8
 )
 ```
 
@@ -120,8 +121,8 @@ Without `reuseIfExists`, navigating to the same destination creates a new back-s
 // Pop one entry.
 navController.pop()
 
-// Pop one entry and deliver a result to the previous entry.
-navController.pop(result = ProfileResult(userId = "123"))
+// Pop one entry and deliver a result to the entry below. See section 8.
+navController.pop(result = ProfileResult(userId = "123"), resultKey = Profile.Result)
 
 // Pop multiple entries.
 navController.pop(count = 2)
@@ -129,6 +130,10 @@ navController.pop(count = 2)
 // Pop until the named destination becomes the top entry.
 navController.pop(popUntil = "home")
 ```
+
+Every pop closes an open result request. A plain `pop`, Back and predictive Back all end the request
+as `ResultState.Cancelled`, so the entry below can tell "the user gave up" from "the screen is still
+open".
 
 Use `canGoBack()` to check the stack or `popIfCan` to provide a root fallback:
 
@@ -150,8 +155,6 @@ navController.replaceStack(
 ```
 
 Use it for restored flows, server-provided routes and multi-level deep links. Building the same flow with multiple `navigate` calls publishes intermediate states and runs multiple transitions.
-
-`replaceRoot` is retained only as a deprecated compatibility alias; new code should use `replaceStack(entry)`.
 
 ## 7. Arguments and metadata
 
@@ -185,35 +188,96 @@ Kompass persists metadata but does not define its keys or interpret their values
 
 ## 8. Results
 
-Declare a pending result key when opening a destination, then return the result with `pop`:
+A result is a **request**, not a callback. One entry opens the request, the destination it opens
+answers it or leaves without answering, and the request ends. All of it lives in the back stack, so
+it survives a configuration change and a process death.
+
+### Declare the contract on the destination that produces it
 
 ```kotlin
-navController.navigate(
-    Profile.toKompassEntry(pendingResultKey = "profile_result")
-)
-
-navController.pop(result = ProfileResult(userId = "123"))
+object Profile : Destination {
+    override val id = "profile"
+    val Result = ResultKey<ProfileResult>("profile/result")
+}
 ```
 
-Consume it once from the receiving entry:
+`ResultKey<T>` carries the expected type to the call site. Only its name enters the navigation
+state; `T` is compile-time information. Two keys with the same name are the same key at run time, so
+declaring the key on its producer keeps the name unique without a convention to remember.
+
+### Open, answer, close
 
 ```kotlin
-val result = navController.consumeResult<ProfileResult>(
-    key = "profile_result",
-    entryId = entry.id,
-)
+// A opens the request.
+navController.navigate(Profile.toKompassEntry(), resultKey = Profile.Result)
+
+// Profile answers it.
+navController.pop(result = ProfileResult(userId = "123"), resultKey = Profile.Result)
 ```
 
-`consumeResult<T>(key, entryId)` returns and removes one result from the specified occurrence. Omitting
-`entryId` targets the current entry. A missing key, a missing entry, or a type mismatch returns `null`
-without deleting anything.
+The `resultKey` of `navigate` is what makes the request exist. A `navigate` without it, followed by
+`pop(result, key)`, delivers nothing: the entry below is not waiting, so Kompass rejects the delivery
+and reports it. That is deliberate — without a record of who is waiting, Back could not be told
+apart from "the screen is still open". `navigateTo` takes the same parameter for a typed destination.
 
-Reading `entry.results[key]` only inspects the value and leaves it available for later reads. Call
-`consumeResult` from an effect or an event handler, not from the composable body, so the result is
-processed exactly once.
+Do not combine `resultKey` with `clearBackStack`: that removes the entry that would receive the
+answer, so the request is dropped and reported. `popUpTo` is safe, and the request lands on whichever
+entry ends up below the new one. `pop(result, resultKey)` takes no `count` or `popUntil`, because a
+result only reaches the entry one step below.
 
-Result types must be `@Serializable` and registered in the controller's `SerializersModule` when
-polymorphic serialization is required:
+### Read the request
+
+`peekResult` returns the state without changing it, and `consumeResult` closes it:
+
+```kotlin
+var userId by rememberSaveable { mutableStateOf<String?>(null) }
+
+val request = entry.peekResult(Profile.Result)
+
+LaunchedEffect(request) {
+    when (val closed = navController.consumeResult(Profile.Result, entry.id)) {
+        is ResultState.Delivered -> userId = closed.value.userId
+        ResultState.Cancelled -> userId = null
+        ResultState.Pending, null -> Unit
+    }
+}
+```
+
+| State | Meaning |
+|-------|---------|
+| `ResultState.Pending` | The request is open. The destination is still on the stack. |
+| `ResultState.Delivered(value)` | The destination answered. |
+| `ResultState.Cancelled` | The destination left without answering: Back, predictive Back or a plain `pop`. |
+| `null` | This entry has no request for that key, or the delivered value has another type. |
+
+`consumeResult` returns `Delivered` or `Cancelled` once and removes it. It never returns `Pending`:
+an open request is left alone and reported as `null`, so a later call still collects the answer.
+Call it from an effect or an event handler, never while rendering — it dispatches a command, and a
+command dispatched during composition is a side effect in the render pass.
+
+The effect above restarts when the request changes, closes it once, and restarts with `null` after
+the removal. The second pass finds nothing and does no work.
+
+### Rules at the edges
+
+- **A repeated request under the same key replaces the previous one.** The navigation happens, and
+  an answer or a cancellation that was never consumed is dropped and reported through
+  `onNavigationError`. Refusing the navigation instead would leave a button that does nothing.
+  A result survives until it is consumed, including across a process death, so a state still sitting
+  there at this point means the screen never called `consumeResult`. The report names that screen.
+- **A rejected delivery changes nothing and is reported.** The pop does not happen either. Kompass
+  calls `onNavigationError` with a `NavigationResultException` and leaves the back stack alone. It
+  never throws, because the second `pop` of a double tap is one of these — and refusing the pop is
+  what stops that second tap from taking an extra screen with it.
+- **A multi-entry `pop` or a `popUntil` cancels the request of the entry it reveals.** The
+  destination that had to answer is gone either way. A `popUntil` that names the entry already on
+  top removes nothing, so it closes no request.
+- **`replaceStack` never cancels.** A request on an entry the new stack keeps stays open; a request
+  on an entry the new stack drops disappears with it.
+
+### Serialization
+
+Result types must be `@Serializable` and registered in the controller's `SerializersModule`:
 
 ```kotlin
 @Serializable
@@ -226,8 +290,7 @@ val resultSerializers = SerializersModule {
 ```
 
 An unregistered result type fails when the state is saved, rather than silently dropping the data.
-Registered results survive restoration until consumed. Reusing a result key before it is consumed
-replaces the previous value.
+`Pending`, `Delivered` and `Cancelled` all survive restoration until they are consumed.
 
 ## 9. Restoration and external controllers
 
@@ -243,7 +306,7 @@ val restored = createKompassNavController(
 )
 ```
 
-`saveNavigationState()` serializes the back stack, arguments, metadata and pending results only. It
+`saveNavigationState()` serializes the back stack, arguments, metadata and result requests only. It
 does not serialize live ViewModels, `SavedStateHandle` values, or Compose UI state.
 
 Invalid saved navigation, including an empty stack or duplicate occurrence IDs, falls back to a valid
@@ -284,6 +347,26 @@ val viewModel = rememberScoped<ProfileViewModel>(
 - `defaultScope()` shares state for repeated visits to a destination within one controller.
 - `newScope()` creates isolated state for a new navigation occurrence.
 - An explicit shared `NavigationScopeId` lets several entries use the same scoped object.
+
+Cleanup follows the back stack, so the ID you pass decides the lifetime:
+
+| Scope | Cleared by |
+|-------|------------|
+| `entry.scopeId`, `defaultScope()`, `newScope()`, or any ID an entry carries | Kompass, once the last entry using it leaves the back stack. |
+| An ID no entry carries, named for a flow | Nobody. It is a process-wide singleton until you call `NavigationScopes.clearScope(id)`. |
+
+Prefer the first form. For the second, give the scope an owner where the flow ends:
+
+```kotlin
+private val CheckoutScope = NavigationScopeId("flow:checkout")
+
+DisposableEffect(CheckoutScope) {
+    onDispose { NavigationScopes.clearScope(CheckoutScope) }
+}
+```
+
+`NavSample3ViewModelScope` and `NavSample4Transitions` show the manual form with its disposal;
+`NavSample2InnerGraphs` shows the automatic one, where the flow ID is the entry's own `scopeId`.
 
 Entry UI state and scope state are separate. Reusing an entry can preserve its occurrence and UI state; sharing a scope shares scoped objects without merging entry lifecycles.
 
@@ -511,7 +594,7 @@ val restored = createKompassNavController(
 )
 ```
 
-Navigation payloads, arguments, metadata and pending results are serializable. Live ViewModels, scopes
+Navigation payloads, arguments, metadata and result requests are serializable. Live ViewModels, scopes
 and arbitrary in-memory objects are not serialized. On Android, an enclosing ViewModelStore retains
 entry owners across Activity recreation; permanent controller disposal releases them. Other targets
 release entry owners when the controller composition leaves.

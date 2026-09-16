@@ -107,7 +107,14 @@ Add the dependency to the shared source set of your Compose Multiplatform applic
 ```kotlin
 sealed interface AppDestination : Destination {
     data object Home : AppDestination { override val id = "home" }
-    data object Profile : AppDestination { override val id = "profile" }
+
+    data object Profile : AppDestination {
+        override val id = "profile"
+
+        // The result this destination returns. Declaring it here keeps the contract
+        // next to the screen that fulfils it. See "Metadata, scopes and results".
+        val Result = ResultKey<ProfileResult>("profile/result")
+    }
 }
 ```
 
@@ -178,8 +185,9 @@ navController.pop(count = 2)
 // Remove entries until a destination is reached.
 navController.pop(popUntil = "home")
 
-// Return a result to the previous entry while popping.
-navController.pop(result = ProfileResult(saved = true))
+// Open a destination that must answer, then return the result while popping.
+navController.navigate(Profile.toKompassEntry(), resultKey = Profile.Result)
+navController.pop(result = ProfileResult(saved = true), resultKey = Profile.Result)
 
 // Replace the complete stack in one state update.
 navController.replaceStack(
@@ -233,7 +241,7 @@ navController.navigate(
 )
 ```
 
-Kompass transports and restores metadata but does not assign meaning to its keys. Use `defaultScope()` to share state for a destination within a controller, or `newScope()` for an isolated scope. Use `consumeResult<T>()` for one-time result handling.
+Kompass transports and restores metadata but does not assign meaning to its keys. Use `defaultScope()` to share state for a destination within a controller, or `newScope()` for an isolated scope. A result is a request: the `resultKey` of `navigate` opens it, `pop(result, resultKey)` answers it, and `peekResult` / `consumeResult` read and close it as `Pending`, `Delivered` or `Cancelled`. Back cancels an open request.
 
 ## Deep linking
 

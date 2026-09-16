@@ -4,15 +4,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.tekmoon.kompass.KompassEntry
+import com.tekmoon.kompass.kompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationScopeId
+import com.tekmoon.kompass.NavigationScopes
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.defaultScope
 import com.tekmoon.kompass.rememberKompassNavController
@@ -34,6 +37,16 @@ private enum class Sample3Dest : Destination {
  * Navigation Graph
  * ------------------------------------------- */
 
+/**
+ * A scope shared by the whole flow, named explicitly instead of taken from an entry.
+ *
+ * No entry carries this ID, so Kompass never clears it on its own. That is the manual half of the
+ * scope API, and this sample shows both sides of it: [Sample3_WithScope] clears it when the flow
+ * leaves composition. The automatic half is what the screen scopes below use — `entry.scopeId` dies
+ * with the entry, with no code to write.
+ */
+private val Sample3FlowScope = NavigationScopeId("flow:sample")
+
 private object Sample3Graph : KompassNavigationGraph {
 
     override fun canResolveDestination(destinationId: String): Boolean =
@@ -52,9 +65,9 @@ private object Sample3Graph : KompassNavigationGraph {
         destination: Destination,
         navController: KompassNavController
     ) {
-        // Flow-scoped (shared across screens)
+        // Flow-scoped (shared across screens). See Sample3FlowScope for who clears it.
         val sharedState = rememberScoped(
-            scopeId = NavigationScopeId("flow:sample"),
+            scopeId = Sample3FlowScope,
             onCleared = { state: SharedState ->
                 state.onCleared()
             }
@@ -106,6 +119,12 @@ fun Sample3_WithScope(
 
     val navController = rememberKompassNavController(Sample3Dest.First)
 
+    // An explicit scope has no entry to die with, so this flow owns it. Without this, SharedState
+    // would outlive the sample and its counter would still be there on the next visit.
+    DisposableEffect(Sample3FlowScope) {
+        onDispose { NavigationScopes.clearScope(Sample3FlowScope) }
+    }
+
     KompassBackHandler(
         backPressedChannel = backPressedChannel,
     ) {
@@ -154,7 +173,7 @@ private fun FirstScreen(
 
         Button(onClick = {
             navController.navigate(
-                entry = KompassEntry(
+                entry = kompassEntry(
                     destinationId = Sample3Dest.Second.id,
                     scopeId = Sample3Dest.Second.defaultScope()
                 )
