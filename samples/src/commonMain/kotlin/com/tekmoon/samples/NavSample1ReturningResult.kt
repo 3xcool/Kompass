@@ -4,6 +4,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import com.tekmoon.kompass.KompassBackHandler
 import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
@@ -11,6 +16,9 @@ import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
 import com.tekmoon.kompass.KompassNavController
 import com.tekmoon.kompass.NavigationResult
+import com.tekmoon.kompass.ResultKey
+import com.tekmoon.kompass.ResultState
+import com.tekmoon.kompass.peekResult
 import com.tekmoon.kompass.rememberKompassNavController
 import com.tekmoon.kompass.toKompassEntry
 import com.tekmoon.kompass.util.BackPressedChannel
@@ -27,6 +35,14 @@ internal sealed interface Sample1Destination : Destination {
 
     data object Second : Sample1Destination {
         override val id = "kompass/sample1/second"
+
+        /**
+         * The result contract of this destination.
+         *
+         * Declaring the key on the producer keeps the contract next to the screen that fulfils it,
+         * and makes the name unique without a convention to remember.
+         */
+        val Name = ResultKey<NameResult>("kompass/sample1/second/name")
     }
 }
 
@@ -97,25 +113,31 @@ private fun Sample1First(
     entry: KompassEntry,
     navController: KompassNavController
 ) {
-    val navResultKey = "name"
-    val name = (entry.results[navResultKey] as? NameResult)?.name
+    // A result is state in the back stack, not a callback. It stays in the entry until the screen
+    // closes the request. So read the state in an effect, consume it there, and keep what the
+    // screen must show in its own state.
+    var name by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val request = entry.peekResult(Sample1Destination.Second.Name)
+
+    LaunchedEffect(request) {
+        when (val closed = navController.consumeResult(Sample1Destination.Second.Name, entry.id)) {
+            is ResultState.Delivered -> name = closed.value.name
+            ResultState.Cancelled -> name = "cancelled"
+            // Pending is never returned by consumeResult. Null means there was nothing to close.
+            ResultState.Pending, null -> Unit
+        }
+    }
 
     Column {
-        Text("Result: ${name ?: "-"}")
+        Text(if (request == ResultState.Pending) "Result: waiting…" else "Result: ${name ?: "-"}")
 
         Button(onClick = {
-//            navController.navigate(
-//                entry = KompassEntry(
-//                    destinationId = Sample1Destination.Second.id,
-//                    scopeId = Sample1Destination.Second.defaultScope(),
-//                    pendingResultKey = navResultKey
-//                )
-//            )
-            // or
-            navController.navigate(
-                entry = Sample1Destination.Second.toKompassEntry(
-                    pendingResultKey = navResultKey
-                )
+            // navigateForResult records that this entry waits for an answer. Without it, Back
+            // could not be told apart from "the screen is still open".
+            navController.navigateForResult(
+                entry = Sample1Destination.Second.toKompassEntry(),
+                resultKey = Sample1Destination.Second.Name,
             )
         }) {
             Text("Open Second")
@@ -127,11 +149,19 @@ private fun Sample1First(
 private fun Sample1Second(
     navController: KompassNavController
 ) {
-    Button(onClick = {
-        navController.pop(
-            result = NameResult("Luke Skywalker")
-        )
-    }) {
-        Text("Return Result")
+    Column {
+        Button(onClick = {
+            navController.pop(
+                result = NameResult("Luke Skywalker"),
+                resultKey = Sample1Destination.Second.Name
+            )
+        }) {
+            Text("Return Result")
+        }
+
+        // Back does the same thing, and the caller reads ResultState.Cancelled.
+        Button(onClick = { navController.pop() }) {
+            Text("Cancel")
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.tekmoon.kompass
 
 import androidx.compose.runtime.Stable
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 
@@ -112,15 +113,13 @@ fun <T : Any> TypedDestination<T>.toKompassEntry(
     args: T,
     json: Json,
     scopeId: NavigationScopeId = defaultScope(),
-    pendingResultKey: String? = null,
     metadata: Map<String, String> = emptyMap(),
 ): KompassEntry =
     KompassEntry(
         destinationId = id,
         args = encodeArgs(args, json),
         scopeId = scopeId,
-        pendingResultKey = pendingResultKey,
-        metadata = metadata,
+        metadata = metadata.toPersistentMap(),
     )
 
 // ----------------------------------------------------------------------------
@@ -137,8 +136,6 @@ fun <T : Any> TypedDestination<T>.toKompassEntry(
  * @param destination The typed destination to navigate to.
  * @param args Typed arguments for the destination.
  * @param scopeId Optional scope override. Defaults to the destination's [defaultScope].
- * @param pendingResultKey Optional key for [NavigationResult] return when this
- * entry is later popped.
  * @param metadata Presentation hints for the shell.
  * @param clearBackStack Whether to clear the back stack before navigating.
  * @param popUpTo Optional destination ID to pop up to before navigating.
@@ -149,7 +146,6 @@ fun <T : Any> KompassNavController.navigateTo(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
-    pendingResultKey: String? = null,
     clearBackStack: Boolean = false,
     popUpTo: String? = null,
     popUpToInclusive: Boolean = false,
@@ -160,7 +156,6 @@ fun <T : Any> KompassNavController.navigateTo(
         args = args,
         json = json,
         scopeId = scopeId,
-        pendingResultKey = pendingResultKey,
         metadata = metadata,
     )
     navigate(
@@ -256,19 +251,15 @@ fun <T : Any> KompassNavController.encodeArgs(
  * @param destination The typed destination this entry targets.
  * @param args Typed arguments for the destination.
  * @param scopeId Optional scope override. Defaults to the destination's [defaultScope].
- * @param pendingResultKey Optional key for [NavigationResult] return when this
- * entry is later popped.
  */
 fun <T : Any> KompassNavController.toKompassEntry(
     destination: TypedDestination<T>,
     args: T,
     scopeId: NavigationScopeId = destination.defaultScope(),
-    pendingResultKey: String? = null,
     metadata: Map<String, String> = emptyMap(),
 ): KompassEntry = destination.toKompassEntry(
     args = args,
     json = json,
     scopeId = scopeId,
-    pendingResultKey = pendingResultKey,
     metadata = metadata,
 )

@@ -1,8 +1,13 @@
 package com.tekmoon.kompass
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.Stable
 import com.tekmoon.kompass.util.randomUUID
+import kotlinx.collections.immutable.ImmutableMap
+import kotlinx.collections.immutable.PersistentMap
+import kotlinx.collections.immutable.persistentMapOf
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.serialization.EncodeDefault
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
@@ -31,18 +36,39 @@ interface Destination {
 fun Destination.toKompassEntry(
     args: ArgsJson? = null,
     scopeId: NavigationScopeId = defaultScope(),
-    pendingResultKey: String? = null,
-    results: Map<String, NavigationResult> = emptyMap(),
     metadata: Map<String, String> = emptyMap()
 ): KompassEntry =
     KompassEntry(
         destinationId = id,
         args = args,
         scopeId = scopeId,
-        pendingResultKey = pendingResultKey,
-        results = results,
-        metadata = metadata
+        metadata = metadata.toPersistentMap()
     )
+
+/**
+ * Builds a [KompassEntry] from a raw destination ID.
+ *
+ * Prefer [toKompassEntry] when a [Destination] object is at hand. Use this when only the ID is
+ * known, which is the usual case inside a [DeepLinkHandler] that parses a URI.
+ *
+ * It cannot set result state. Only the reducer may do that.
+ *
+ * @param destinationId Identifier of the destination to render.
+ * @param args Optional encoded arguments.
+ * @param scopeId Scope the entry belongs to. Defaults to the same value [defaultScope] produces.
+ * @param metadata Presentation hints for the shell.
+ */
+fun kompassEntry(
+    destinationId: String,
+    args: ArgsJson? = null,
+    scopeId: NavigationScopeId = NavigationScopeId("entry:$destinationId"),
+    metadata: Map<String, String> = emptyMap(),
+): KompassEntry = KompassEntry(
+    destinationId = destinationId,
+    args = args,
+    scopeId = scopeId,
+    metadata = metadata.toPersistentMap(),
+)
 
 /**
  * Marker interface representing a navigation result.
@@ -84,12 +110,6 @@ typealias ArgsJson = String
  * @param scopeId Identifier of the navigation scope associated with this entry.
  * Scopes are used to manage lifecycle-aware resources such as ViewModels.
  *
- * @param pendingResultKey Optional key indicating that this entry expects
- * a navigation result when it is popped.
- *
- * @param results Map of delivered navigation results keyed by result identifier.
- * Results are immutable once delivered.
- *
  * @param metadata Presentation hints for the shell, keyed by name. This says **how** to show the
  * destination, while [args] says **what** the screen receives. Keep the two apart: [args] belongs
  * to the screen, and [metadata] belongs to whoever draws around it.
@@ -107,68 +127,120 @@ typealias ArgsJson = String
  *
  * Occurrence identity is managed by Kompass. [id] is read-only and can be used as a
  * content key in custom animated layouts. Sharing [scopeId] does not merge UI state.
+ *
+ * Build an entry with [toKompassEntry]. The constructor is internal, because an entry also carries
+ * result state that only the reducer may set.
  */
 @OptIn(ExperimentalSerializationApi::class)
+@Immutable
 @Serializable
-class KompassEntry(
+class KompassEntry internal constructor(
     val destinationId: String,
     val args: ArgsJson? = null,
     val scopeId: NavigationScopeId,
-    val pendingResultKey: String? = null,
-    val results: Map<String, NavigationResult> = emptyMap(),
-    val metadata: Map<String, String> = emptyMap(),
-) {
+    /**
+     * Presentation hints, as an immutable map.
+     *
+     * The public builders take a plain `Map` and convert here, so a caller keeps `mapOf(...)` and
+     * the entry never holds a reference the caller can still change. Compose also reads an
+     * [ImmutableMap] as a stable parameter, which a `Map` is not.
+     */
+    @Serializable(with = MetadataSerializer::class)
+    val metadata: ImmutableMap<String, String> = persistentMapOf(),
+    /**
+     * Name of the [ResultKey] this entry waits for, or null when it waits for nothing.
+     *
+     * [KompassNavController.navigateForResult] writes it, and delivery, cancellation and
+     * [KompassNavController.consumeResult] clear it. It records **that** the entry is waiting;
+     * the key that routes an answer travels with [KompassNavController.pop] instead.
+     */
+    val awaitingResultKey: String? = null,
+    /**
+     * Closed result requests, keyed by result name.
+     *
+     * Internal, so an application cannot depend on the storage shape. Read a result with
+     * [peekResult] and close it with [KompassNavController.consumeResult].
+     *
+     * A [PersistentMap] rather than an [ImmutableMap], because the reducer adds and removes one key
+     * at a time and needs the functional `plus` and `minus`.
+     */
+    @Serializable(with = StoredResultsSerializer::class)
+    internal val results: PersistentMap<String, StoredResult> = persistentMapOf(),
+    /**
+     * Stable, library-managed occurrence key for custom layouts.
+     *
+     * A constructor parameter rather than a `var` assigned after construction, so nothing about an
+     * entry changes once it exists and [Immutable] is a promise the class actually keeps.
+     */
     @EncodeDefault
     @SerialName("id")
-    private var occurrenceId: String = randomUUID()
+    val id: String = randomUUID(),
+) {
 
-    /** Stable, library-managed occurrence key for custom layouts. */
-    val id: String get() = occurrenceId
-
-    /** Copies payload while retaining identity; a different destination or scope starts a new occurrence. */
+    /**
+     * Copies the payload while retaining identity.
+     *
+     * A different destination or scope starts a new occurrence. Result state is carried over and
+     * cannot be set here, because only the reducer may change it.
+     */
     fun copy(
         destinationId: String = this.destinationId,
         args: ArgsJson? = this.args,
         scopeId: NavigationScopeId = this.scopeId,
-        pendingResultKey: String? = this.pendingResultKey,
-        results: Map<String, NavigationResult> = this.results,
         metadata: Map<String, String> = this.metadata,
-    ): KompassEntry = KompassEntry(destinationId, args, scopeId, pendingResultKey, results, metadata).also {
-        if (scopeId == this.scopeId && destinationId == this.destinationId) it.occurrenceId = occurrenceId
-    }
+    ): KompassEntry = copyInternal(destinationId, args, scopeId, metadata.toPersistentMap())
 
-    internal fun withIdentityOf(entry: KompassEntry): KompassEntry = copy().also {
-        it.occurrenceId = entry.id
-    }
+    internal fun copyInternal(
+        destinationId: String = this.destinationId,
+        args: ArgsJson? = this.args,
+        scopeId: NavigationScopeId = this.scopeId,
+        metadata: ImmutableMap<String, String> = this.metadata,
+        awaitingResultKey: String? = this.awaitingResultKey,
+        results: PersistentMap<String, StoredResult> = this.results,
+    ): KompassEntry = KompassEntry(
+        destinationId, args, scopeId, metadata, awaitingResultKey, results,
+        // A different destination or scope is a different occurrence, so it takes a fresh ID.
+        id = if (scopeId == this.scopeId && destinationId == this.destinationId) id else randomUUID(),
+    )
+
+    internal fun withIdentityOf(entry: KompassEntry): KompassEntry = KompassEntry(
+        destinationId, args, scopeId, metadata, awaitingResultKey, results, id = entry.id,
+    )
 
     internal fun newOccurrence(): KompassEntry =
-        KompassEntry(destinationId, args, scopeId, pendingResultKey, results, metadata)
+        KompassEntry(destinationId, args, scopeId, metadata, awaitingResultKey, results)
+
+    /** True when the request under [key] ended without an answer. */
+    @PublishedApi
+    internal fun isResultCancelled(key: String): Boolean = results[key] is StoredResult.Cancelled
+
+    /** The value delivered under [key], or null when nothing was delivered. */
+    @PublishedApi
+    internal fun deliveredResult(key: String): NavigationResult? =
+        (results[key] as? StoredResult.Delivered)?.value
 
     operator fun component1() = destinationId
     operator fun component2() = args
     operator fun component3() = scopeId
-    operator fun component4() = pendingResultKey
-    operator fun component5() = results
-    operator fun component6() = metadata
 
     override fun equals(other: Any?): Boolean = other is KompassEntry &&
         id == other.id && destinationId == other.destinationId && args == other.args &&
-        scopeId == other.scopeId && pendingResultKey == other.pendingResultKey &&
-        results == other.results && metadata == other.metadata
+        scopeId == other.scopeId && metadata == other.metadata &&
+        awaitingResultKey == other.awaitingResultKey && results == other.results
 
     override fun hashCode(): Int {
         var result = id.hashCode()
         result = 31 * result + destinationId.hashCode()
         result = 31 * result + (args?.hashCode() ?: 0)
         result = 31 * result + scopeId.hashCode()
-        result = 31 * result + (pendingResultKey?.hashCode() ?: 0)
-        result = 31 * result + results.hashCode()
-        return 31 * result + metadata.hashCode()
+        result = 31 * result + metadata.hashCode()
+        result = 31 * result + (awaitingResultKey?.hashCode() ?: 0)
+        return 31 * result + results.hashCode()
     }
 
     override fun toString(): String = "KompassEntry(destinationId=$destinationId, args=$args, " +
-        "scopeId=$scopeId, pendingResultKey=$pendingResultKey, results=$results, " +
-        "metadata=$metadata, id=$id)"
+        "scopeId=$scopeId, metadata=$metadata, awaitingResultKey=$awaitingResultKey, " +
+        "results=$results, id=$id)"
 }
 
 /**

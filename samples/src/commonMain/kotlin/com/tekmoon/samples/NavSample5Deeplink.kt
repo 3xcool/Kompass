@@ -1,6 +1,7 @@
 package com.tekmoon.samples
 
 import com.tekmoon.kompass.KompassEntry
+import com.tekmoon.kompass.kompassEntry
 import com.tekmoon.kompass.NavigationCommand
 import com.tekmoon.kompass.newScope
 import com.tekmoon.kompass.PathTemplateDeepLinkHandler
@@ -134,7 +135,7 @@ private val profileDeepLinkHandler = PathTemplateDeepLinkHandler("myapp://profil
     listOf(
         NavigationCommand.ReplaceStack(
             listOf(
-                KompassEntry(
+                kompassEntry(
                     destinationId = Sample5Dest.Home.id,
                     scopeId = newScope()
                 ),

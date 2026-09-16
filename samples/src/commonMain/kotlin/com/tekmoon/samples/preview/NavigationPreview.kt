@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.tekmoon.kompass.KompassEntry
+import com.tekmoon.kompass.kompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.NavDirection
 import com.tekmoon.kompass.KompassNavigationGraph
@@ -51,7 +52,7 @@ object DsNavigationPreviewStates {
     fun listOnly(): NavigationState =
         NavigationState(
             backStack = persistentListOf(
-                KompassEntry(
+                kompassEntry(
                     destinationId = PreviewHome.id,
                     scopeId = PreviewHome.defaultScope()
                 )
@@ -61,15 +62,15 @@ object DsNavigationPreviewStates {
     fun listDetail(): NavigationState =
         NavigationState(
             backStack = persistentListOf(
-                KompassEntry(
+                kompassEntry(
                     destinationId = PreviewHome.id,
                     scopeId = PreviewHome.defaultScope()
                 ),
-                KompassEntry(
+                kompassEntry(
                     destinationId = PreviewDetails.id,
                     scopeId = PreviewDetails.defaultScope()
                 ),
-                KompassEntry(
+                kompassEntry(
                     destinationId = PreviewDetails.id,
                     scopeId = PreviewDetails.defaultScope()
                 )

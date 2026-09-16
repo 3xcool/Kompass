@@ -13,6 +13,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -70,6 +71,14 @@ class KompassNavController internal constructor(
     private val deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
     internal val entryOwners: KompassOwnerStore = KompassOwnerStore(),
     val restorationFailure: Throwable? = null,
+    /**
+     * Receives a navigation request that Kompass could not honour, such as a result delivered to an
+     * entry that is not waiting for it.
+     *
+     * Kompass reports and leaves the back stack unchanged. It never throws, because a repeated tap
+     * on a button can produce a rejected delivery.
+     */
+    private val onNavigationError: (NavigationResultException) -> Unit = {},
 ) {
     private val observedState = MutableStateFlow(navState.value)
     /** Read-only, conflated state observation; this is not a queue of navigation events. */
@@ -105,20 +114,41 @@ class KompassNavController internal constructor(
     }
 
     /**
-     * Returns and removes a matching result once. Missing entry/key or wrong type returns null
-     * without removing anything. Pass entryId when consuming from a covered occurrence.
-     * Call from an event handler or effect, never while rendering composition.
+     * Closes a result request and returns how it ended.
+     *
+     * It returns [ResultState.Delivered] or [ResultState.Cancelled] once, and removes that state
+     * from the entry. It never returns [ResultState.Pending]: an open request is left untouched and
+     * reported as null, so a later call can still collect the answer.
+     *
+     * A missing entry, a missing key or a delivered value of another type returns null and removes
+     * nothing. Pass [entryId] when consuming from an occurrence that is not on top.
+     *
+     * Call it from an event handler or an effect, never while rendering. It dispatches a command,
+     * and a command dispatched during composition is a side effect in the render pass.
      */
-    inline fun <reified T : NavigationResult> consumeResult(key: String, entryId: String = currentEntry.id): T? =
-        consumeResultMatching(key, entryId) { it is T } as? T
+    @Suppress("UNCHECKED_CAST")
+    inline fun <reified T : NavigationResult> consumeResult(
+        key: ResultKey<T>,
+        entryId: String = currentEntry.id,
+    ): ResultState<T>? = consumeResultMatching(key.name, entryId) { it is T } as ResultState<T>?
 
     @PublishedApi
-    internal fun consumeResultMatching(key: String, entryId: String, matches: (NavigationResult) -> Boolean): NavigationResult? {
+    internal fun consumeResultMatching(
+        key: String,
+        entryId: String,
+        matches: (NavigationResult) -> Boolean,
+    ): ResultState<NavigationResult>? {
         check(!entryOwners.isClosed) { "The navigation controller has been closed" }
-        val result = backStack.firstOrNull { it.id == entryId }?.results?.get(key) ?: return null
-        if (!matches(result)) return null
+        val entry = backStack.firstOrNull { it.id == entryId } ?: return null
+        val state = when {
+            entry.isResultCancelled(key) -> ResultState.Cancelled
+            else -> entry.deliveredResult(key)
+                ?.takeIf(matches)
+                ?.let { ResultState.Delivered(it) }
+                ?: return null
+        }
         dispatch(NavigationCommand.ConsumeResult(entryId, key))
-        return result
+        return state
     }
 
 
@@ -168,6 +198,15 @@ class KompassNavController internal constructor(
     private fun dispatch(command: NavigationCommand) {
         check(!entryOwners.isClosed) { "The navigation controller has been closed" }
         val oldState = navState.value
+        // Report before the reducer runs. Both checks are pure functions the reducer shares, so a
+        // report and the state change can never disagree. A Pop issue also blocks the command; a
+        // Navigate report does not, because opening the destination is what the user asked for.
+        val report = when (command) {
+            is NavigationCommand.Pop -> resultIssue(oldState, command)
+            is NavigationCommand.Navigate -> discardedResultReport(oldState, command)
+            else -> null
+        }
+        report?.let { onNavigationError(NavigationResultException(it)) }
         val normalized = command.withDistinctOccurrences(oldState.backStack)
         val newState = handler.reduce(oldState, normalized)
         newState.requireValid()
@@ -228,21 +267,68 @@ class KompassNavController internal constructor(
      *
      * This method is a convenience wrapper over [NavigationCommand.Pop].
      *
-     * @param result Optional [NavigationResult] to be delivered
-     * to the previous back stack entry.
-     *
      * @param count Number of entries to pop from the back stack.
      *
      * @param popUntil Optional destination ID indicating the back
      * stack should be popped until that destination is reached.
      */
     fun pop(
-        result: NavigationResult? = null,
         count: Int = 1,
-        popUntil: String? = null
+        popUntil: String? = null,
+    ) {
+        dispatch(NavigationCommand.Pop(count = count, popUntil = popUntil))
+    }
+
+    /**
+     * Pops one entry and delivers a typed result to the entry below it.
+     *
+     * The receiving entry must have opened this destination with [navigateForResult] under the same
+     * [resultKey]. Any other case is rejected whole: nothing is popped, no result is stored, and the
+     * controller reports a [NavigationResultException] through `onNavigationError`. A repeated tap
+     * that pops twice is one of those cases, so this never throws, and the second tap never takes an
+     * extra screen with it.
+     *
+     * It takes no `count` or `popUntil`, because a result can only reach the entry one step below.
+     *
+     * @param result Result to be stored under [resultKey].
+     * @param resultKey Key the receiving entry waits for.
+     */
+    fun <T : NavigationResult> pop(
+        result: T,
+        resultKey: ResultKey<T>,
+    ) {
+        dispatch(NavigationCommand.Pop(result = result, resultKey = resultKey))
+    }
+
+    /**
+     * Navigates to [entry] and records that the current entry waits for a result under [resultKey].
+     *
+     * The request opens at once: the current entry reads [ResultState.Pending] from [peekResult]
+     * until the destination answers with [pop] or leaves the stack without answering. Back,
+     * predictive Back and a plain [pop] all end the request as [ResultState.Cancelled].
+     *
+     * A second request under the same key replaces the first. The navigation still happens, and an
+     * answer or a cancellation that was never consumed is dropped and reported through
+     * `onNavigationError`.
+     *
+     * It offers no `clearBackStack` or `popUpTo`, because both can remove the entry that would
+     * receive the answer.
+     *
+     * @param entry The destination entry to navigate to.
+     * @param resultKey Key this entry waits for.
+     * @param reuseIfExists Whether an existing matching entry should be moved to the top.
+     */
+    fun <T : NavigationResult> navigateForResult(
+        entry: KompassEntry,
+        resultKey: ResultKey<T>,
+        reuseIfExists: Boolean = false,
     ) {
         dispatch(
-            NavigationCommand.Pop(result, count, popUntil)
+            NavigationCommand.Navigate(
+                entry = entry,
+                reuseIfExists = reuseIfExists,
+                awaitingResultKey = resultKey.name,
+            )
         )
     }
 
@@ -379,11 +465,15 @@ fun createKompassNavController(
     savedNavigationState: String? = null,
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
+    onNavigationError: (NavigationResultException) -> Unit = {},
 ): KompassNavController {
     val json = navigationJson(serializersModule)
     val restored = restoreNavigation(savedNavigationState, initialState, json, restorePolicy)
     restored.failure?.let(onRestoreFailure)
-    return KompassNavController(restored.state, NavigationHandler(), json, deepLinkHandlers, restorationFailure = restored.failure)
+    return KompassNavController(
+        restored.state, NavigationHandler(), json, deepLinkHandlers,
+        restorationFailure = restored.failure, onNavigationError = onNavigationError,
+    )
 }
 
 /** External-ownership convenience overload starting at a destination. */
@@ -395,9 +485,10 @@ fun createKompassNavController(
     savedNavigationState: String? = null,
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
+    onNavigationError: (NavigationResultException) -> Unit = {},
 ): KompassNavController = createKompassNavController(
     defaultNavigationState(startDestination.toKompassEntry(scopeId = scopeId ?: startDestination.defaultScope())),
-    serializersModule, deepLinkHandlers, savedNavigationState, restorePolicy, onRestoreFailure,
+    serializersModule, deepLinkHandlers, savedNavigationState, restorePolicy, onRestoreFailure, onNavigationError,
 )
 
 /** Remember a controller with automatic owner retention and saved navigation recovery. */
@@ -409,6 +500,7 @@ fun rememberKompassNavController(
     deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
+    onNavigationError: (NavigationResultException) -> Unit = {},
 ): KompassNavController {
     val json = remember(serializersModule) { navigationJson(serializersModule) }
     val initial = remember {
@@ -423,10 +515,13 @@ fun rememberKompassNavController(
         )
     }) { NavigationRestoration(mutableStateOf(initial)) }
     val reportFailure by rememberUpdatedState(onRestoreFailure)
+    val reportNavigationError by rememberUpdatedState(onNavigationError)
     LaunchedEffect(restored) { restored.failure?.let(reportFailure) }
     val owners = rememberKompassOwnerStore(restored.state.value.backStack)
     return remember(owners) {
-        KompassNavController(restored.state, NavigationHandler(), json, deepLinkHandlers, owners, restored.failure)
+        KompassNavController(
+            restored.state, NavigationHandler(), json, deepLinkHandlers, owners, restored.failure,
+        ) { reportNavigationError(it) }
     }
 }
 
@@ -440,9 +535,12 @@ fun rememberKompassNavController(
     deepLinkHandlers: ImmutableList<DeepLinkHandler> = persistentListOf(),
     restorePolicy: NavigationRestorePolicy = NavigationRestorePolicy.UseInitialState,
     onRestoreFailure: (Throwable) -> Unit = {},
+    onNavigationError: (NavigationResultException) -> Unit = {},
 ): KompassNavController {
     val initial = remember { defaultNavigationState(startDestination.toKompassEntry(scopeId = scopeId ?: startDestination.defaultScope())) }
-    return rememberKompassNavController(initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure)
+    return rememberKompassNavController(
+        initial, serializersModule, deepLinkUri, deepLinkHandlers, restorePolicy, onRestoreFailure, onNavigationError,
+    )
 }
 
 /**
@@ -464,6 +562,6 @@ private fun distinctOccurrences(entries: List<KompassEntry>): List<KompassEntry>
 internal fun NavigationCommand.withDistinctOccurrences(backStack: List<KompassEntry>): NavigationCommand = when {
     this is NavigationCommand.Navigate && !reuseIfExists && backStack.any { it.id == entry.id } ->
         copy(entry = entry.newOccurrence())
-    this is NavigationCommand.ReplaceStack -> copy(entries = distinctOccurrences(entries))
+    this is NavigationCommand.ReplaceStack -> copy(entries = distinctOccurrences(entries).toImmutableList())
     else -> this
 }

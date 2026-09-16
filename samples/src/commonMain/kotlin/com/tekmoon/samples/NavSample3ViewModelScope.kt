@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.tekmoon.kompass.KompassEntry
+import com.tekmoon.kompass.kompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.KompassNavigationGraph
 import com.tekmoon.kompass.KompassNavigationHost
@@ -154,7 +155,7 @@ private fun FirstScreen(
 
         Button(onClick = {
             navController.navigate(
-                entry = KompassEntry(
+                entry = kompassEntry(
                     destinationId = Sample3Dest.Second.id,
                     scopeId = Sample3Dest.Second.defaultScope()
                 )

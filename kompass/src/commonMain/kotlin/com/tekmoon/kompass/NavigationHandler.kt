@@ -44,32 +44,35 @@ class NavigationHandler() {
         return when (command) {
 
             is NavigationCommand.Navigate -> {
-                val baseStack = when {
-                    command.clearBackStack -> persistentListOf<KompassEntry>()
-                    command.popUpTo != null -> popUpToDestination(
-                        state.backStack,
-                        command.popUpTo,
-                        command.popUpToInclusive
-                    )
+                val baseStack = navigateBaseStack(state, command)
 
-                    else -> state.backStack
-                }
+                // Record the request on the entry that starts it, before the new entry is pushed.
+                // A repeated request under the same key supersedes the previous one, so any answer
+                // still sitting there is dropped. Failing here would turn a repeated tap into an
+                // exception.
+                val requestingStack = command.awaitingResultKey?.let { key ->
+                    if (baseStack.isEmpty()) baseStack
+                    else (baseStack.dropLast(1) + baseStack.last().copyInternal(
+                        awaitingResultKey = key,
+                        results = baseStack.last().results.remove(key),
+                    )).toImmutableList()
+                } ?: baseStack
 
                 val newStack = if (command.reuseIfExists) {
                     val existingIndex =
-                        baseStack.indexOfLast { it.destinationId == command.entry.destinationId }
+                        requestingStack.indexOfLast { it.destinationId == command.entry.destinationId }
                     if (existingIndex >= 0) {
                         // Move the matching occurrence to the top, updating its payload but retaining identity
-                        (baseStack.filterIndexed { index, _ -> index != existingIndex } +
-                            (if (command.entry.scopeId == baseStack[existingIndex].scopeId)
-                                command.entry.withIdentityOf(baseStack[existingIndex]) else command.entry)).toImmutableList()
+                        (requestingStack.filterIndexed { index, _ -> index != existingIndex } +
+                            (if (command.entry.scopeId == requestingStack[existingIndex].scopeId)
+                                command.entry.withIdentityOf(requestingStack[existingIndex]) else command.entry)).toImmutableList()
                     } else {
                         // Entry doesn't exist, add it
-                        (baseStack + command.entry).toImmutableList()
+                        (requestingStack + command.entry).toImmutableList()
                     }
                 } else {
                     // Regular behavior: always add new instance
-                    (baseStack + command.entry).toImmutableList()
+                    (requestingStack + command.entry).toImmutableList()
                 }
 
                 state.copy(backStack = newStack)
@@ -78,6 +81,11 @@ class NavigationHandler() {
             is NavigationCommand.Pop -> {
                 val stack = state.backStack
                 if (stack.size <= 1) return state
+
+                // A delivery that cannot be honoured changes nothing at all. Popping anyway would
+                // remove a screen the user did not ask to leave: on the second tap of a repeated
+                // tap, the first pop already delivered and cleared the request.
+                if (resultIssue(state, command) != null) return state
 
                 val newStack: List<KompassEntry> =
                     when {
@@ -104,34 +112,34 @@ class NavigationHandler() {
                         }
                     }
 
-                // Attach navigation result (only for single pop)
-                val finalStack =
-                    if (command.result != null &&
-                        command.count == 1 &&
-                        command.popUntil == null &&
-                        newStack.isNotEmpty()
-                    ) {
-                        val popped = stack.last()
-                        val key = popped.pendingResultKey
+                // A command that pops nothing must not close a request either. popUntil naming the
+                // top entry lands here: the stack is already in the wanted shape.
+                if (newStack.size == stack.size) return state
 
-                        if (key != null) {
-                            val receiver = newStack.last()
-                            newStack.dropLast(1) + receiver.copy(
-                                results = receiver.results + (key to command.result)
-                            )
-                        } else {
-                            newStack
-                        }
-                    } else {
-                        newStack
-                    }
+                // Close the request of the entry the pop reveals. A matching answer is delivered;
+                // a pop with no answer cancels, because the destination that had to answer is
+                // leaving the stack. A delivery that does not match never reaches this point.
+                val survivor = newStack.last()
+                val awaited = survivor.awaitingResultKey
+                val finalStack = if (awaited == null) newStack else {
+                    val outcome = command.result
+                        ?.let { StoredResult.Delivered(it) }
+                        ?: StoredResult.Cancelled
+                    newStack.dropLast(1) + survivor.copyInternal(
+                        awaitingResultKey = null,
+                        results = survivor.results.put(awaited, outcome),
+                    )
+                }
 
                 state.copy(backStack = finalStack.toImmutableList())
             }
 
             is NavigationCommand.ConsumeResult -> {
                 state.copy(backStack = state.backStack.map { entry ->
-                    if (entry.id == command.entryId) entry.copy(results = entry.results - command.key) else entry
+                    if (entry.id == command.entryId) entry.copyInternal(
+                        awaitingResultKey = entry.awaitingResultKey.takeIf { it != command.key },
+                        results = entry.results.remove(command.key),
+                    ) else entry
                 }.toImmutableList())
             }
 
@@ -145,34 +153,102 @@ class NavigationHandler() {
         }
     }
 
-    /**
-     * Helper function to pop entries up to a destination.
-     *
-     * @param backStack Current immutable back stack.
-     *
-     * @param destinationId Identifier of the destination to pop up to.
-     *
-     * @param inclusive If true, removes the destination itself;
-     * if false, keeps the destination in the back stack.
-     *
-     * @return The resulting back stack after applying the pop operation.
-     */
-    private fun popUpToDestination(
-        backStack: ImmutableList<KompassEntry>,
-        destinationId: String,
-        inclusive: Boolean
-    ): ImmutableList<KompassEntry> {
-        val index = backStack.indexOfLast { it.destinationId == destinationId }
-        return if (index >= 0) {
-            if (inclusive) {
-                backStack.take(index).toImmutableList()
-            } else {
-                backStack.take(index + 1).toImmutableList()
-            }
+}
+
+/**
+ * Helper function to pop entries up to a destination.
+ *
+ * @param backStack Current immutable back stack.
+ *
+ * @param destinationId Identifier of the destination to pop up to.
+ *
+ * @param inclusive If true, removes the destination itself;
+ * if false, keeps the destination in the back stack.
+ *
+ * @return The resulting back stack after applying the pop operation.
+ */
+private fun popUpToDestination(
+    backStack: ImmutableList<KompassEntry>,
+    destinationId: String,
+    inclusive: Boolean
+): ImmutableList<KompassEntry> {
+    val index = backStack.indexOfLast { it.destinationId == destinationId }
+    return if (index >= 0) {
+        if (inclusive) {
+            backStack.take(index).toImmutableList()
         } else {
-            backStack
+            backStack.take(index + 1).toImmutableList()
         }
+    } else {
+        backStack
     }
+}
+
+/**
+ * The stack a [NavigationCommand.Navigate] starts from, after its stack policy is applied and
+ * before its entry is pushed. Its last element is the entry that records a result request.
+ */
+internal fun navigateBaseStack(
+    state: NavigationState,
+    command: NavigationCommand.Navigate,
+): ImmutableList<KompassEntry> = when {
+    command.clearBackStack -> persistentListOf()
+    command.popUpTo != null ->
+        popUpToDestination(state.backStack, command.popUpTo, command.popUpToInclusive)
+
+    else -> state.backStack
+}
+
+/**
+ * Explains why a [NavigationCommand.Pop] cannot deliver its result, or returns null when the
+ * delivery is valid or when the command carries no result at all.
+ *
+ * The reducer and [KompassNavController] share this function, so the state change and the report
+ * can never disagree.
+ */
+internal fun resultIssue(state: NavigationState, command: NavigationCommand.Pop): String? {
+    if (command.result == null && command.resultKey == null) return null
+    val key = command.resultKey?.name
+        ?: return "pop received a result with no result key. Use pop(result, resultKey)."
+    if (command.result == null) return "pop received the result key \"$key\" with no result."
+    if (command.count != 1 || command.popUntil != null) {
+        return "A result cannot be delivered while popping more than one entry. Key \"$key\"."
+    }
+    if (state.backStack.size <= 1) {
+        return "The root entry cannot be popped, so \"$key\" was not delivered."
+    }
+    val survivor = state.backStack[state.backStack.size - 2]
+    return when (survivor.awaitingResultKey) {
+        key -> null
+        null -> "The entry \"${survivor.destinationId}\" is not waiting for a result. " +
+            "Open the destination with navigateForResult to receive \"$key\"."
+
+        else -> "The entry \"${survivor.destinationId}\" waits for " +
+            "\"${survivor.awaitingResultKey}\", not \"$key\"."
+    }
+}
+
+/**
+ * Explains what a new result request throws away, or returns null when it throws away nothing.
+ *
+ * Unlike [resultIssue] this never blocks the command. Opening the destination is what the user
+ * asked for, and refusing it would leave a button that does nothing. A stale answer only survives
+ * this long when the screen never called [KompassNavController.consumeResult], so the report is for
+ * whoever wrote that screen.
+ */
+internal fun discardedResultReport(
+    state: NavigationState,
+    command: NavigationCommand.Navigate,
+): String? {
+    val key = command.awaitingResultKey ?: return null
+    val requester = navigateBaseStack(state, command).lastOrNull()
+        ?: return "A result request under \"$key\" has no entry to belong to, because the command " +
+            "cleared the whole back stack. Use navigateForResult, which has no stack options."
+    val previous = requester.results[key] ?: return null
+    val outcome = if (previous is StoredResult.Delivered) "an answer" else "a cancellation"
+    return "The entry \"${requester.destinationId}\" opened a new request under \"$key\" while " +
+        "$outcome to the previous one was never consumed. The old state is dropped. Call " +
+        "consumeResult when the request closes."
 }
 
 /**
@@ -206,22 +282,36 @@ sealed interface NavigationCommand {
      * already exists in the stack, moves the last matching occurrence to the top and updates
      * its payload. Its identity (and UI state) is retained when the scope is unchanged;
      * explicitly supplying a different scope starts new ownership.
+     *
+     * @param awaitingResultKey Name of the [ResultKey] the current top entry starts waiting for.
+     * A repeated request under the same name replaces the previous one. Combining it with
+     * [clearBackStack] or [popUpTo] can remove the entry that would receive the answer; prefer
+     * [KompassNavController.navigateForResult], which does not offer those options.
      */
     data class Navigate(
         val entry: KompassEntry,
         val clearBackStack: Boolean = false,
         val popUpTo: String? = null,
         val popUpToInclusive: Boolean = false,
-        val reuseIfExists: Boolean = false
+        val reuseIfExists: Boolean = false,
+        val awaitingResultKey: String? = null
     ) : NavigationCommand
 
     /**
      * Pop entries from the back stack.
      *
-     * @param result Optional [NavigationResult] to be delivered to
-     * the previous back stack entry.
+     * Every pop closes the request of the entry it reveals. A result that matches the awaited key
+     * is delivered; any other pop ends the request as [ResultState.Cancelled]. Back and predictive
+     * Back reach the reducer through this command, so both cancel an open request.
      *
-     * @param count Number of entries to pop. Defaults to 1.
+     * @param result Optional [NavigationResult] to be delivered to
+     * the previous back stack entry under [resultKey].
+     *
+     * @param resultKey Optional typed key under which the result is stored. It must match the
+     * awaited key of the revealed entry, otherwise the delivery is rejected and reported.
+     *
+     * @param count Number of entries to pop. Defaults to 1. A result is delivered only when this
+     * is 1 and [popUntil] is null.
      *
      * @param popUntil Optional destination ID indicating that all
      * entries after that destination should be popped.
@@ -229,7 +319,8 @@ sealed interface NavigationCommand {
     data class Pop(
         val result: NavigationResult? = null,
         val count: Int = 1,
-        val popUntil: String? = null
+        val popUntil: String? = null,
+        val resultKey: ResultKey<*>? = null
     ) : NavigationCommand
 
     /**
@@ -260,11 +351,14 @@ sealed interface NavigationCommand {
      * @param entries The new back stack, from root to top. It must not be empty.
      */
     data class ReplaceStack(
-        val entries: List<KompassEntry>
+        val entries: ImmutableList<KompassEntry>
     ) : NavigationCommand {
 
         init {
             require(entries.isNotEmpty()) { "ReplaceStack requires at least one entry" }
         }
+
+        /** Convenience for `listOf(...)` call sites. It converts, so the command holds no caller list. */
+        constructor(entries: List<KompassEntry>) : this(entries.toImmutableList())
     }
 }
