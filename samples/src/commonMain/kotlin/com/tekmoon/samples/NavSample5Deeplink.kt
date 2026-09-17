@@ -222,10 +222,13 @@ fun Sample5_DeepLink(
             deepLinkHandlers = persistentListOf(profileDeepLinkHandler)
         )
 
-    LaunchedEffect(navController) {
-        deepLinkChannel?.observe { uri ->
+    // A subscription needs an owner. One channel carries each URI to exactly one collector, so an
+    // observer left behind by a previous navController would steal links from this one.
+    DisposableEffect(navController, deepLinkChannel) {
+        val subscription = deepLinkChannel?.observe { uri ->
             navController.applyDeepLink(uri = uri)
         }
+        onDispose { subscription?.cancel() }
     }
 
     KompassBackHandler(

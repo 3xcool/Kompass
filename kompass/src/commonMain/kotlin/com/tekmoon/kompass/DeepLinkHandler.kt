@@ -140,11 +140,11 @@ class DeepLinkChannel(
      * Pass a different one on a desktop JVM host that does not add a main dispatcher artifact, and
      * in a test that needs a deterministic dispatcher.
      */
-    context: CoroutineContext = Dispatchers.Main,
+    coroutineContext: CoroutineContext = Dispatchers.Main,
 ) {
 
     private val channel = Channel<String>(Channel.BUFFERED)
-    private val scope = CoroutineScope(SupervisorJob() + context)
+    private val scope = CoroutineScope(SupervisorJob() + coroutineContext)
 
     /**
      * Sends a deep link URI into the channel.
