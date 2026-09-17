@@ -1,6 +1,7 @@
 package com.tekmoon.kompass
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
@@ -98,19 +99,42 @@ class KompassNavController internal constructor(
      */
     val predictiveBack: PredictiveBackState = PredictiveBackState()
 
+    /** False once this controller has let go of its scopes. See [releaseScopes]. */
+    private var holdsScopes = true
+
     init {
         navState.value.requireValid()
         entryOwners.reconcile(navState.value.backStack)
+        // Claim every scope the initial stack carries, so another controller that names the same
+        // scope cannot clear it while this one is alive.
+        navState.value.backStack.mapTo(mutableSetOf()) { it.scopeId }.forEach(NavigationScopes::hold)
+    }
+
+    /**
+     * Lets go of every scope this controller still carries. Idempotent.
+     *
+     * A scope another live controller holds survives. [close] calls this, and the composed
+     * controller calls it when its host leaves composition for good.
+     */
+    internal fun releaseScopes() {
+        if (!holdsScopes) return
+        holdsScopes = false
+        state.backStack.mapTo(mutableSetOf()) { it.scopeId }.forEach(NavigationScopes::unhold)
     }
 
     /** Save navigation payloads. Register NavigationResult subtypes in serializersModule. */
     fun saveNavigationState(): String = json.encodeToString(NavigationState.serializer(KompassEntry.serializer()), state)
 
-    /** Release an externally owned controller. Idempotent; do not call for a temporary host unmount. */
+    /**
+     * Release an externally owned controller. Idempotent; do not call for a temporary host unmount.
+     *
+     * A scope another live controller still carries survives this call. Only the last holder of a
+     * scope clears it.
+     */
     fun close() {
         if (entryOwners.isClosed) return
         entryOwners.close()
-        state.backStack.map { it.scopeId }.toSet().forEach(NavigationScopes::requestClear)
+        releaseScopes()
     }
 
     /**
@@ -215,12 +239,16 @@ class KompassNavController internal constructor(
             directionState = if (command is NavigationCommand.Pop) NavDirection.Pop else NavDirection.Push
         }
 
-        val oldScopes = oldState.backStack.map { it.scopeId }.toSet()
-        val newScopes = newState.backStack.map { it.scopeId }.toSet()
+        val oldScopes = oldState.backStack.mapTo(mutableSetOf()) { it.scopeId }
+        val newScopes = newState.backStack.mapTo(mutableSetOf()) { it.scopeId }
         navState.value = newState
         entryOwners.reconcile(newState.backStack)
-        newScopes.forEach(NavigationScopes::cancelClear)
-        (oldScopes - newScopes).forEach(NavigationScopes::requestClear)
+        // Claim before letting go, so a scope present on both sides never drops to zero holders.
+        if (holdsScopes) {
+            (newScopes - oldScopes).forEach(NavigationScopes::hold)
+            newScopes.forEach(NavigationScopes::cancelClear)
+            (oldScopes - newScopes).forEach(NavigationScopes::unhold)
+        }
         observedState.value = newState
     }
 
@@ -252,9 +280,11 @@ class KompassNavController internal constructor(
      * answer or a cancellation that was never consumed is dropped and reported through
      * `onNavigationError`.
      *
-     * Do not combine it with [clearBackStack]: that removes the entry that would receive the
-     * answer, and the request is dropped and reported. [popUpTo] is safe, and the request lands on
-     * whichever entry ends up below the new one.
+     * A request needs an entry that stays directly below the new one, because that is the only
+     * entry [pop] can answer. Two combinations remove it, and both drop the request and report it:
+     * [clearBackStack], and [reuseIfExists] when the caller reuses its own destination. An
+     * inclusive [popUpTo] that removes the last entry does the same. A plain [popUpTo] is safe, and
+     * the request lands on whichever entry ends up below the new one.
      */
     fun navigate(
         entry: KompassEntry,
@@ -486,11 +516,18 @@ fun rememberKompassNavController(
     val reportNavigationError by rememberUpdatedState(onNavigationError)
     LaunchedEffect(restored) { restored.failure?.let(reportFailure) }
     val owners = rememberKompassOwnerStore(restored.state.value.backStack)
-    return remember(owners) {
+    val controller = remember(owners) {
         KompassNavController(
             restored.state, NavigationHandler(), json, deepLinkHandlers, owners, restored.failure,
         ) { reportNavigationError(it) }
     }
+    val isRecreating = rememberKompassHostRecreation()
+    DisposableEffect(controller) {
+        // Android activity recreation keeps the process-wide scopes, and a new controller claims
+        // them again. Letting go there would clear a ViewModel that a rotation must keep.
+        onDispose { if (!isRecreating()) controller.releaseScopes() }
+    }
+    return controller
 }
 
 /** Remember a controller starting at one destination. */

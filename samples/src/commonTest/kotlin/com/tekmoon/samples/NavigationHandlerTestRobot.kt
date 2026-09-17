@@ -1,11 +1,10 @@
 package com.tekmoon.samples
 
-import com.tekmoon.kompass.KompassEntry
 import com.tekmoon.kompass.Destination
 import com.tekmoon.kompass.NavigationCommand
 import com.tekmoon.kompass.NavigationHandler
 import com.tekmoon.kompass.NavigationState
-import com.tekmoon.kompass.defaultScope
+import com.tekmoon.kompass.toKompassEntry
 import kotlinx.collections.immutable.persistentListOf
 
 class NavigationHandlerTestRobot(
@@ -17,10 +16,7 @@ class NavigationHandlerTestRobot(
     var state: NavigationState =
         NavigationState(
             backStack = persistentListOf(
-                KompassEntry(
-                    destinationId = start.id,
-                    scopeId = start.defaultScope()
-                )
+                start.toKompassEntry()
             )
         )
         private set
@@ -31,10 +27,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = KompassEntry(
-                    destinationId = destination.id,
-                    scopeId = destination.defaultScope()
-                )
+                entry = destination.toKompassEntry()
             )
         )
     }
@@ -72,10 +65,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = KompassEntry(
-                    destinationId = destination.id,
-                    scopeId = destination.defaultScope()
-                ),
+                entry = destination.toKompassEntry(),
                 popUpTo = popUpTo,
                 popUpToInclusive = inclusive
             )
@@ -88,10 +78,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = KompassEntry(
-                    destinationId = destination.id,
-                    scopeId = destination.defaultScope()
-                ),
+                entry = destination.toKompassEntry(),
                 reuseIfExists = true
             )
         )
@@ -103,10 +90,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = KompassEntry(
-                    destinationId = destination.id,
-                    scopeId = destination.defaultScope()
-                ),
+                entry = destination.toKompassEntry(),
                 clearBackStack = true
             )
         )
@@ -122,10 +106,7 @@ class NavigationHandlerTestRobot(
         state = handler.reduce(
             state,
             NavigationCommand.Navigate(
-                entry = KompassEntry(
-                    destinationId = destination.id,
-                    scopeId = destination.defaultScope()
-                ),
+                entry = destination.toKompassEntry(),
                 popUpTo = popUpTo,
                 popUpToInclusive = inclusive,
                 reuseIfExists = true

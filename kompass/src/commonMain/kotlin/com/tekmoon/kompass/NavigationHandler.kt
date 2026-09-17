@@ -1,11 +1,8 @@
 package com.tekmoon.kompass
 
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.PersistentList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlin.collections.plus
-import kotlin.compareTo
 
 /**
  * Reducer responsible for applying [NavigationCommand]s to a [NavigationState].
@@ -44,41 +41,37 @@ class NavigationHandler() {
             is NavigationCommand.Navigate -> {
                 val baseStack = navigateBaseStack(state, command)
 
-                // Record the request on the entry that starts it, before the new entry is pushed.
-                // A repeated request under the same key supersedes the previous one, so any answer
-                // still sitting there is dropped. Failing here would turn a repeated tap into an
-                // exception.
-                val requestingStack = command.pendingResultKey?.let { key ->
-                    if (baseStack.isEmpty()) baseStack
-                    else (baseStack.dropLast(1) + baseStack.last().copyInternal(
-                        pendingResultKey = key,
-                        results = baseStack.last().results.remove(key),
-                    )).toImmutableList()
-                } ?: baseStack
-
-                val newStack = if (command.reuseIfExists) {
+                // Build the stack first, then record the request. Doing it in this order keeps one
+                // rule for every stack policy: the request belongs to the entry that ends up
+                // directly below the new top. reuseIfExists can move the requester itself to the
+                // top, and then no entry is left to receive the answer.
+                val pushedStack = if (command.reuseIfExists) {
                     val existingIndex =
-                        requestingStack.indexOfLast { it.destinationId == command.entry.destinationId }
+                        baseStack.indexOfLast { it.destinationId == command.entry.destinationId }
                     if (existingIndex >= 0) {
                         // Move the matching occurrence to the top, updating its payload but retaining identity
-                        (requestingStack.filterIndexed { index, _ -> index != existingIndex } +
-                            (if (command.entry.scopeId == requestingStack[existingIndex].scopeId)
-                                command.entry.withIdentityOf(requestingStack[existingIndex]) else command.entry)).toImmutableList()
+                        (baseStack.filterIndexed { index, _ -> index != existingIndex } +
+                            (if (command.entry.scopeId == baseStack[existingIndex].scopeId)
+                                command.entry.withIdentityOf(baseStack[existingIndex]) else command.entry)).toImmutableList()
                     } else {
                         // Entry doesn't exist, add it
-                        (requestingStack + command.entry).toImmutableList()
+                        (baseStack + command.entry).toImmutableList()
                     }
                 } else {
                     // Regular behavior: always add new instance
-                    (requestingStack + command.entry).toImmutableList()
+                    (baseStack + command.entry).toImmutableList()
                 }
 
-                state.copy(backStack = newStack)
+                state.copy(backStack = applyResultRequest(pushedStack, baseStack.lastOrNull(), command.pendingResultKey))
             }
 
             is NavigationCommand.Pop -> {
                 val stack = state.backStack
                 if (stack.size <= 1) return state
+
+                // A count below one asks for no entry at all. Removing one anyway would take a
+                // screen the caller never named. It is not an error, so it never throws.
+                if (command.count < 1) return state
 
                 // A delivery that cannot be honoured changes nothing at all. Popping anyway would
                 // remove a screen the user did not ask to leave: on the second tap of a repeated
@@ -180,7 +173,7 @@ private fun popUpToDestination(
 
 /**
  * The stack a [NavigationCommand.Navigate] starts from, after its stack policy is applied and
- * before its entry is pushed. Its last element is the entry that records a result request.
+ * before its entry is pushed. Its last element is the entry that asks for a result.
  */
 internal fun navigateBaseStack(
     state: NavigationState,
@@ -191,6 +184,56 @@ internal fun navigateBaseStack(
         popUpToDestination(state.backStack, command.popUpTo, command.popUpToInclusive)
 
     else -> state.backStack
+}
+
+/**
+ * Records a result request on [requester], once the new entry is already on the stack.
+ *
+ * The request is kept only when [requester] is the entry directly below the new top, because that
+ * is the only entry a [NavigationCommand.Pop] can answer. Every other case leaves the stack
+ * unchanged; [resultRequestLoss] explains it to the caller.
+ *
+ * A repeated request under the same key supersedes the previous one, so any answer still sitting
+ * there is dropped. Failing here would turn a repeated tap into an exception.
+ */
+private fun applyResultRequest(
+    stack: ImmutableList<KompassEntry>,
+    requester: KompassEntry?,
+    key: String?,
+): ImmutableList<KompassEntry> {
+    if (key == null || requester == null) return stack
+    val index = stack.size - 2
+    if (index < 0 || stack[index].id != requester.id) return stack
+    return (stack.take(index) + stack[index].copyInternal(
+        pendingResultKey = key,
+        results = stack[index].results.remove(key),
+    ) + stack.drop(index + 1)).toImmutableList()
+}
+
+/**
+ * Explains why a result request cannot be opened, or returns null when it can.
+ *
+ * A request needs an entry that stays directly below the new top. [NavigationCommand.clearBackStack]
+ * and an inclusive [NavigationCommand.popUpTo] can remove that entry, and `reuseIfExists` can move
+ * it to the top instead, which leaves nothing below to answer.
+ */
+internal fun resultRequestLoss(
+    state: NavigationState,
+    command: NavigationCommand.Navigate,
+): String? {
+    val key = command.pendingResultKey ?: return null
+    val base = navigateBaseStack(state, command)
+    val requester = base.lastOrNull() ?: return "A result request under \"$key\" has no entry to " +
+        "belong to, because the command emptied the back stack. Drop clearBackStack, or use a " +
+        "popUpTo that keeps the entry that waits for the answer."
+    val reusesRequester = command.reuseIfExists && requester.destinationId == command.entry.destinationId &&
+        base.indexOfLast { it.destinationId == command.entry.destinationId } == base.size - 1
+    return if (reusesRequester) {
+        "The entry \"${requester.destinationId}\" asked itself for \"$key\" through reuseIfExists, " +
+            "so no entry is left below to answer. Drop reuseIfExists, or drop the result key."
+    } else {
+        null
+    }
 }
 
 /**
@@ -235,9 +278,8 @@ internal fun discardedResultReport(
     command: NavigationCommand.Navigate,
 ): String? {
     val key = command.pendingResultKey ?: return null
-    val requester = navigateBaseStack(state, command).lastOrNull()
-        ?: return "A result request under \"$key\" has no entry to belong to, because the command " +
-            "cleared the whole back stack. Do not combine resultKey with clearBackStack."
+    resultRequestLoss(state, command)?.let { return it }
+    val requester = navigateBaseStack(state, command).lastOrNull() ?: return null
     val previous = requester.results[key] ?: return null
     val outcome = if (previous is StoredResult.Delivered) "an answer" else "a cancellation"
     return "The entry \"${requester.destinationId}\" opened a new request under \"$key\" while " +
@@ -305,17 +347,27 @@ sealed interface NavigationCommand {
      * awaited key of the revealed entry, otherwise the delivery is rejected and reported.
      *
      * @param count Number of entries to pop. Defaults to 1. A result is delivered only when this
-     * is 1 and [popUntil] is null.
+     * is 1 and [popUntil] is null. A count below 1 pops nothing, so a computed count never removes
+     * a screen the caller did not ask for.
      *
      * @param popUntil Optional destination ID indicating that all
-     * entries after that destination should be popped.
+     * entries after that destination should be popped. It cannot be combined with a [count] above
+     * 1, because the two describe different stops and one would have to be ignored.
      */
     data class Pop(
         val result: NavigationResult? = null,
         val count: Int = 1,
         val popUntil: String? = null,
         val resultKey: ResultKey<*>? = null
-    ) : NavigationCommand
+    ) : NavigationCommand {
+
+        init {
+            require(count <= 1 || popUntil == null) {
+                "Pop takes either a count above 1 or a popUntil, not both. " +
+                    "count=$count, popUntil=$popUntil"
+            }
+        }
+    }
 
     /**
      * Replace the whole back stack.

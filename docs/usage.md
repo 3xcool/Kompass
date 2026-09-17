@@ -131,6 +131,10 @@ navController.pop(count = 2)
 navController.pop(popUntil = "home")
 ```
 
+A `count` below 1 pops nothing, so a computed count never removes a screen you did not ask for. A
+`count` above 1 cannot be combined with `popUntil`: the two name different stops, and one would have
+to be ignored. Passing both throws.
+
 Every pop closes an open result request. A plain `pop`, Back and predictive Back all end the request
 as `ResultState.Cancelled`, so the entry below can tell "the user gave up" from "the screen is still
 open".
@@ -220,10 +224,21 @@ The `resultKey` of `navigate` is what makes the request exist. A `navigate` with
 and reports it. That is deliberate — without a record of who is waiting, Back could not be told
 apart from "the screen is still open". `navigateTo` takes the same parameter for a typed destination.
 
-Do not combine `resultKey` with `clearBackStack`: that removes the entry that would receive the
-answer, so the request is dropped and reported. `popUpTo` is safe, and the request lands on whichever
-entry ends up below the new one. `pop(result, resultKey)` takes no `count` or `popUntil`, because a
-result only reaches the entry one step below.
+A request needs an entry that stays directly below the new one, because that is the only entry a
+`pop` can answer. Three combinations remove it, and each one drops the request and reports it:
+
+| Combination | Why it cannot work |
+| --- | --- |
+| `resultKey` with `clearBackStack` | Nothing is left to receive the answer. |
+| `resultKey` with an inclusive `popUpTo` that removes the last entry | Same, by a different route. |
+| `resultKey` with `reuseIfExists` on the caller's own destination | The caller moves to the top, so it would be asking itself. |
+
+A plain `popUpTo` is safe, and the request lands on whichever entry ends up below the new one.
+`pop(result, resultKey)` takes no `count` or `popUntil`, because a result only reaches the entry one
+step below.
+
+`reuseIfExists` carries result state with the occurrence it moves. An answer the screen has not read
+yet survives the move, the same way its ViewModel and its UI state do.
 
 ### Read the request
 
@@ -352,8 +367,16 @@ Cleanup follows the back stack, so the ID you pass decides the lifetime:
 
 | Scope | Cleared by |
 |-------|------------|
-| `entry.scopeId`, `defaultScope()`, `newScope()`, or any ID an entry carries | Kompass, once the last entry using it leaves the back stack. |
+| `entry.scopeId`, `defaultScope()`, `newScope()`, or any ID an entry carries | Kompass, once the last entry using it leaves the back stack of the last controller that carries it. |
 | An ID no entry carries, named for a flow | Nobody. It is a process-wide singleton until you call `NavigationScopes.clearScope(id)`. |
+
+The scope store is process-wide, so two controllers can name the same scope. `defaultScope()` gives
+the same ID to the same destination everywhere, which is exactly what two tabs of one screen want.
+Each controller holds the scopes its back stack carries, and only the last holder to let go clears
+it. Closing one controller therefore never destroys a ViewModel another controller still shows.
+
+`NavigationScopes.clearScope` ignores that count. It is the explicit override for a manual scope you
+own, not a way to clear a scope entries carry.
 
 Prefer the first form. For the second, give the scope an owner where the flow ends:
 
@@ -400,7 +423,7 @@ These are separate choices:
 | Choice | Effect |
 | --- | --- |
 | `reuseIfExists = false` | Adds a new occurrence with its own UI state and lifecycle. Its ViewModels are shared when another entry in the controller uses the same scope. |
-| `reuseIfExists = true` | Moves the last matching destination to the top, keeping other entries in their existing order, and applies the incoming arguments and result fields. With the same scope it retains the occurrence ID and UI state; a different scope creates fresh entry state and uses that scope's ViewModels, creating them if the scope is new. |
+| `reuseIfExists = true` | Moves the last matching destination to the top, keeping other entries in their existing order, and applies the incoming arguments. With the same scope it retains the occurrence ID, its UI state and its result state; a different scope creates fresh entry state and uses that scope's ViewModels, creating them if the scope is new. |
 | `defaultScope()` | Shares ViewModels across visits to the same destination within a controller. |
 | `newScope()` | Isolates ViewModels for one occurrence. |
 | Explicit shared `scopeId` | Shares a ViewModel across a flow of different routes. The ViewModel class or key must also match; factory parameters apply only on creation. |
@@ -497,6 +520,20 @@ generated JSON in `match.args`. Path values take precedence over query values wi
 Handlers are checked in order and the first match wins. Implement `DeepLinkHandler` directly for routes
 that need custom parsing. Platform code can deliver Android intents, iOS callbacks or desktop URI events
 through `DeepLinkChannel`; matching and navigation remain in shared code.
+
+`DeepLinkChannel.observe` returns a `DeepLinkSubscription`. Keep it and cancel it when the observer
+goes away, then `close()` the channel when its owner does:
+
+```kotlin
+val subscription = deepLinkChannel.observe { uri -> navController.applyDeepLink(uri) }
+// later
+subscription.cancel()
+deepLinkChannel.close()
+```
+
+One channel carries each URI to exactly one collector, so an abandoned subscription does not just
+leak, it also steals links from the collector that replaced it. A desktop JVM host without a main
+dispatcher artifact can pass its own dispatcher to the constructor.
 
 ## 13. Back handling and predictive Back
 

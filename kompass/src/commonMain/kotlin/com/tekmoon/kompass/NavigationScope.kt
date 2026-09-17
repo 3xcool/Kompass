@@ -4,7 +4,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.tekmoon.kompass.util.randomUUID
 import kotlinx.serialization.Serializable
-import kotlin.concurrent.Volatile
 import kotlin.jvm.JvmInline
 
 /**
@@ -115,15 +114,31 @@ class NavigationScope(
 /**
  * Process-wide manager for explicitly shared navigation scopes.
  *
- * Access and cleanup must occur on the UI thread. Volatile publication of the map does not
- * make compound map operations or scoped objects thread-safe. Automatic navigation cleanup
- * waits for outgoing content; explicit clearScope/clearAll remain immediate overrides.
+ * ## Threading
+ *
+ * This object is **not** thread safe. Call every method on the UI thread. None of the maps below
+ * are guarded, and a scoped object is whatever the factory built, which Kompass cannot make safe
+ * either.
+ *
+ * ## Two counts guard a scope
+ *
+ * A scope is cleared only when both reach zero:
+ * - **Holders.** Every [KompassNavController] whose back stack carries the scope holds it. The
+ *   store is process-wide, so two controllers can name the same scope; the last one to let go
+ *   clears it. Without this count, closing one controller would destroy the ViewModels of another
+ *   controller that is still on screen.
+ * - **Render references.** Outgoing content still on screen during an exit animation. Automatic
+ *   cleanup waits for it.
+ *
+ * [clearScope] and [clearAll] ignore both counts. They are the explicit override an owner uses for
+ * a manual scope, which no entry carries and therefore no controller holds.
  */
 data object NavigationScopes {
 
-    // Volatile to ensure visibility across threads
-    @Volatile
-    private var scopes = mutableMapOf<NavigationScopeId, NavigationScope>()
+    private val scopes = mutableMapOf<NavigationScopeId, NavigationScope>()
+    private val renderCounts = mutableMapOf<NavigationScopeId, Int>()
+    private val holdCounts = mutableMapOf<NavigationScopeId, Int>()
+    private val pendingClear = mutableSetOf<NavigationScopeId>()
 
     /**
      * Get or create a scope from Composable or other UI-thread code.
@@ -131,41 +146,42 @@ data object NavigationScopes {
      * @param scopeId The scope ID
      * @return The navigation scope, creating it if necessary
      */
-    fun getScope(scopeId: NavigationScopeId): NavigationScope {
-        // Fast path: try to get without locking
-        val existing = scopes[scopeId]
-        if (existing != null) {
-            return existing
-        }
+    fun getScope(scopeId: NavigationScopeId): NavigationScope =
+        scopes.getOrPut(scopeId) { NavigationScope(scopeId) }
 
-        // Slow path: create and update atomically
-        val newScope = NavigationScope(scopeId)
-        val updated = scopes.toMutableMap()
-
-        // Check again in case another thread created it
-        if (scopeId in updated) {
-            return updated[scopeId]!!
-        }
-
-        updated[scopeId] = newScope
-        scopes = updated  // Atomic assignment via @Volatile
-
-        return scopes[scopeId]!!
+    /** One more controller carries this scope in its back stack. */
+    internal fun hold(scopeId: NavigationScopeId) {
+        holdCounts[scopeId] = (holdCounts[scopeId] ?: 0) + 1
+        pendingClear.remove(scopeId)
     }
 
-    private val renderCounts = mutableMapOf<NavigationScopeId, Int>()
-    private val pendingClear = mutableSetOf<NavigationScopeId>()
+    /** One fewer controller carries this scope. The last one to let go asks for the clear. */
+    internal fun unhold(scopeId: NavigationScopeId) {
+        val count = (holdCounts[scopeId] ?: return) - 1
+        if (count > 0) {
+            holdCounts[scopeId] = count
+            return
+        }
+        holdCounts.remove(scopeId)
+        requestClear(scopeId)
+    }
 
     internal fun retain(scopeId: NavigationScopeId) {
         renderCounts[scopeId] = (renderCounts[scopeId] ?: 0) + 1
     }
 
+    /**
+     * Drops one render reference. An unbalanced call is ignored rather than fatal: a disposal can
+     * run twice, and a navigation library must not take the app down for it.
+     */
     internal fun release(scopeId: NavigationScopeId) {
-        val count = checkNotNull(renderCounts[scopeId]) - 1
-        if (count == 0) {
-            renderCounts.remove(scopeId)
-            if (pendingClear.remove(scopeId)) clearScope(scopeId)
-        } else renderCounts[scopeId] = count
+        val count = (renderCounts[scopeId] ?: return) - 1
+        if (count > 0) {
+            renderCounts[scopeId] = count
+            return
+        }
+        renderCounts.remove(scopeId)
+        if (pendingClear.remove(scopeId) && (holdCounts[scopeId] ?: 0) == 0) clearScope(scopeId)
     }
 
     internal fun cancelClear(scopeId: NavigationScopeId) {
@@ -173,6 +189,7 @@ data object NavigationScopes {
     }
 
     internal fun requestClear(scopeId: NavigationScopeId) {
+        if ((holdCounts[scopeId] ?: 0) > 0) return
         if ((renderCounts[scopeId] ?: 0) > 0) pendingClear.add(scopeId)
         else clearScope(scopeId)
     }
@@ -180,25 +197,26 @@ data object NavigationScopes {
     /**
      * Clear a scope immediately, on the UI thread.
      *
-     * Called when back stack entries are removed.
+     * This ignores both counts, so it also clears a scope another controller still holds. Use it
+     * for a manual scope you own, and let navigation clear the scopes that entries carry.
      *
      * @param scopeId The scope ID to clear
      */
     fun clearScope(scopeId: NavigationScopeId) {
         pendingClear.remove(scopeId)
-        val updated = scopes.toMutableMap()
-        val removed = updated.remove(scopeId)
-        scopes = updated
-        removed?.clear()
+        scopes.remove(scopeId)?.clear()
     }
 
     /**
      * Clear all scopes (for testing/reset).
      */
     fun clearAll() {
-        val toClean = scopes.toMap()
-        toClean.values.forEach { it.clear() }
-        scopes = mutableMapOf()
+        val toClean = scopes.values.toList()
+        scopes.clear()
+        renderCounts.clear()
+        holdCounts.clear()
+        pendingClear.clear()
+        toClean.forEach { it.clear() }
     }
 }
 

@@ -46,6 +46,18 @@ class PredictiveBackStateTest {
         assertFalse(state.isActive)
     }
 
+    @Test fun a_second_gesture_starts_at_zero_again() {
+        val state = PredictiveBackState()
+        state.start("entry-1")
+        state.update(0.9f)
+        state.finish()
+
+        state.start("entry-2")
+
+        assertEquals(0f, state.progress, "the fraction of the old gesture must not leak into the new one")
+        assertEquals("entry-2", state.targetEntryId)
+    }
+
     @Test fun a_gesture_never_reaches_the_reducer_or_the_saved_state() {
         val nav = createKompassNavController(A)
         nav.navigate(B.toKompassEntry())
