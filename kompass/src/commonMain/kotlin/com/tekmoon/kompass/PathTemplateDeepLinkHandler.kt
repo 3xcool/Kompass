@@ -79,13 +79,31 @@ class PathTemplateDeepLinkHandler(
     private val toCommands: (DeepLinkMatch) -> List<NavigationCommand>,
 ) : DeepLinkHandler {
 
-    private val templateSegments: List<String> = template.substringBefore('?').split('/')
+    private val templateSegments: List<String> = template.substringBefore('#').substringBefore('?').split('/')
 
-    override fun matches(uri: String): Boolean = capture(uri) != null
+    /**
+     * The result of the last [capture], kept so [matches] and [resolve] parse a URI once.
+     *
+     * [DeepLinkManager] always calls the two in a row with the same URI. One slot is enough, and it
+     * holds no state a caller can observe. Access is confined to the UI thread, the same as every
+     * other navigation call.
+     */
+    private var lastUri: String? = null
+    private var lastCapture: Map<String, String>? = null
+
+    override fun matches(uri: String): Boolean = captureCached(uri) != null
 
     override fun resolve(uri: String): List<NavigationCommand> {
-        val path = capture(uri) ?: return emptyList()
+        val path = captureCached(uri) ?: return emptyList()
         return toCommands(DeepLinkMatch(uri, path.toPersistentMap(), parseQuery(uri).toPersistentMap()))
+    }
+
+    private fun captureCached(uri: String): Map<String, String>? {
+        if (uri != lastUri) {
+            lastCapture = capture(uri)
+            lastUri = uri
+        }
+        return lastCapture
     }
 
     /** Returns the captured placeholders, or null when the URI does not fit the template. */
@@ -139,6 +157,9 @@ class PathTemplateDeepLinkHandler(
 fun buildArgs(builder: JsonObjectBuilder.() -> Unit): ArgsJson =
     buildJsonObject(builder).toString()
 
+/** True for the 16 characters `%XX` accepts. */
+private fun Char.isHexDigit(): Boolean = this in '0'..'9' || this in 'a'..'f' || this in 'A'..'F'
+
 /** Decodes `%XX` escapes, and `+` as a space where a query string allows it. */
 private fun percentDecode(value: String, plusIsSpace: Boolean): String {
     if (!value.contains('%') && !(plusIsSpace && value.contains('+'))) return value
@@ -149,7 +170,11 @@ private fun percentDecode(value: String, plusIsSpace: Boolean): String {
         val char = value[index]
         when {
             char == '%' && index + 2 < value.length -> {
-                val decoded = value.substring(index + 1, index + 3).toIntOrNull(16)
+                // Two hex digits, and nothing else. toIntOrNull(16) alone accepts a sign, so "%-1"
+                // would decode to byte 0xFF and "%+1" to a control character.
+                val decoded = value.substring(index + 1, index + 3)
+                    .takeIf { it.all(Char::isHexDigit) }
+                    ?.toIntOrNull(16)
                 if (decoded == null) {
                     bytes += char.code.toByte()
                     index++
