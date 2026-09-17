@@ -1,5 +1,52 @@
 # Changelog
 
+## Unreleased
+
+Fixes found by a review of the library. Each one has a test that fails without it.
+
+### Fixed
+
+- A controller no longer clears a scope another controller still uses. Scopes live in a process-wide
+  store, so two controllers that start at the same destination share `entry:<id>`. Closing one used
+  to destroy the ViewModels of the other. Each controller now holds the scopes its back stack
+  carries, and only the last holder clears them. A controller built with
+  `rememberKompassNavController` also lets go of its scopes when its host leaves composition, which
+  it never did before. Android activity recreation is excluded, so a rotation keeps its ViewModels.
+- `reuseIfExists` keeps the result state of the occurrence it moves. It used to take the result
+  fields from the new entry, which are empty, so an answer the screen had not read yet was dropped
+  with no report.
+- A result request is opened only when an entry stays directly below the new top. `reuseIfExists` on
+  the caller's own destination used to record a request that nothing could ever answer, and reported
+  nothing. It is now reported through `onNavigationError` and no entry is left waiting.
+- `pop(count = 0)` and any negative count pop nothing. They used to pop one entry.
+- `NavigationCommand.Pop` rejects a `count` above 1 together with a `popUntil`. The two name
+  different stops, and `popUntil` used to be ignored in silence.
+- A percent escape in a deep link decodes two hex digits and nothing else. `toIntOrNull(16)` accepts
+  a sign, so `%-1` decoded to byte `0xFF` and `%+1` to a control character.
+- The report for a lost result request names the parameter the caller actually used. An inclusive
+  `popUpTo` used to be reported as `clearBackStack`.
+- `KompassOwnerStore.release` and `NavigationScopes.release` ignore an unbalanced call instead of
+  throwing. A disposal that runs twice no longer takes the application down.
+- `:samples` tests compile again. `NavigationHandlerTestRobot` used the internal `KompassEntry`
+  constructor from another module, so the whole samples test suite failed to build.
+
+### Changed
+
+- `DeepLinkChannel.observe` returns a `DeepLinkSubscription`, and `DeepLinkChannel` gains `close()`.
+  The scope behind the channel was never cancelled and a registration could never be undone. The
+  constructor also takes a `CoroutineContext`, which defaults to `Dispatchers.Main`.
+- `KompassOwnerStore.owner` takes the platform `CreationExtras` as a parameter. The mutable
+  `platformExtras` property is gone; two composables used to assign it during the composition phase.
+
+### Performance
+
+- `PredictiveBackState.progress` is backed by a `mutableFloatStateOf`, so a gesture no longer boxes a
+  `Float` on every frame.
+- `SceneLayoutDefaultAnimatedSinglePane` resolves its transition once per entry instead of resolving
+  the graph and allocating a `SceneTransitionDefault` on every recomposition.
+- `PathTemplateDeepLinkHandler` parses a URI once for the `matches` and `resolve` pair.
+- `KompassOwnerStore.save` builds its scope keys once instead of once per entry.
+
 ## 2.1.0
 
 Navigation results become an explicit request with three outcomes. This release contains breaking
