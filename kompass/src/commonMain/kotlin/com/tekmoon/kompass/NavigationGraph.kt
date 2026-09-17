@@ -203,8 +203,15 @@ class KompassEntry internal constructor(
         id = if (scopeId == this.scopeId && destinationId == this.destinationId) id else randomUUID(),
     )
 
+    /**
+     * Takes the payload of this entry and the identity of [entry].
+     *
+     * Result state travels with the identity, not with the payload. `reuseIfExists` moves a live
+     * occurrence and gives it new arguments; an answer it already holds belongs to that occurrence
+     * and must survive the move, the same way its owner and its UI state do.
+     */
     internal fun withIdentityOf(entry: KompassEntry): KompassEntry = KompassEntry(
-        destinationId, args, scopeId, metadata, pendingResultKey, results, id = entry.id,
+        destinationId, args, scopeId, metadata, entry.pendingResultKey, entry.results, id = entry.id,
     )
 
     internal fun newOccurrence(): KompassEntry =
