@@ -69,6 +69,10 @@ class NavigationHandler() {
                 val stack = state.backStack
                 if (stack.size <= 1) return state
 
+                // A count below one asks for no entry at all. Removing one anyway would take a
+                // screen the caller never named. It is not an error, so it never throws.
+                if (command.count < 1) return state
+
                 // A delivery that cannot be honoured changes nothing at all. Popping anyway would
                 // remove a screen the user did not ask to leave: on the second tap of a repeated
                 // tap, the first pop already delivered and cleared the request.
@@ -343,17 +347,27 @@ sealed interface NavigationCommand {
      * awaited key of the revealed entry, otherwise the delivery is rejected and reported.
      *
      * @param count Number of entries to pop. Defaults to 1. A result is delivered only when this
-     * is 1 and [popUntil] is null.
+     * is 1 and [popUntil] is null. A count below 1 pops nothing, so a computed count never removes
+     * a screen the caller did not ask for.
      *
      * @param popUntil Optional destination ID indicating that all
-     * entries after that destination should be popped.
+     * entries after that destination should be popped. It cannot be combined with a [count] above
+     * 1, because the two describe different stops and one would have to be ignored.
      */
     data class Pop(
         val result: NavigationResult? = null,
         val count: Int = 1,
         val popUntil: String? = null,
         val resultKey: ResultKey<*>? = null
-    ) : NavigationCommand
+    ) : NavigationCommand {
+
+        init {
+            require(count <= 1 || popUntil == null) {
+                "Pop takes either a count above 1 or a popUntil, not both. " +
+                    "count=$count, popUntil=$popUntil"
+            }
+        }
+    }
 
     /**
      * Replace the whole back stack.
