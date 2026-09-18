@@ -94,7 +94,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.tekmoon:kompass:2.0.0")
+    implementation("com.tekmoon:kompass:2.1.0")
 }
 ```
 
@@ -323,7 +323,7 @@ See [Coverage and Test Workflow](docs/coverage-workflow.md) for local validation
 ## Documentation
 
 - [Using Kompass](docs/usage.md)
-- [API v2 migration guide](docs/api-v2-migration.md)
+- [API v2 migration guide](docs/api-v2-migration.md) — covers 2.0 to 2.1 and 1.x to 2.0
 - [Kompass vs Navigation 3](docs/kompass-vs-navigation3.md)
 - [Coverage and Test Workflow](docs/coverage-workflow.md)
 - [Samples](samples/src/commonMain/kotlin/com/tekmoon/samples/NavSampleRoot.kt)
