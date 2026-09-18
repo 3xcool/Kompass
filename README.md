@@ -1,7 +1,7 @@
 # Kompass
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.tekmoon/kompass)](https://central.sonatype.com/artifact/com.tekmoon/kompass)
-[![Kover](https://img.shields.io/badge/Kover-94.1%25%20class%20coverage-brightgreen)](#testing)
+[![Kover](https://img.shields.io/badge/Kover-94.2%25%20class%20coverage-brightgreen)](#testing)
 [![Android Weekly](https://img.shields.io/badge/Android%20Weekly-%23719-blue.svg)](https://androidweekly.net/issues/issue-719)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.3.0-purple?logo=kotlin)](https://kotlinlang.org)
@@ -94,7 +94,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.tekmoon:kompass:2.0.0")
+    implementation("com.tekmoon:kompass:2.1.0")
 }
 ```
 
@@ -323,7 +323,7 @@ See [Coverage and Test Workflow](docs/coverage-workflow.md) for local validation
 ## Documentation
 
 - [Using Kompass](docs/usage.md)
-- [API v2 migration guide](docs/api-v2-migration.md)
+- [API v2 migration guide](docs/api-v2-migration.md) — covers 2.0 to 2.1 and 1.x to 2.0
 - [Kompass vs Navigation 3](docs/kompass-vs-navigation3.md)
 - [Coverage and Test Workflow](docs/coverage-workflow.md)
 - [Samples](samples/src/commonMain/kotlin/com/tekmoon/samples/NavSampleRoot.kt)

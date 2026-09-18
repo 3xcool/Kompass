@@ -1,6 +1,6 @@
 # Using Kompass
 
-This guide explains the most common Kompass navigation patterns. For migration from Kompass 1.x, see the [API v2 migration guide](api-v2-migration.md). For a design comparison, see [Kompass vs Navigation 3](kompass-vs-navigation3.md).
+This guide explains the most common Kompass navigation patterns. For migration from Kompass 2.0 or 1.x, see the [API v2 migration guide](api-v2-migration.md). For a design comparison, see [Kompass vs Navigation 3](kompass-vs-navigation3.md).
 
 ## 1. Model destinations
 
@@ -81,28 +81,37 @@ Use `createKompassNavController` when the controller is owned outside compositio
 `navigate` pushes an entry and supports common stack policies:
 
 ```kotlin
-// Basic navigation.
-navController.navigate(Profile.toKompassEntry())
+// Basic navigation. Kompass builds the entry.
+navController.navigate(Profile)
 
 // Clear the complete stack before pushing.
-navController.navigate(Profile.toKompassEntry(), clearBackStack = true)
+navController.navigate(Profile, clearBackStack = true)
 
 // Pop up to a destination before pushing.
 navController.navigate(
-    Profile.toKompassEntry(),
+    Profile,
     popUpTo = "home",
     popUpToInclusive = false,
 )
 
 // Move an existing matching entry to the top instead of creating an occurrence.
-navController.navigate(Profile.toKompassEntry(), reuseIfExists = true)
+navController.navigate(Profile, reuseIfExists = true)
+
+// Set args, a scope or presentation metadata on the way.
+navController.navigate(Profile, scopeId = NavigationScopeId("checkout"))
+
+// Pass an entry instead when you built one yourself.
+navController.navigate(Profile.toKompassEntry())
 ```
 
 The complete signature is:
 
 ```kotlin
 navController.navigate(
-    entry,
+    destination,               // or an entry you built yourself
+    args = null,               // destination form only
+    scopeId = destination.defaultScope(),   // destination form only
+    metadata = emptyMap(),     // destination form only
     clearBackStack = false,
     popUpTo = null,
     popUpToInclusive = false,
@@ -272,6 +281,27 @@ command dispatched during composition is a side effect in the render pass.
 
 The effect above restarts when the request changes, closes it once, and restarts with `null` after
 the removal. The second pass finds nothing and does no work.
+
+### Previews and screen tests
+
+At run time only the reducer writes result state, so a `@Preview` of the "answer arrived" screen had
+to drive a whole navigation to reach it. Three builders write it directly, one per `ResultState`:
+
+```kotlin
+val waiting   = Checkout.toKompassEntry().withPendingResult(Address.Result)
+val answered  = Checkout.toKompassEntry().withResult(Address.Result, AddressResult("221B Baker St"))
+val abandoned = Checkout.toKompassEntry().withCancelledResult(Address.Result)
+
+@Preview
+@Composable
+private fun CheckoutWithAddress() {
+    CheckoutScreen(entry = answered)
+}
+```
+
+They keep occurrence identity and return a copy, so the entry you started from is unchanged. Use them
+in a preview or a test. Production code opens a request with the `resultKey` of `navigate` and closes
+it with `pop`.
 
 ### Rules at the edges
 

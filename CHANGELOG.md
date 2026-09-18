@@ -3,10 +3,16 @@
 ## 2.1.0
 
 Navigation results become an explicit request with three outcomes. This release contains breaking
-API changes. It is published as a minor version because 2.0.0 has no consumers yet.
+API changes.
+
+See [docs/api-v2-migration.md](docs/api-v2-migration.md) for the call-site changes and a checklist.
 
 ### Highlights
 
+- Added `navigate(destination, ...)` and `replaceStack(destination, ...)`, which build the entry for
+  you. `navigate(Profile)` replaces `navigate(Profile.toKompassEntry())`, and both take `args`,
+  `scopeId` and `metadata` when the defaults do not fit. Build the entry yourself when you need to
+  hold it: a whole stack, the command list of a `DeepLinkHandler`, or an initial state.
 - Added a `resultKey` parameter to `navigate` and `navigateTo`. It opens a result request and records
   it on the entry that starts it. Do not combine it with `clearBackStack`, which removes the entry
   that would receive the answer; the request is dropped and reported.
@@ -15,6 +21,10 @@ API changes. It is published as a minor version because 2.0.0 has no consumers y
 - Added `ResultKey<T>`, a value class that carries the expected result type to the call site. Only
   its name enters the navigation state.
 - Added `peekResult(key)`, which reads the request state while rendering without closing it.
+- Added `withResult(key, value)`, `withCancelledResult(key)` and `withPendingResult(key)` on
+  `KompassEntry`, one per `ResultState`. They write the result state that only the reducer produces
+  at run time, so a `@Preview` or a screen test can render the "answer arrived" state directly.
+  Production code still opens a request with `navigate` and closes it with `pop`.
 - Added `onNavigationError` on the controller factories. Kompass never throws for either case below,
   because a repeated tap produces both.
   - A delivery that nobody waits for is refused whole: nothing pops, nothing is stored, and the
@@ -40,9 +50,8 @@ API changes. It is published as a minor version because 2.0.0 has no consumers y
   to sit on the destination that would return a result, and it routed the answer. It now sits on the
   entry that is waiting, and it records only that. The key that routes an answer travels with `pop`.
 - `KompassEntry.results` is now internal. Use `peekResult` and `consumeResult`.
-- The `KompassEntry` constructor is now internal, because an entry carries result state that only
-  the reducer may set. Use `Destination.toKompassEntry(...)`, or the new `kompassEntry(...)` when
-  only the destination ID is known, which is the usual case inside a `DeepLinkHandler`.
+- The `KompassEntry` constructor drops its `pendingResultKey` and `results` parameters. It keeps
+  `destinationId`, `args`, `scopeId` and `metadata`, and the reducer sets the rest.
 - `KompassEntry` drops `component4()` and `component5()`. Destructuring covers the first three.
 - `KompassEntry.metadata` is an `ImmutableMap<String, String>`. Reading it is unchanged; code that
   assigned it to a `MutableMap` variable no longer compiles.
@@ -54,13 +63,17 @@ API changes. It is published as a minor version because 2.0.0 has no consumers y
   without `resultKey`, followed by `pop(result, key)`, no longer delivers anything.
 - `replaceRoot` is removed, on the controller and on the typed helper, together with
   `NavigationCommand.ReplaceRoot`. Use `replaceStack`, which applies one entry or a whole stack.
-- Saved state written by 2.0.0 restores only when it carries no result. A result is now stored in an
-  internal envelope instead of a bare `NavigationResult`, so an older entry that holds one fails to
-  decode. The controller reports the failure and falls back to its initial state, as it does for any
-  unreadable saved state. It never restores half a stack.
 - A restored 2.0.0 entry that carries `pendingResultKey` arrives with a marker for a request that no
   longer exists, because the field kept its name and changed owner. The marker is harmless: it sits
   on a producer, whose screen never reads it, and it leaves the stack with that entry.
+
+### Saved state
+
+State written by 2.1.0 restores in full, results included.
+
+2.1.0 stores a closed request in an internal envelope instead of a bare `NavigationResult`. State
+written by 2.0.0 that holds a result fails to decode, and the controller falls back to its initial
+state. Kompass carries no reader for the old shape.
 
 ## 2.0.0
 

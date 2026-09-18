@@ -91,6 +91,53 @@ inline fun <reified T : NavigationResult> KompassEntry.peekResult(key: ResultKey
 }
 
 /**
+ * Returns a copy of this entry that holds [value] as the answer to [key].
+ *
+ * It closes an open request for [key], the same way a `pop` that carries a result does. Occurrence
+ * identity is kept, so the copy is the same entry holding an answer.
+ *
+ * This writes a state that only the reducer produces at run time. Use it to render the "answer
+ * arrived" state directly, in a `@Preview` or in a test of a screen:
+ *
+ * ```
+ * @Preview
+ * @Composable
+ * private fun CheckoutWithAddress() {
+ *     CheckoutScreen(entry = Checkout.toKompassEntry().withResult(Address.Result, AddressResult(...)))
+ * }
+ * ```
+ *
+ * Production code never needs it. There, a request opens with the `resultKey` of
+ * [KompassNavController.navigate] and closes with [KompassNavController.pop].
+ */
+fun <T : NavigationResult> KompassEntry.withResult(key: ResultKey<T>, value: T): KompassEntry =
+    closeRequest(key.name, StoredResult.Delivered(value))
+
+/**
+ * Returns a copy of this entry whose request under [key] ended without an answer.
+ *
+ * This is the state Back, predictive Back and a plain `pop` leave behind. See [withResult].
+ */
+fun KompassEntry.withCancelledResult(key: ResultKey<*>): KompassEntry =
+    closeRequest(key.name, StoredResult.Cancelled)
+
+/**
+ * Returns a copy of this entry that waits for [key], with no answer yet.
+ *
+ * This is the state the `resultKey` of [KompassNavController.navigate] leaves behind. It completes
+ * the set with [withResult] and [withCancelledResult], one per [ResultState]. See [withResult].
+ */
+fun KompassEntry.withPendingResult(key: ResultKey<*>): KompassEntry =
+    copyInternal(pendingResultKey = key.name, results = results.remove(key.name))
+
+private fun KompassEntry.closeRequest(key: String, outcome: StoredResult): KompassEntry =
+    copyInternal(
+        // Delivery clears the waiting marker, the same as the reducer does when a pop closes it.
+        pendingResultKey = pendingResultKey.takeIf { it != key },
+        results = results.put(key, outcome),
+    )
+
+/**
  * A navigation result request that Kompass could not honour.
  *
  * Kompass reports it through `onNavigationError` and leaves the back stack unchanged. It never
