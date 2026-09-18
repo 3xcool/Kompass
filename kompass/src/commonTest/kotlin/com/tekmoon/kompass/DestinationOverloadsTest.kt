@@ -10,6 +10,7 @@ class DestinationOverloadsTest {
 
     private object A : Destination { override val id = "a" }
     private object B : Destination { override val id = "b" }
+    private object C : Destination { override val id = "c" }
 
     private fun KompassEntry.payload() = listOf(destinationId, args, scopeId.value, metadata.toMap())
 
@@ -67,6 +68,34 @@ class DestinationOverloadsTest {
             nav.navigate(B)
             nav.navigate(A, reuseIfExists = true)
             assertEquals(listOf("b", "a"), nav.backStack.map { it.destinationId })
+        } finally {
+            nav.close()
+        }
+    }
+
+    @Test fun navigate_with_a_destination_honours_pop_up_to() {
+        val nav = createKompassNavController(A)
+        try {
+            nav.navigate(B)
+            nav.navigate(C)
+
+            // Not inclusive, so "b" survives and the new entry lands on top of it.
+            nav.navigate(A, popUpTo = "b")
+            assertEquals(listOf("a", "b", "a"), nav.backStack.map { it.destinationId })
+        } finally {
+            nav.close()
+        }
+    }
+
+    @Test fun navigate_with_a_destination_honours_an_inclusive_pop_up_to() {
+        val nav = createKompassNavController(A)
+        try {
+            nav.navigate(B)
+            nav.navigate(C)
+
+            // Inclusive, so "b" goes too.
+            nav.navigate(C, popUpTo = "b", popUpToInclusive = true)
+            assertEquals(listOf("a", "c"), nav.backStack.map { it.destinationId })
         } finally {
             nav.close()
         }

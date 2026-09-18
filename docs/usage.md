@@ -282,6 +282,27 @@ command dispatched during composition is a side effect in the render pass.
 The effect above restarts when the request changes, closes it once, and restarts with `null` after
 the removal. The second pass finds nothing and does no work.
 
+### Previews and screen tests
+
+At run time only the reducer writes result state, so a `@Preview` of the "answer arrived" screen had
+to drive a whole navigation to reach it. Three builders write it directly, one per `ResultState`:
+
+```kotlin
+val waiting   = Checkout.toKompassEntry().withPendingResult(Address.Result)
+val answered  = Checkout.toKompassEntry().withResult(Address.Result, AddressResult("221B Baker St"))
+val abandoned = Checkout.toKompassEntry().withCancelledResult(Address.Result)
+
+@Preview
+@Composable
+private fun CheckoutWithAddress() {
+    CheckoutScreen(entry = answered)
+}
+```
+
+They keep occurrence identity and return a copy, so the entry you started from is unchanged. Use them
+in a preview or a test. Production code opens a request with the `resultKey` of `navigate` and closes
+it with `pop`.
+
 ### Rules at the edges
 
 - **A repeated request under the same key replaces the previous one.** The navigation happens, and

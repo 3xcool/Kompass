@@ -20,6 +20,9 @@ caller opens it instead of the destination declaring it.
   Back and a plain `pop` now end an open request as `Cancelled`. An application could not detect
   this before.
 - `peekResult(key)` reads the state of a request while rendering. It never closes the request.
+- `withResult(key, value)`, `withCancelledResult(key)` and `withPendingResult(key)` build an entry
+  that already carries result state, for a `@Preview` or a screen test. The storage shape stays
+  internal, so these take the public `ResultKey` and `NavigationResult` instead.
 - `onNavigationError` on the controller factories reports a request that Kompass cannot honour.
   Kompass never throws for one of these, because a repeated tap produces them.
 - `navigate(destination, ...)` and `replaceStack(destination, ...)` build the entry for you, so a

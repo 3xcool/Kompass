@@ -21,6 +21,10 @@ See [docs/api-v2-migration.md](docs/api-v2-migration.md) for the call-site chang
 - Added `ResultKey<T>`, a value class that carries the expected result type to the call site. Only
   its name enters the navigation state.
 - Added `peekResult(key)`, which reads the request state while rendering without closing it.
+- Added `withResult(key, value)`, `withCancelledResult(key)` and `withPendingResult(key)` on
+  `KompassEntry`, one per `ResultState`. They write the result state that only the reducer produces
+  at run time, so a `@Preview` or a screen test can render the "answer arrived" state directly.
+  Production code still opens a request with `navigate` and closes it with `pop`.
 - Added `onNavigationError` on the controller factories. Kompass never throws for either case below,
   because a repeated tap produces both.
   - A delivery that nobody waits for is refused whole: nothing pops, nothing is stored, and the
