@@ -1,6 +1,7 @@
 package com.tekmoon.samples
 
 import com.tekmoon.kompass.KompassEntry
+import com.tekmoon.kompass.kompassEntry
 import com.tekmoon.kompass.NavigationCommand
 import com.tekmoon.kompass.newScope
 import com.tekmoon.kompass.PathTemplateDeepLinkHandler
@@ -25,65 +26,84 @@ import com.tekmoon.kompass.util.BackPressedChannel
 import kotlinx.collections.immutable.persistentListOf
 
 /**
- * TO TEST run
+ * Deep linking, end to end.
+ *
+ * Kompass resolves a URI into navigation commands. Handing the URI to Kompass is the application's
+ * job, and it looks different on each platform. The `composeApp` module in this repository does all
+ * of it, so the commands below work as written.
+ *
+ * ## Try it
+ *
+ * The sample app opens on the sample list. A URI sent from outside opens this sample directly, with
+ * the profile already on the stack.
  *
  * Android:
+ * ```
  * adb shell am start \
  *   -a android.intent.action.VIEW \
  *   -d "myapp://profile/42" \
- *   com.tekmoon.soccos
+ *   com.tekmoon.kompasskmp
+ * ```
  *
  * Desktop:
- * For Desktop:
+ * ```
  * ./gradlew :composeApp:run --args="myapp://profile/42"
+ * ```
  *
- * On iOS
- * open safari and go to  myapp://profile/42
- * or via terminal
+ * iOS simulator:
+ * ```
+ * xcrun simctl boot "iPhone 16 Pro"
  * xcrun simctl openurl booted "myapp://profile/42"
- */
-
-
-/**
- * Mimic deeplink
+ * ```
  *
- * URI
- * myapp://profile/42
+ * iOS device: `simctl` reaches simulators only, and it answers "No devices are booted" when the app
+ * is running on a phone. `devicectl` has no command for a URL either. Open Safari on the phone and
+ * type `myapp://profile/42` in the address bar, not in a search field, or the browser searches for
+ * the text instead of opening it.
  *
- * adb shell am start \
- *   -a android.intent.action.VIEW \
- *   -d "myapp://profile/42" \
- *   com.tekmoon.soccos
+ * ## What an application has to provide
  *
- * What this does:
+ * A cold start hands the URI over once, through `deepLinkUri`. A URI that arrives while the app runs
+ * has no such entry point, so it travels through a [DeepLinkChannel] instead. Kompass reads both.
  *
- * Launches your app (cold start if needed)
+ * Android needs an intent filter in the manifest, and an Activity that reads the intent:
+ * ```
+ * <intent-filter>
+ *     <action android:name="android.intent.action.VIEW" />
+ *     <category android:name="android.intent.category.DEFAULT" />
+ *     <category android:name="android.intent.category.BROWSABLE" />
+ *     <data android:scheme="myapp" />
+ * </intent-filter>
  *
- * Passes the URI to the Activity
- *
- * Your app extracts the URI and feeds it into the Kompass deep-link handler
- *
- * For Android:
+ * // android:launchMode="singleTop", so a warm link reaches onNewIntent instead of a second Activity
  * override fun onCreate(savedInstanceState: Bundle?) {
  *     super.onCreate(savedInstanceState)
- *
- *     val uri = intent?.dataString
- *     setContent {
- *         AppRoot(deepLinkUri = uri)
- *     }
+ *     setContent { App(deepLinkUri = intent?.dataString, deepLinkChannel = deepLinkChannel) }
  * }
- * or
- * override fun onNewIntent(intent: Intent?) {
+ *
+ * override fun onNewIntent(intent: Intent) {
  *     super.onNewIntent(intent)
  *     setIntent(intent)
+ *     intent.dataString?.let(deepLinkChannel::send)
  * }
+ * ```
  *
- * For Desktop:
- * ./gradlew :composeApp:run --args="myapp://profile/42"
- * fun main(args: Array<String>) {
- *     val deepLinkUri = args.firstOrNull()
- *     launchApp(deepLinkUri)
+ * Desktop reads its first argument. It registers no scheme with the operating system, so a desktop
+ * deep link is a cold start only:
+ * ```
+ * fun main(args: Array<String>) = application {
+ *     Window(onCloseRequest = ::exitApplication) { App(deepLinkUri = args.firstOrNull()) }
  * }
+ * ```
+ *
+ * iOS declares `CFBundleURLSchemes` in `Info.plist` and forwards `onOpenURL` into the channel. That
+ * one callback covers the cold start and the warm one, because the channel buffers.
+ * ```
+ * ComposeView().onOpenURL { url in IosDeepLinks.shared.channel.send(uri: url.absoluteString) }
+ * ```
+ *
+ * To fire it on a phone, open Safari and type `myapp://profile/42`. See "Try it" above: that is the
+ * only way on a physical device, because `simctl` talks to simulators.
  */
 
 /* -------------------------------------------
@@ -134,7 +154,7 @@ private val profileDeepLinkHandler = PathTemplateDeepLinkHandler("myapp://profil
     listOf(
         NavigationCommand.ReplaceStack(
             listOf(
-                KompassEntry(
+                kompassEntry(
                     destinationId = Sample5Dest.Home.id,
                     scopeId = newScope()
                 ),
@@ -202,10 +222,13 @@ fun Sample5_DeepLink(
             deepLinkHandlers = persistentListOf(profileDeepLinkHandler)
         )
 
-    LaunchedEffect(navController) {
-        deepLinkChannel?.observe { uri ->
+    // A subscription needs an owner. One channel carries each URI to exactly one collector, so an
+    // observer left behind by a previous navController would steal links from this one.
+    DisposableEffect(navController, deepLinkChannel) {
+        val subscription = deepLinkChannel?.observe { uri ->
             navController.applyDeepLink(uri = uri)
         }
+        onDispose { subscription?.cancel() }
     }
 
     KompassBackHandler(

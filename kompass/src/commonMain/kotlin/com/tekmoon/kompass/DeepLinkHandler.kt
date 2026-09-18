@@ -2,12 +2,12 @@ package com.tekmoon.kompass
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
-import kotlin.experimental.ExperimentalObjCName
-import kotlin.native.ObjCName
+import kotlin.coroutines.CoroutineContext
 
 
 /**
@@ -52,7 +52,7 @@ interface DeepLinkHandler {
      * Resolve the uri into navigation commands.
      *
      * Example:
-     * - ReplaceRoot(Home)
+     * - ReplaceStack(listOf(Home))
      * - Navigate(Profile(userId))
      *
      * This method is only called if [matches] returned true for the same URI.
@@ -133,10 +133,18 @@ fun applyDeepLink(
  * This type intentionally exposes a callback-based subscription API
  * to remain Swift-friendly on Apple platforms.
  */
-class DeepLinkChannel {
+class DeepLinkChannel(
+    /**
+     * Where the callback of [observe] runs. It defaults to the main dispatcher.
+     *
+     * Pass a different one on a desktop JVM host that does not add a main dispatcher artifact, and
+     * in a test that needs a deterministic dispatcher.
+     */
+    coroutineContext: CoroutineContext = Dispatchers.Main,
+) {
 
     private val channel = Channel<String>(Channel.BUFFERED)
-    private val scope = CoroutineScope(Dispatchers.Main)
+    private val scope = CoroutineScope(SupervisorJob() + coroutineContext)
 
     /**
      * Sends a deep link URI into the channel.
@@ -153,18 +161,39 @@ class DeepLinkChannel {
      *
      * Registers a callback that will be invoked for each received URI.
      *
-     * The callback is invoked on the Main dispatcher.
+     * The callback is invoked on the dispatcher this channel was built with.
      * Consumers are expected to forward the URI to a [DeepLinkManager]
      * and apply the resulting navigation commands.
      *
      * This method is designed for interoperability with Swift,
      * where collecting Kotlin Flows directly is not ergonomic.
+     *
+     * **Keep the returned [DeepLinkSubscription] and cancel it when the observer goes away.** One
+     * channel carries each URI to exactly one collector, so an abandoned subscription does not just
+     * leak, it also steals links from the collector that replaced it.
      */
-    public fun observe(onEvent: (String) -> Unit) {
-        scope.launch {
+    public fun observe(onEvent: (String) -> Unit): DeepLinkSubscription {
+        val job = scope.launch {
             channel.receiveAsFlow().collect { uri ->
                 onEvent(uri)
             }
         }
+        return DeepLinkSubscription { job.cancel() }
     }
+
+    /**
+     * Stops every observer and closes the channel. Idempotent.
+     *
+     * Call it from whoever built the channel. A channel built for the lifetime of the process does
+     * not need it; one built per screen or per session does.
+     */
+    public fun close() {
+        scope.cancel()
+        channel.close()
+    }
+}
+
+/** Handle for one [DeepLinkChannel.observe] registration. Cancelling twice is safe. */
+class DeepLinkSubscription internal constructor(private val onCancel: () -> Unit) {
+    fun cancel() = onCancel()
 }

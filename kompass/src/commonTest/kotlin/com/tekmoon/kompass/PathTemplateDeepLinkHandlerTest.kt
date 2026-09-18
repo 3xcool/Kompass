@@ -147,4 +147,46 @@ class PathTemplateDeepLinkHandlerTest {
         assertEquals(1, manager.resolve("app://profile/7")!!.size)
         assertNull(manager.resolve("app://other/7"))
     }
+
+    // A percent escape takes two hex digits and nothing else. toIntOrNull(16) on its own accepts a
+    // sign, which turned "%-1" into byte 0xFF and "%+1" into a control character.
+
+    @Test fun a_percent_escape_decodes_two_hex_digits() {
+        val args = argsOf(handler("app://profile/{userId}"), "app://profile/%41%62")
+        assertEquals("Ab", args["userId"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun a_minus_sign_is_not_a_hex_digit() {
+        val args = argsOf(handler("app://profile/{userId}"), "app://profile/%-1")
+        assertEquals("%-1", args["userId"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun a_plus_sign_is_not_a_hex_digit() {
+        val args = argsOf(handler("app://profile/{userId}"), "app://profile/%+1")
+        assertEquals("%+1", args["userId"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun a_space_is_not_a_hex_digit() {
+        val args = argsOf(handler("app://profile/{userId}"), "app://profile/%2 0")
+        assertEquals("%2 0", args["userId"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun a_non_hex_escape_stays_literal() {
+        val args = argsOf(handler("app://profile/{userId}"), "app://profile/%ZZ")
+        assertEquals("%ZZ", args["userId"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun a_utf8_escape_still_decodes() {
+        val args = argsOf(handler("app://profile/{userId}"), "app://profile/%C3%A9")
+        assertEquals("é", args["userId"]!!.jsonPrimitive.content)
+    }
+
+    @Test fun matching_twice_gives_the_same_answer() {
+        val subject = handler("app://profile/{userId}")
+        assertTrue(subject.matches("app://profile/7"))
+        assertTrue(subject.matches("app://profile/7"))
+        assertEquals("7", argsOf(subject, "app://profile/7")["userId"]!!.jsonPrimitive.content)
+        assertFalse(subject.matches("app://other/7"))
+        assertEquals("8", argsOf(subject, "app://profile/8")["userId"]!!.jsonPrimitive.content)
+    }
 }

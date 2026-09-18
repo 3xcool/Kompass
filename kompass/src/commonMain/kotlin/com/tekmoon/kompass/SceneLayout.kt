@@ -105,13 +105,18 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
         direction: NavDirection
     ) {
         val entry = backStack.last()
+        // Resolve once per entry. Reading it inline would re-resolve the graph and allocate a new
+        // SceneTransitionDefault on every recomposition.
+        val transition = remember(entry, resolve) {
+            resolve(entry).first.sceneTransition ?: SceneTransitionDefault()
+        }
 
         AnimatedContent(
             targetState = entry,
             contentKey = { it.id },
             transitionSpec = entryTransition(
                 direction = direction,
-                transition = resolve(entry).first.sceneTransition ?: SceneTransitionDefault()
+                transition = transition,
             ),
             label = "SinglePane"
         ) { animatedEntry ->
@@ -135,6 +140,17 @@ object SceneLayoutDefaultAnimatedSinglePane : SceneLayout {
  * - In expanded widths, renders a static master pane and animated detail pane
  *
  * This layout is suitable for tablets, desktops, and foldables.
+ *
+ * ## Two panes, not a stack
+ *
+ * The master pane is always the **root** entry and the detail pane is always the **top** entry. A
+ * stack of three or more shows the first and the last, and every entry in between is not rendered.
+ * Its owner drops to `CREATED` and its UI state is kept, so popping back to it restores it. Use
+ * [SceneLayoutComposite] when every level needs a pane of its own.
+ *
+ * The master pane is static, so it sits outside any [AnimatedContent] and no
+ * [LocalKompassAnimatedVisibilityScope] is provided for it. A shared element transition can start
+ * from the detail pane, not from the master pane.
  */
 data class SceneLayoutListDetail(
     val compactWidthThreshold: Dp = 600.dp,
@@ -164,7 +180,6 @@ data class SceneLayoutListDetail(
                         transition = transition,
                     ),
                     label = "DetailOnly",
-//                    contentKey = { it to it.destinationId }
                 ) { animatedEntry ->
                     val (graph, destination) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
                     CompositionLocalProvider(LocalKompassAnimatedVisibilityScope provides this) {
@@ -180,9 +195,6 @@ data class SceneLayoutListDetail(
                 val detail = backStack.last()
 
                 val (masterGraph, masterDest) = remember(master, resolve) { resolve(master) }
-
-                // By calling here we will show the next screen before the transition animation is triggered
-//                val (detailGraph, detailDest) = remember(detail) { resolve(detail) }
 
                 Row(
                     modifier = Modifier.fillMaxSize()
@@ -205,10 +217,9 @@ data class SceneLayoutListDetail(
                                 transition = transition,
                             ),
                             label = "DetailPane",
-//                            contentKey = { it.destinationId}
                         ) { animatedEntry ->
-//                          // Important
-                            // We must use animatedEntry, cause we need to render the new screen after the animation is finished
+                            // Resolve the animated entry, not the target one. The outgoing screen
+                            // must keep its own destination until the animation ends.
                             val (detailGraph, detailDest) = remember(animatedEntry, resolve) { resolve(animatedEntry) }
                             CompositionLocalProvider(LocalKompassAnimatedVisibilityScope provides this) {
                                 detailGraph.Content(

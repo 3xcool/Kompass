@@ -16,9 +16,15 @@ internal class KompassOwnerStore(restored: Map<String, SavedState> = emptyMap())
     private var hostState = Lifecycle.State.CREATED
     private var closed = false
     internal val isClosed: Boolean get() = closed
-    var platformExtras: CreationExtras = CreationExtras.Empty
 
-    fun owner(entry: KompassEntry): KompassEntryOwner {
+    /**
+     * The owner of [entry], created on first use.
+     *
+     * [platformExtras] reaches a new scope owner as a parameter rather than as a property on this
+     * store. A caller composes it, and a composable that assigns a property writes shared state in
+     * the render pass, which an abandoned composition would still have changed.
+     */
+    fun owner(entry: KompassEntry, platformExtras: CreationExtras = CreationExtras.Empty): KompassEntryOwner {
         check(!closed) { "The Kompass controller has been disposed" }
         return owners.getOrPut(entry.id) {
             val scope = scopes.getOrPut(entry.scopeId) {
@@ -45,9 +51,13 @@ internal class KompassOwnerStore(restored: Map<String, SavedState> = emptyMap())
         update(entry.id)
     }
 
+    /**
+     * Drops one render reference. An unbalanced call is ignored rather than fatal: a disposal can
+     * run twice, and a navigation library must not take the app down for it.
+     */
     fun release(entry: KompassEntry) {
-        val count = checkNotNull(references[entry.id]) - 1
-        if (count == 0) references.remove(entry.id) else references[entry.id] = count
+        val count = (references[entry.id] ?: return) - 1
+        if (count <= 0) references.remove(entry.id) else references[entry.id] = count
         update(entry.id)
         clearUnusedScopes()
         NavigationScopes.release(entry.scopeId)
@@ -76,7 +86,9 @@ internal class KompassOwnerStore(restored: Map<String, SavedState> = emptyMap())
     }
 
     fun save(): Map<String, SavedState> = buildMap {
-        putAll(restoredStates.filterKeys { it in liveIds || it in liveScopes.map(::scopeKey) })
+        // Build the scope keys once. Inside filterKeys they would be rebuilt for every entry.
+        val liveScopeKeys = liveScopes.mapTo(mutableSetOf(), ::scopeKey)
+        putAll(restoredStates.filterKeys { it in liveIds || it in liveScopeKeys })
         scopes.filterKeys { it in liveScopes }.forEach { (id, owner) -> put(scopeKey(id), owner.save()) }
         owners.filterKeys { it in liveIds }.forEach { (id, owner) -> put(id, owner.save()) }
     }

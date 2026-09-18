@@ -162,7 +162,7 @@ Rating: **K** Kompass advantage, **N3** Navigation 3 advantage, **=** practical 
 
 | Dimension | Navigation 3 | Kompass | Better |
 |---|---|---|---|
-| Results | Application pattern/recipe | First-class pending keys and typed consumption | **K** |
+| Results | Application pattern/recipe | First-class result keys and typed consumption | **K** |
 | Flow-wide shared state | Decorator or custom owner design | `NavigationScopeId` shared across entries | **K** |
 | Entry lifecycle and saved state | AndroidX decorators | Built into the navigation host | **=** |
 | Deep links | Official recipes and matchers | Template helper plus open handler API | **=** |

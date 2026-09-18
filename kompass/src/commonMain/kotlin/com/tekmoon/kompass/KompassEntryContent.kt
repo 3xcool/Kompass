@@ -19,7 +19,8 @@ internal class OwnedNavigationGraph(
 ) : KompassNavigationGraph by graph {
     @Composable
     override fun Content(entry: KompassEntry, destination: Destination, navController: KompassNavController) {
-        val owner = remember(navController, entry.id) { navController.entryOwners.owner(entry) }
+        val extras = kompassPlatformCreationExtras()
+        val owner = remember(navController, entry.id) { navController.entryOwners.owner(entry, extras) }
         // Declared outside the saveable island: release follows its children's disposal.
         DisposableEffect(navController, entry.id, entry.scopeId) {
             navController.entryOwners.retain(entry)
@@ -42,7 +43,6 @@ internal class OwnedNavigationGraph(
 
 @Composable
 internal fun rememberOwnedGraphs(navController: KompassNavController, graphs: List<KompassNavigationGraph>): List<KompassNavigationGraph> {
-    navController.entryOwners.platformExtras = kompassPlatformCreationExtras()
     val holder = rememberSaveableStateHolder()
     val knownIds = remember(navController) { navController.backStack.map { it.id }.toMutableSet() }
     val lifecycle = LocalLifecycleOwner.current.lifecycle

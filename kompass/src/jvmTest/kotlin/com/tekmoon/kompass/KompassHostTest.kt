@@ -18,6 +18,7 @@ import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 import kotlin.test.*
 
 class KompassHostTest {
@@ -583,13 +584,19 @@ class KompassHostTest {
         mainClock.autoAdvance = false
         runOnIdle {
             initial = nav.currentEntry
-            nav.replaceStack(B.toKompassEntry(scopeId = newScope(), results = mapOf("pending" to object : NavigationResult {})))
+            nav.replaceStack(
+                KompassEntry(
+                    destinationId = B.id,
+                    scopeId = newScope(),
+                    results = persistentMapOf("pending" to StoredResult.Delivered(object : NavigationResult {})),
+                )
+            )
         }
         mainClock.advanceTimeBy(64)
         runOnIdle { progress = 0.6f }
         mainClock.advanceTimeBy(64)
         val forwardX = onNodeWithText("seek:b").fetchSemanticsNode().positionInRoot.x
-        runOnIdle { assertNotNull(nav.consumeResult<NavigationResult>("pending")) }
+        runOnIdle { assertNotNull(nav.consumeResult(ResultKey<NavigationResult>("pending"))) }
         mainClock.advanceTimeBy(64)
         assertEquals(forwardX, onNodeWithText("seek:b").fetchSemanticsNode().positionInRoot.x, 0.5f)
         runOnIdle { assertEquals(0, probes[initial.id]!!.clears); progress = 0.2f }

@@ -160,7 +160,7 @@ object MockData {
 object ExpenseTrackerGraph : KompassNavigationGraph {
 
     override val sceneLayout = SceneLayoutListDetail(
-        compactWidthThreshold = 700.dp,
+//        compactWidthThreshold = 700.dp,
         transition = ExpenseTrackerFastTransition
     )
 

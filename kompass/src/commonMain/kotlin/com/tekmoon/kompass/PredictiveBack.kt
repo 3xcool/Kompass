@@ -3,6 +3,7 @@ package com.tekmoon.kompass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
@@ -23,12 +24,18 @@ import androidx.compose.runtime.setValue
 class PredictiveBackState internal constructor() {
 
     /**
+     * Backing float for [progress]. A gesture writes it on every frame, and a `Float?` would box
+     * once per frame. [targetEntryId] already says whether a gesture is running.
+     */
+    private var progressValue by mutableFloatStateOf(0f)
+
+    /**
      * Visual progress of the gesture, from 0 to 1, or null when no gesture is in progress.
      *
      * Read this to fade, scale or dim your own content while the user drags.
      */
-    var progress: Float? by mutableStateOf(null)
-        private set
+    val progress: Float?
+        get() = if (targetEntryId == null) null else progressValue
 
     /**
      * Occurrence ID of the entry the gesture moves toward, or null when no gesture is in progress.
@@ -48,19 +55,19 @@ class PredictiveBackState internal constructor() {
 
     internal fun start(targetEntryId: String, sourceEntryId: String? = null) {
         this.sourceEntryId = sourceEntryId
+        progressValue = 0f
         this.targetEntryId = targetEntryId
-        progress = 0f
     }
 
     internal fun update(fraction: Float) {
         if (targetEntryId == null) return
-        progress = fraction.coerceIn(0f, 1f)
+        progressValue = fraction.coerceIn(0f, 1f)
     }
 
     internal fun finish() {
         sourceEntryId = null
         targetEntryId = null
-        progress = null
+        progressValue = 0f
     }
 }
 

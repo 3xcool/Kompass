@@ -59,7 +59,6 @@ internal fun rememberKompassOwnerStore(entries: List<KompassEntry>): KompassOwne
         retained?.getOrCreate(id, restored.orEmpty())
             ?: KompassOwnerStore(restored.orEmpty())
     }
-    store.platformExtras = kompassPlatformCreationExtras()
     val isRecreating = rememberKompassHostRecreation()
     DisposableEffect(store, parentRegistry) {
         store.reconcile(entries)
