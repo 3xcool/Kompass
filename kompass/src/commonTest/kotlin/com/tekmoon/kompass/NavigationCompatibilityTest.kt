@@ -103,6 +103,44 @@ class NavigationCompatibilityTest {
         assertEquals(state, json.decodeFromString(serializer, encoded))
     }
 
+    @Test fun a_controller_restores_a_saved_result_and_a_saved_cancellation() {
+        // Process death is the case an application meets: save the state, build a new controller
+        // from it, and read the answers back. Throw is the policy here on purpose. The default
+        // policy hides a decode failure behind the initial state, which would let this test pass
+        // while the answers were lost.
+        val module = SerializersModule {
+            polymorphic(NavigationResult::class) { subclass(Result::class) }
+        }
+        val producer = object : Destination { override val id = "producer" }
+        val answered = ResultKey<Result>("answered")
+        val abandoned = ResultKey<Result>("abandoned")
+
+        val nav = createKompassNavController(defaultNavigationState(entry("home")), module)
+        val saved = try {
+            nav.navigate(producer.toKompassEntry(), resultKey = answered)
+            nav.pop(Result("kept"), answered)
+            nav.navigate(producer.toKompassEntry(), resultKey = abandoned)
+            nav.pop()
+            nav.saveNavigationState()
+        } finally {
+            nav.close()
+        }
+
+        val restored = createKompassNavController(
+            initialState = defaultNavigationState(entry("home")),
+            serializersModule = module,
+            savedNavigationState = saved,
+            restorePolicy = NavigationRestorePolicy.Throw,
+        )
+        try {
+            val receiver = restored.currentEntry
+            assertEquals(ResultState.Delivered(Result("kept")), receiver.peekResult(answered))
+            assertEquals(ResultState.Cancelled, receiver.peekResult(abandoned))
+        } finally {
+            restored.close()
+        }
+    }
+
     @Test fun entries_saved_by_2_0_0_restore_unless_they_carry_a_result() {
         val json = Json {
             ignoreUnknownKeys = true
