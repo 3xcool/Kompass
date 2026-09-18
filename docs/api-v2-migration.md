@@ -22,6 +22,16 @@ caller opens it instead of the destination declaring it.
 - `peekResult(key)` reads the state of a request while rendering. It never closes the request.
 - `onNavigationError` on the controller factories reports a request that Kompass cannot honour.
   Kompass never throws for one of these, because a repeated tap produces them.
+- `navigate(destination, ...)` and `replaceStack(destination, ...)` build the entry for you, so a
+  plain `Destination` now reads the same as a typed one. Nothing forces you to migrate: the entry
+  forms keep working, and you still need them to build a whole stack, the command list of a
+  `DeepLinkHandler`, or an initial state.
+
+  ```kotlin
+  navController.navigate(Profile)                                  // new
+  navController.navigate(Profile.toKompassEntry())                 // still valid
+  navController.navigate(Profile, scopeId = NavigationScopeId("checkout"))
+  ```
 
 ### API and signature changes
 
@@ -32,7 +42,7 @@ caller opens it instead of the destination declaring it.
 | `pop(result, key, count, popUntil)` | `pop(result, resultKey = key)` |
 | `consumeResult(key, entryId): T?` | `consumeResult(key, entryId): ResultState<T>?` |
 | `entry.results[name]` | `entry.peekResult(key)` |
-| `KompassEntry(...)` | `Destination.toKompassEntry(...)` or `kompassEntry(id)` |
+| `KompassEntry(id, args, scope, metadata, pendingResultKey, results)` | `KompassEntry(id, args, scope, metadata)` |
 | `replaceRoot(...)` and `NavigationCommand.ReplaceRoot` | `replaceStack(...)` |
 
 ### Behavioral changes
@@ -40,8 +50,11 @@ caller opens it instead of the destination declaring it.
 - `KompassEntry.pendingResultKey` keeps its name and changes its owner. It used to sit on the
   destination that returns a result, and it routed the answer. It now sits on the entry that waits,
   and it records only that. The key that routes an answer travels with `pop`.
-- `KompassEntry.results` and the `KompassEntry` constructor are internal. An entry carries result
-  state that only the reducer may set.
+- `KompassEntry.results` is internal. Read a result with `peekResult` and close it with
+  `consumeResult`.
+- The `KompassEntry` constructor stays public and drops its `pendingResultKey` and `results`
+  parameters. It keeps `destinationId`, `args`, `scopeId` and `metadata`, the same four fields
+  `toKompassEntry` and `kompassEntry` take.
 - `KompassEntry` drops `component4()` and `component5()`. Destructuring covers the first three.
 - `KompassEntry.metadata` is an `ImmutableMap<String, String>`. Reading it is unchanged. Code that
   assigned it to a `MutableMap` variable no longer compiles.
@@ -116,7 +129,7 @@ included.
 4. Remove `count` and `popUntil` from every `pop` that delivers a result.
 5. Handle `ResultState.Cancelled` at each call site that reads a result.
 6. Replace `replaceRoot` with `replaceStack`.
-7. Replace direct `KompassEntry(...)` construction with `toKompassEntry` or `kompassEntry`.
+7. Drop the `pendingResultKey` and `results` arguments from every direct `KompassEntry(...)` call.
 8. Pass `onNavigationError` to the controller factory, and log what it reports.
 9. Run:
 

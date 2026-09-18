@@ -128,8 +128,9 @@ typealias ArgsJson = String
  * Occurrence identity is managed by Kompass. [id] is read-only and can be used as a
  * content key in custom animated layouts. Sharing [scopeId] does not merge UI state.
  *
- * Build an entry with [toKompassEntry]. The constructor is internal, because an entry also carries
- * result state that only the reducer may set.
+ * Build an entry with the public constructor, with [toKompassEntry], or with [kompassEntry]. They all
+ * take the same four fields. Result state and occurrence [id] are not among them: the reducer sets
+ * those, and the primary constructor that carries them stays internal.
  */
 @OptIn(ExperimentalSerializationApi::class)
 @Immutable
@@ -176,6 +177,27 @@ class KompassEntry internal constructor(
     @SerialName("id")
     val id: String = randomUUID(),
 ) {
+
+    /**
+     * Builds an entry from its payload.
+     *
+     * This is the whole set of fields a caller chooses. The occurrence [id] and the result state are
+     * library-managed, so they are not parameters here; the entry takes a fresh [id].
+     *
+     * [metadata] is converted at the boundary, so a caller keeps `mapOf(...)` and the entry never
+     * holds a map the caller can still change.
+     */
+    constructor(
+        destinationId: String,
+        args: ArgsJson? = null,
+        scopeId: NavigationScopeId,
+        metadata: Map<String, String> = emptyMap(),
+    ) : this(
+        destinationId = destinationId,
+        args = args,
+        scopeId = scopeId,
+        metadata = metadata.toPersistentMap(),
+    )
 
     /**
      * Copies the payload while retaining identity.

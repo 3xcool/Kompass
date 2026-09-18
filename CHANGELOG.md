@@ -9,6 +9,10 @@ See [docs/api-v2-migration.md](docs/api-v2-migration.md) for the call-site chang
 
 ### Highlights
 
+- Added `navigate(destination, ...)` and `replaceStack(destination, ...)`, which build the entry for
+  you. `navigate(Profile)` replaces `navigate(Profile.toKompassEntry())`, and both take `args`,
+  `scopeId` and `metadata` when the defaults do not fit. Build the entry yourself when you need to
+  hold it: a whole stack, the command list of a `DeepLinkHandler`, or an initial state.
 - Added a `resultKey` parameter to `navigate` and `navigateTo`. It opens a result request and records
   it on the entry that starts it. Do not combine it with `clearBackStack`, which removes the entry
   that would receive the answer; the request is dropped and reported.
@@ -42,9 +46,8 @@ See [docs/api-v2-migration.md](docs/api-v2-migration.md) for the call-site chang
   to sit on the destination that would return a result, and it routed the answer. It now sits on the
   entry that is waiting, and it records only that. The key that routes an answer travels with `pop`.
 - `KompassEntry.results` is now internal. Use `peekResult` and `consumeResult`.
-- The `KompassEntry` constructor is now internal, because an entry carries result state that only
-  the reducer may set. Use `Destination.toKompassEntry(...)`, or the new `kompassEntry(...)` when
-  only the destination ID is known, which is the usual case inside a `DeepLinkHandler`.
+- The `KompassEntry` constructor drops its `pendingResultKey` and `results` parameters. It keeps
+  `destinationId`, `args`, `scopeId` and `metadata`, and the reducer sets the rest.
 - `KompassEntry` drops `component4()` and `component5()`. Destructuring covers the first three.
 - `KompassEntry.metadata` is an `ImmutableMap<String, String>`. Reading it is unchanged; code that
   assigned it to a `MutableMap` variable no longer compiles.

@@ -423,6 +423,50 @@ class KompassNavController internal constructor(
     fun canGoBack(): Boolean = state.canGoBack()
 }
 
+/**
+ * Navigates to [destination], building the entry for you.
+ *
+ * This is the short form of `navigate(destination.toKompassEntry(...))`, and it mirrors [navigateTo]
+ * for a plain [Destination]. Build the entry yourself when you need to hold it: a whole stack for
+ * [replaceStack], the command list of a `DeepLinkHandler`, or an initial state.
+ *
+ * Every other parameter behaves as it does on [KompassNavController.navigate].
+ */
+fun KompassNavController.navigate(
+    destination: Destination,
+    args: ArgsJson? = null,
+    scopeId: NavigationScopeId = destination.defaultScope(),
+    metadata: Map<String, String> = emptyMap(),
+    clearBackStack: Boolean = false,
+    popUpTo: String? = null,
+    popUpToInclusive: Boolean = false,
+    reuseIfExists: Boolean = false,
+    resultKey: ResultKey<*>? = null,
+) {
+    navigate(
+        entry = destination.toKompassEntry(args = args, scopeId = scopeId, metadata = metadata),
+        clearBackStack = clearBackStack,
+        popUpTo = popUpTo,
+        popUpToInclusive = popUpToInclusive,
+        reuseIfExists = reuseIfExists,
+        resultKey = resultKey,
+    )
+}
+
+/**
+ * Replaces the entire back stack with [destination], building the entry for you.
+ *
+ * This is the short form of `replaceStack(destination.toKompassEntry(...))`. Pass a list of entries
+ * instead when the new stack has more than one level.
+ */
+fun KompassNavController.replaceStack(
+    destination: Destination,
+    args: ArgsJson? = null,
+    scopeId: NavigationScopeId = destination.defaultScope(),
+    metadata: Map<String, String> = emptyMap(),
+) {
+    replaceStack(destination.toKompassEntry(args = args, scopeId = scopeId, metadata = metadata))
+}
 
 /** Recovery for invalid saved navigation. Initial state must itself be valid. */
 enum class NavigationRestorePolicy { UseInitialState, Throw }

@@ -81,28 +81,37 @@ Use `createKompassNavController` when the controller is owned outside compositio
 `navigate` pushes an entry and supports common stack policies:
 
 ```kotlin
-// Basic navigation.
-navController.navigate(Profile.toKompassEntry())
+// Basic navigation. Kompass builds the entry.
+navController.navigate(Profile)
 
 // Clear the complete stack before pushing.
-navController.navigate(Profile.toKompassEntry(), clearBackStack = true)
+navController.navigate(Profile, clearBackStack = true)
 
 // Pop up to a destination before pushing.
 navController.navigate(
-    Profile.toKompassEntry(),
+    Profile,
     popUpTo = "home",
     popUpToInclusive = false,
 )
 
 // Move an existing matching entry to the top instead of creating an occurrence.
-navController.navigate(Profile.toKompassEntry(), reuseIfExists = true)
+navController.navigate(Profile, reuseIfExists = true)
+
+// Set args, a scope or presentation metadata on the way.
+navController.navigate(Profile, scopeId = NavigationScopeId("checkout"))
+
+// Pass an entry instead when you built one yourself.
+navController.navigate(Profile.toKompassEntry())
 ```
 
 The complete signature is:
 
 ```kotlin
 navController.navigate(
-    entry,
+    destination,               // or an entry you built yourself
+    args = null,               // destination form only
+    scopeId = destination.defaultScope(),   // destination form only
+    metadata = emptyMap(),     // destination form only
     clearBackStack = false,
     popUpTo = null,
     popUpToInclusive = false,
