@@ -1,6 +1,6 @@
 # Using Kompass
 
-This guide explains the most common Kompass navigation patterns. For migration from Kompass 1.x, see the [API v2 migration guide](api-v2-migration.md). For a design comparison, see [Kompass vs Navigation 3](kompass-vs-navigation3.md).
+This guide explains the most common Kompass navigation patterns. For migration from Kompass 2.0 or 1.x, see the [API v2 migration guide](api-v2-migration.md). For a design comparison, see [Kompass vs Navigation 3](kompass-vs-navigation3.md).
 
 ## 1. Model destinations
 
